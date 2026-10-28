@@ -1,0 +1,237 @@
+name: Hebrew build (daily upstream sync)
+
+# Keeps this fork from going stale: every day it takes storytold/wordcraft's newest `main`, merges
+# it, re-applies this fork's Hebrew overlay (the catalogs in `i18n-he/` and the four small code
+# changes `i18n-he/tools/apply_code_overlay.py` makes), pushes the result to `main`, and builds a
+# Linux release with Hebrew embedded. A version upstream has not shipped before gets published as
+# a GitHub release of this fork (`v<version>-he.1`); a day without a new version leaves the build
+# on the run's artifacts.
+#
+# The Hebrew catalogs themselves are never touched by the merge: upstream has no `i18n-he/`, so
+# they cannot conflict. The only files that can conflict are the three the overlay edits, and those
+# are resolved by taking upstream's version and running the overlay again.
+
+on:
+  schedule:
+    - cron: "17 4 * * *" # every day at 04:17 UTC
+  workflow_dispatch:
+    inputs:
+      force-build:
+        description: "Build even when upstream has no new commit"
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+    paths:
+      - "i18n-he/**"
+      - "crates/ui-egui/src/i18n.rs"
+      - "crates/ui-egui/src/theme.rs"
+      - "crates/ui-egui/src/app/fonts.rs"
+      - ".github/workflows/sync-upstream.yml"
+  pull_request:
+    paths:
+      - "i18n-he/**"
+      - ".github/workflows/sync-upstream.yml"
+
+permissions:
+  contents: write
+
+# One sync at a time: a second run would merge into a tree the first one is still pushing.
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPO: storytold/wordcraft
+  # The same craft-fonts and interface translations every other build of this app uses.
+  CRAFT_FONTS_REF: b076417b5880bd4154bd22f00695b1d28c6bea83
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  # The catalogs and the overlay, before anything is merged or built: a broken Hebrew row must not
+  # reach `main`.
+  catalogs:
+    name: Hebrew catalogs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: craft-i18n's key list, for the coverage report
+        run: |
+          set -euo pipefail
+          rev=$(tr -d '[:space:]' < craft-i18n.rev)
+          curl -fsSL -o "$RUNNER_TEMP/craft-i18n.tar.gz" "https://codeload.github.com/storytold/craft-i18n/tar.gz/$rev"
+          mkdir -p "$RUNNER_TEMP/craft-i18n"
+          tar -xzf "$RUNNER_TEMP/craft-i18n.tar.gz" -C "$RUNNER_TEMP/craft-i18n" --strip-components=1
+      - name: Check every catalog row (craft-i18n's rules, plus this fork's)
+        run: python3 i18n-he/tools/check.py --craft-i18n "$RUNNER_TEMP/craft-i18n"
+      - name: Check that the Hebrew code overlay is in place
+        run: python3 i18n-he/tools/apply_code_overlay.py --check
+      - name: Assemble the catalogs a build would embed
+        run: python3 i18n-he/tools/assemble.py --craft-i18n "$RUNNER_TEMP/craft-i18n" --out "$RUNNER_TEMP/craft-i18n-he"
+
+  # Only from the schedule and a manual run: a push already is the result of a merge.
+  sync:
+    name: Sync from upstream
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      changed: ${{ steps.merge.outputs.changed }}
+      upstream: ${{ steps.merge.outputs.upstream }}
+      version: ${{ steps.merge.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Merge storytold/wordcraft@main and re-apply the Hebrew overlay
+        id: merge
+        run: |
+          set -euo pipefail
+          git config user.name "wordcraft-heb"
+          git config user.email "wordcraft-heb@users.noreply.github.com"
+          git remote add upstream "https://github.com/${UPSTREAM_REPO}.git" 2>/dev/null \
+            || git remote set-url upstream "https://github.com/${UPSTREAM_REPO}.git"
+          git fetch --no-tags upstream main
+          upstream=$(git rev-parse --short upstream/main)
+          changed=false
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "nothing new upstream (${upstream})"
+          else
+            # The files the overlay edits are the only ones that can conflict: take upstream's
+            # version of a conflicted one and apply the overlay again below. Any other conflict is a
+            # real one, and fails the job for a person to resolve.
+            if ! git merge --no-ff --no-commit upstream/main; then
+              overlay="crates/ui-egui/src/i18n.rs crates/ui-egui/src/theme.rs crates/ui-egui/src/app/fonts.rs crates/ui-egui/src/i18n/tests.rs"
+              while read -r file; do
+                case " $overlay " in
+                  *" $file "*) git checkout --theirs -- "$file" && git add -- "$file" ;;
+                  *) echo "::error file=$file::upstream's merge conflicts outside the Hebrew overlay"; exit 1 ;;
+                esac
+              done < <(git diff --name-only --diff-filter=U)
+            fi
+            python3 i18n-he/tools/apply_code_overlay.py
+            git add -A
+            git commit -m "Merge ${UPSTREAM_REPO}@${upstream} and re-apply the Hebrew overlay"
+            git push origin HEAD:main
+            changed=true
+          fi
+          version=$(awk '
+            /^\[/ { in_pkg = ($0 == "[workspace.package]"); next }
+            in_pkg && $1 == "version" { gsub(/[" ]/, "", $3); print $3; exit }
+          ' Cargo.toml)
+          echo "upstream=$upstream" >> "$GITHUB_OUTPUT"
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build (Linux x86_64)
+    needs: [catalogs, sync]
+    if: |
+      !failure() && !cancelled() && needs.catalogs.result == 'success' &&
+      (needs.sync.outputs.changed == 'true' || github.event_name == 'push' ||
+       github.event_name == 'workflow_dispatch' || inputs.force-build)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Install the Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev \
+            libxi-dev libgtk-3-dev libfontconfig1-dev libfreetype-dev mesa-vulkan-drivers zsync
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: hebrew-linux-x86_64
+      - name: Interface catalogs, with Hebrew laid over craft-i18n
+        run: |
+          set -euo pipefail
+          rev=$(tr -d '[:space:]' < craft-i18n.rev)
+          curl -fsSL -o "$RUNNER_TEMP/craft-i18n.tar.gz" "https://codeload.github.com/storytold/craft-i18n/tar.gz/$rev"
+          mkdir -p "$RUNNER_TEMP/craft-i18n"
+          tar -xzf "$RUNNER_TEMP/craft-i18n.tar.gz" -C "$RUNNER_TEMP/craft-i18n" --strip-components=1
+          python3 i18n-he/tools/assemble.py --craft-i18n "$RUNNER_TEMP/craft-i18n" --out "$RUNNER_TEMP/craft-i18n-he"
+          echo "CRAFT_I18N_DIR=$RUNNER_TEMP/craft-i18n-he" >> "$GITHUB_ENV"
+          echo "CRAFT_I18N_REQUIRED=1" >> "$GITHUB_ENV"
+      - name: The suite's fonts, when they can be fetched (a build without them warns and uses the system's)
+        run: |
+          set -euo pipefail
+          if curl -fsSL -o "$RUNNER_TEMP/craft-fonts.tar.gz" "https://codeload.github.com/storytold/craft-fonts/tar.gz/${CRAFT_FONTS_REF}"; then
+            mkdir -p "$RUNNER_TEMP/craft-fonts"
+            tar -xzf "$RUNNER_TEMP/craft-fonts.tar.gz" -C "$RUNNER_TEMP/craft-fonts" --strip-components=1
+            echo "CRAFT_FONTS_DIR=$RUNNER_TEMP/craft-fonts" >> "$GITHUB_ENV"
+          else
+            echo "::warning::craft-fonts ${CRAFT_FONTS_REF} could not be fetched; building with the installed fonts"
+          fi
+      - name: Version
+        id: version
+        run: |
+          set -euo pipefail
+          version=$(awk '
+            /^\[/ { in_pkg = ($0 == "[workspace.package]"); next }
+            in_pkg && $1 == "version" { gsub(/[" ]/, "", $3); print $3; exit }
+          ' Cargo.toml)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "WordCraft $version, Hebrew build" >> "$GITHUB_STEP_SUMMARY"
+      - name: Build and package (tar.gz and AppImage)
+        run: packaging/linux/package.sh --formats "tar appimage"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wordcraft-${{ steps.version.outputs.version }}-hebrew-linux-x86_64
+          path: dist/release/*
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Publish the release
+    needs: [build]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/download-artifact@v4
+        with:
+          name: wordcraft-${{ needs.build.outputs.version }}-hebrew-linux-x86_64
+          path: dist
+      - name: Release a version this fork has not published yet
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          set -euo pipefail
+          tag="v${VERSION}-he.1"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "::notice::$tag is already published; today's build is on this run's artifacts"
+            exit 0
+          fi
+          (cd dist && sha256sum ./* >"$RUNNER_TEMP/sums.txt" && mv "$RUNNER_TEMP/sums.txt" SHA256SUMS.txt)
+          cat >"$RUNNER_TEMP/notes.md" <<'NOTES'
+          WordCraft __VERSION__ של המאגר המקורי storytold/wordcraft, עם ממשק בעברית.
+
+          - הבסיס מתעדכן כל יום מהמאגר המקורי ונבנה מחדש; אין כאן גירסה שמתבשלת מהצד.
+          - הממשק: אנגלית ועברית. מחרוזת שעדיין אין לה תרגום מוצגת באנגלית.
+          - להפעלה: ה-AppImage (הרשאה להרצה ואז הפעלה), או ה-`tar.gz` (חילוץ והרצת `bin/wordcraft`).
+          - מה שעוד לא נתמך: פריסת ממשק מימין לשמאל. התפריטים עצמם בעברית ונפרסים נכון,
+            אבל סרגל הכלים נשאר מסודר משמאל לימין.
+
+          WordCraft __VERSION__ from storytold/wordcraft, built with the Hebrew interface in
+          `i18n-he/`. Interface languages: English and Hebrew (a string with no Hebrew row shows in
+          English). The interface layout is still left to right; each Hebrew label lays out right
+          to left. Rebuilt automatically from upstream's newest `main` every day.
+          NOTES
+          sed -i "s/__VERSION__/${VERSION}/g" "$RUNNER_TEMP/notes.md"
+          gh release create "$tag" ./dist/* \
+            --target main \
+            --title "WordCraft ${VERSION} בעברית" \
+            --notes-file "$RUNNER_TEMP/notes.md"

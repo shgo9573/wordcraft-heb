@@ -19,6 +19,13 @@
 //! show here once `craft-i18n.rev` moves to a commit that has them. A feature PR here adds the
 //! English only.
 //!
+//! # Hebrew (this fork)
+//! Hebrew is not in storytold/craft-i18n yet, so its catalogs live in this fork, in
+//! `i18n-he/locales/he/` (`README.md` there): `i18n-he/tools/assemble.py` lays them over a
+//! craft-i18n checkout to make the `CRAFT_I18N_DIR` a build embeds, and the daily
+//! `sync-upstream` workflow does that against upstream's newest `main`. Strings with no Hebrew
+//! row show in English, so the catalog can grow without breaking anything.
+//!
 //! # Adding a language
 //! 1. craft-i18n gets `locales/<code>/wordcraft.tsv` and the language's `@id language.name` row.
 //! 2. Add one row to [`LANGUAGES`]. Set its `editing_lang` only when `wordcraft-proof` can proof
@@ -70,7 +77,7 @@ pub struct LangInfo {
 
 /// The languages WordCraft offers, when their catalogs are embedded. English first: it is the
 /// fallback and the source language.
-pub static LANGUAGES: [LangInfo; 27] = [
+pub static LANGUAGES: [LangInfo; 28] = [
     LangInfo { code: "en", prefer_hans: false, editing_lang: None },
     // Simplified Chinese; `zh`, `zh-CN`, `zh-SG` and `zh-Hans-*` resolve here (the crate's matching).
     LangInfo { code: "zh-hans", prefer_hans: true, editing_lang: None },
@@ -126,6 +133,11 @@ pub static LANGUAGES: [LangInfo; 27] = [
     LangInfo { code: "ro", prefer_hans: false, editing_lang: None },
     // Slovenian; `sl`, `sl-SI` and `sl_SI.UTF-8` resolve here.
     LangInfo { code: "sl", prefer_hans: false, editing_lang: None },
+    // Hebrew, right to left; `he`, `he-IL` and `he_IL.UTF-8` resolve here. Its catalog is
+    // this fork's (`i18n-he/`, laid over craft-i18n by `i18n-he/tools/assemble.py`), not
+    // storytold/craft-i18n's: it is embedded whenever that overlay is in `CRAFT_I18N_DIR`. The
+    // interface keeps its left-to-right layout, and each Hebrew label lays out right to left.
+    LangInfo { code: "he", prefer_hans: false, editing_lang: None },
 ];
 
 /// A language the UI can be shown in: English, or an offered language whose catalogs are embedded.
@@ -190,7 +202,7 @@ impl Lang {
     }
 
     /// The embedded catalogs (shared, then WordCraft's) this language reads; none for English.
-    fn catalog_texts(self) -> impl Iterator<Item = &'static str> {
+    pub fn catalog_texts(self) -> impl Iterator<Item = &'static str> {
         let code = self.code();
         CRAFT_I18N.iter().filter(move |(c, ..)| c.eq_ignore_ascii_case(code)).flat_map(|(_, shared, app)| [*shared, *app])
     }

@@ -511,6 +511,29 @@ pub fn caption_char_covered(c: char) -> bool {
     (c as u32) < 0x250 || wordcraft_fonts::is_cjk(c)
 }
 
+/// A character the interface fonts draw without borrowing a document face: ASCII and Latin-1
+/// ([`caption_char_covered`]), the Greek, Cyrillic and Armenian ranges of Inter and Source Sans,
+/// the punctuation and symbol blocks egui's own icon and emoji faces cover, and CJK (the CJK UI
+/// font). Hebrew, Arabic, Thai … are not covered: the interface needs a document face for them.
+pub fn interface_char_covered(c: char) -> bool {
+    caption_char_covered(c) || matches!(c, '\u{0370}'..='\u{052F}' | '\u{2000}'..='\u{2BFF}')
+}
+
+/// The document faces the interface text itself needs: characters of `texts` (a language's
+/// catalogs and its own name, in the interface fonts' own size) that no embedded interface face
+/// draws. Hebrew, Arabic and Thai menus would otherwise be rows of boxes; each script's letters
+/// come from a document fallback face, exactly as the caption and the comments take theirs
+/// (#565, #2067). Looked at once per interface install, not per frame.
+pub fn faces_for_interface_text(texts: impl Iterator<Item = &'static str>) -> Vec<Arc<wordcraft_fonts::FontFace>> {
+    let mut out: Vec<Arc<wordcraft_fonts::FontFace>> = Vec::new();
+    for text in texts {
+        for face in faces_for_preedit(text, &out, interface_char_covered, |c| wordcraft_fonts::FontDb::global().fallback_for(c, u32::MAX)) {
+            out.push(face);
+        }
+    }
+    out
+}
+
 /// Document faces needed to draw `text` (the input method's composition, or a file name in the
 /// window caption), one for each character the interface fonts cannot draw, skipping faces in
 /// `have` (#565). Characters of the embedded interface fonts are not looked up; very large faces
