@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write # the check posts its compiler output on the pull request
 
 concurrency:
   group: hebrew-check-${{ github.head_ref }}
@@ -70,9 +71,41 @@ jobs:
           else
             echo "::warning::craft-fonts ${CRAFT_FONTS_REF} could not be fetched; checking with the installed fonts"
           fi
+      # One step per command, each leaving its log behind, and a final step that quotes the log on
+      # the pull request: that way a failure is readable without opening the run's log page.
       - name: cargo check over the workspace
-        run: cargo check --workspace --all-targets
+        run: |
+          set +e
+          cargo check --workspace --all-targets --message-format=short 2>&1 | tee "$RUNNER_TEMP/rust.log"
+          status=${PIPESTATUS[0]}
+          python3 i18n-he/tools/rust_failures.py --annotate "$RUNNER_TEMP/rust.log"
+          exit "$status"
       - name: The proofing crate's tests (Hebrew spelling, suggestions, grammar and hyphenation among them)
-        run: cargo test -p wordcraft-proof --lib
+        run: |
+          set +e
+          cargo test -p wordcraft-proof --lib 2>&1 | tee "$RUNNER_TEMP/proof-tests.log"
+          status=${PIPESTATUS[0]}
+          python3 i18n-he/tools/rust_failures.py --annotate --title "The proofing tests failed" "$RUNNER_TEMP/proof-tests.log"
+          exit "$status"
       - name: The interface crate's own tests (the right-to-left layout among them)
-        run: cargo test -p wordcraft-ui-egui --lib
+        run: |
+          set +e
+          cargo test -p wordcraft-ui-egui --lib 2>&1 | tee "$RUNNER_TEMP/ui-tests.log"
+          status=${PIPESTATUS[0]}
+          python3 i18n-he/tools/rust_failures.py --annotate --title "The interface tests failed" "$RUNNER_TEMP/ui-tests.log"
+          exit "$status"
+      - name: Quote the failure on the pull request
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          report="$RUNNER_TEMP/report.md"
+          echo '## Something in the Hebrew build failed' > "$report"
+          for log in "$RUNNER_TEMP/rust.log" "$RUNNER_TEMP/proof-tests.log" "$RUNNER_TEMP/ui-tests.log"; do
+            [ -f "$log" ] || continue
+            printf '\n### %s\n\n' "$(basename "$log" .log)" >> "$report"
+            python3 i18n-he/tools/rust_failures.py --markdown --title "$(basename "$log" .log)" "$log" | tail -n +3 >> "$report"
+          done
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file "$report" --edit-last --create-if-none || \
+            gh pr comment "${{ github.event.pull_request.number }}" --body-file "$report"
