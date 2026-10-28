@@ -20,14 +20,13 @@ pub fn is_rtl(ui: &Ui) -> bool {
 
 /// [`Ui::horizontal`], right to left when the interface is.
 pub fn horizontal<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
-    let main = if is_rtl(ui) {
+    if is_rtl(ui) {
         // The size `Ui::horizontal` reserves: the room left in the row, one control line tall.
         let size = egui::vec2(ui.available_size_before_wrap().x, ui.spacing().interact_size.y);
         ui.allocate_ui_with_layout(size, Layout::right_to_left(Align::Center), add)
     } else {
         ui.horizontal(add)
-    };
-    main
+    }
 }
 
 /// [`Ui::horizontal_centered`], right to left when the interface is.
@@ -79,11 +78,7 @@ pub fn with_layout<R>(ui: &mut Ui, layout: Layout, add: impl FnOnce(&mut Ui) -> 
 /// [`Layout::left_to_right`], right to left when the interface is: for a layout handed to
 /// `allocate_ui_with_layout` or a child `Ui` rather than made by [`with_layout`].
 pub fn left_to_right(ui: &Ui, valign: Align) -> Layout {
-    if is_rtl(ui) {
-        Layout::right_to_left(valign)
-    } else {
-        Layout::left_to_right(valign)
-    }
+    if is_rtl(ui) { Layout::right_to_left(valign) } else { Layout::left_to_right(valign) }
 }
 
 #[cfg(test)]

@@ -76,11 +76,27 @@ i18n-he/
    שוב (`tools/apply_code_overlay.py`, והרשימה עצמה מגיעה ממנו עם `--files`). קונפליקט בכל
    קובץ אחר עוצר את הריצה, כדי שאדם יסתכל. אם קוד המקורי זז כך שאחד השינויים כבר לא נדבק
    (`code-overlay.json`), הריצה נכשלת עם הודעת שגיאה שאומרת מה לתקן.
-2. בודק את הקטלוגים (`tools/check.py`), בונה את הקטלוגים המשולבים ובונה את האפליקציה ל-Linux
-   (tar.gz + AppImage) עם עברית בפנים.
+2. בודק את הקטלוגים (`tools/check.py`) ואת השכבה, בונה את הקטלוגים המשולבים ובונה את האפליקציה
+   **ל-Windows** — `wordcraft-<גירסה>-windows-x64.msi` (התקנה למשתמש הנוכחי, בלי הרשאות מנהל)
+   ו-`wordcraft-<גירסה>-windows-x64-portable.zip`, עם עברית בפנים.
 3. אם לגירסה (מ-`Cargo.toml`) עוד אין release במאגר הזה — מפרסם release בתג
-   `v<גירסה>-he.1` עם קובצי ה-build ו-`SHA256SUMS.txt`. אם הגירסה כבר פורסמה, ה-build נשאר
+   `v<גירסה>-he.win.1` עם קובצי ה-build ו-`SHA256SUMS.txt`. אם הגירסה כבר פורסמה, ה-build נשאר
    כ-artifact של הריצה.
+
+### הקובץ לא חתום
+
+אין כאן תעודת חתימה, ולכן ה-MSI לא חתום: Windows מציג אזהרת "unknown publisher" — „More info”
+ואז „Run anyway”. השלב שמחתים (`packaging/windows/sign.ps1`) ממשיך לאותה תוצאה גם כשהוא לא מוצא
+סודות (`WINDOWS_CERTIFICATE`/`WINDOWS_CERTIFICATE_PASSWORD` או `AZURE_*`): הוא מדפיס אזהרה ומשאיר
+את הקבצים כמו שהם, ולכן אין צורך למחוק שום שלב ואין צורך בסודות ענן.
+
+### מה כבוי כדי לחסוך דקות ריצה
+
+`.github/workflows/PARKED.md` מפרט: ה-CI של המאגר המקורי, ה-release הרב-פלטפורמי, SonarCloud,
+Nix, FreeBSD, בדיקות ההדפסה ו-ARM64 — כולם בשמות `*.yml.parked`, ולכן GitHub Actions לא מריץ
+אותם. גם בניית ה-Linux (tar.gz + AppImage) שמורה ב-`linux-release.yml.ym`; כדי להחזיר אותה:
+שינוי השם ל-`linux-release.yml` ודחיפה. `sync-upstream.yml` (סנכרון + Windows),
+`hebrew-check.yml` (בדיקת קומפילציה וטסטים) ו-`packaging-lint.yml` (actionlint) נשארו פעילים.
 
 כך הגירסה כאן אף פעם לא מתיישנת: היא תמיד `main` של המאגר המקורי ועוד עברית, ובנויה מחדש.
 
