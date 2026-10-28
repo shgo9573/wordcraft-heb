@@ -283,9 +283,9 @@ jobs:
           - **הקובץ לא חתום.** Windows תציג "unknown publisher": „More info” ואז „Run anyway”.
           - הממשק: עברית כברירת מחדל, ואנגלית וכל שאר השפות לפי בחירה (File › Options › Interface
             language). מחרוזת שעדיין אין לה תרגום מוצגת באנגלית.
-          - כששפת הממשק עברית (File › Options › Interface): התפריטים, תיבות הדו-שיח, פס הגלילה ופס
-            הסטטוס מתהפכים לימין-שמאל. סרגל הכלים עצמו נשאר בסדר משמאל לימין (הפריסה שלו מחושבת
-            בעצמה), והתוויות בעברית.
+          - כששפת הממשק עברית (File › Options › Interface): כל הממשק מתהפך לימין-שמאל — התפריטים,
+            תיבות הדו-שיח, פס הגלילה ופס הסטטוס, וגם סרגל הכלים: הקבוצות מתחילות בקצה הימני
+            ונמשכות שמאלה (כמו ב-Word בעברית), ופס הלשוניות מציג את File מימין.
           - הבסיס מתעדכן כל יום מהמאגר המקורי ונבנה מחדש.
 
           Built from storytold/wordcraft with the Hebrew interface in `i18n-he/`, commit: COMMIT.
@@ -305,10 +305,11 @@ jobs:
 
           The build is **unsigned**, so Windows shows an "unknown publisher" SmartScreen prompt:
           choose "More info" then "Run anyway". Interface languages: English and Hebrew (a string
-          with no Hebrew row shows in English); the layout mirrors right to left when the interface
-          language is Hebrew: menus, dialogs, the scroll bar and the status bar mirror right to left;
-          the ribbon itself keeps its left-to-right order (it lays itself out). Rebuilt
-          automatically from upstream's newest `main` every day.
+          with no Hebrew row shows in English); when the interface language is Hebrew the whole
+          interface mirrors right to left: menus, dialogs, the scroll bar, the status bar and the
+          ribbon itself, whose groups start at the right edge and run left as they do in a Hebrew
+          Word, with the tab strip keeping File at the right. Rebuilt automatically from upstream's
+          newest `main` every day.
           NOTES
           sed -i -e "s/__VERSION__/${VERSION}/g" -e "s/COMMIT/${current}/g" "$RUNNER_TEMP/notes.md"
           gh release create "$tag" ./dist/* \
