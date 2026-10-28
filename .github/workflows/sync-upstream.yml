@@ -3,10 +3,18 @@ name: Hebrew build (daily upstream sync)
 # Keeps this fork from going stale: every day it takes storytold/wordcraft's newest `main`, merges
 # it, re-applies this fork's Hebrew overlay (the catalogs in `i18n-he/`, and the code changes in
 # `i18n-he/code-overlay.json` + `i18n-he/code/` that `i18n-he/tools/apply_code_overlay.py` makes:
-# the right-to-left interface and Hebrew proofing), pushes the result to `main`, and builds a Linux
-# release with Hebrew embedded. A version upstream has not shipped before gets published as
-# a GitHub release of this fork (`v<version>-he.1`); a day without a new version leaves the build
-# on the run's artifacts.
+# the right-to-left interface and Hebrew proofing), pushes the result to `main`, and builds a
+# **Windows x64** installer (`.msi`) and portable `.zip` with Hebrew embedded. A version upstream
+# has not shipped before gets published as a GitHub release of this fork (`v<version>-he.win.1`); a day
+# without a new version leaves the build on the run's artifacts.
+#
+# The build is **unsigned**: `packaging/windows/sign.ps1` signs only when a certificate is
+# configured (WINDOWS_CERTIFICATE/PASSWORD or the AZURE_* variables) and otherwise warns and leaves
+# the files as they are, so no secret is needed here. Windows shows its "unknown publisher"
+# SmartScreen prompt for an unsigned installer: "More info" › "Run anyway".
+#
+# The Linux packages are parked for now, to keep the daily minutes down: see
+# `linux-release.yml.ym` in this folder (rename it back to `linux-release.yml` to build again).
 #
 # The Hebrew catalogs themselves are never touched by the merge: upstream has no `i18n-he/`, so
 # they cannot conflict. The only files that can conflict are the ones the overlay edits, and those
@@ -124,19 +132,23 @@ jobs:
             /^\[/ { in_pkg = ($0 == "[workspace.package]"); next }
             in_pkg && $1 == "version" { gsub(/[" ]/, "", $3); print $3; exit }
           ' Cargo.toml)
-          echo "upstream=$upstream" >> "$GITHUB_OUTPUT"
-          echo "changed=$changed" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+          {
+            echo "upstream=$upstream"
+            echo "changed=$changed"
+            echo "version=$version"
+          } >> "$GITHUB_OUTPUT"
 
 
+  # The installer Windows can run: an MSI (per user by default, no admin) and a portable zip, both
+  # built by `packaging/windows/package.ps1`. Unsigned unless signing secrets are configured.
   build:
-    name: Build (Linux x86_64)
+    name: Build (Windows x64)
     needs: [catalogs, sync]
     if: |
       !failure() && !cancelled() && needs.catalogs.result == 'success' &&
       (needs.sync.outputs.changed == 'true' || github.event_name == 'push' ||
        github.event_name == 'workflow_dispatch' || inputs.force-build)
-    runs-on: ubuntu-22.04
+    runs-on: windows-latest
     timeout-minutes: 180
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -144,52 +156,73 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Install the Linux build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            pkg-config libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev \
-            libxi-dev libgtk-3-dev libfontconfig1-dev libfreetype-dev mesa-vulkan-drivers zsync
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
       - uses: Swatinem/rust-cache@v2
         with:
-          key: hebrew-linux-x86_64
+          key: hebrew-windows-x86_64
+      - name: Install WiX (the MSI)
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+      - name: WiX's UI and Util extensions (installer dialogs)
+        shell: pwsh
+        run: |
+          wix extension add -g WixToolset.UI.wixext/5.0.2
+          wix extension add -g WixToolset.Util.wixext/5.0.2
       - name: Interface catalogs, with Hebrew laid over craft-i18n
+        shell: pwsh
         run: |
-          set -euo pipefail
-          rev=$(tr -d '[:space:]' < craft-i18n.rev)
-          curl -fsSL -o "$RUNNER_TEMP/craft-i18n.tar.gz" "https://codeload.github.com/storytold/craft-i18n/tar.gz/$rev"
-          mkdir -p "$RUNNER_TEMP/craft-i18n"
-          tar -xzf "$RUNNER_TEMP/craft-i18n.tar.gz" -C "$RUNNER_TEMP/craft-i18n" --strip-components=1
-          python3 i18n-he/tools/assemble.py --craft-i18n "$RUNNER_TEMP/craft-i18n" --out "$RUNNER_TEMP/craft-i18n-he"
-          echo "CRAFT_I18N_DIR=$RUNNER_TEMP/craft-i18n-he" >> "$GITHUB_ENV"
-          echo "CRAFT_I18N_REQUIRED=1" >> "$GITHUB_ENV"
+          $ErrorActionPreference = 'Stop'
+          $rev = (Get-Content craft-i18n.rev -Raw).Trim()
+          $archive = Join-Path $env:RUNNER_TEMP 'craft-i18n.tar.gz'
+          $source = Join-Path $env:RUNNER_TEMP 'craft-i18n'
+          $out = Join-Path $env:RUNNER_TEMP 'craft-i18n-he'
+          Invoke-WebRequest -Uri "https://codeload.github.com/storytold/craft-i18n/tar.gz/$rev" -OutFile $archive
+          New-Item -ItemType Directory -Force -Path $source | Out-Null
+          tar -xzf $archive -C $source --strip-components=1
+          python i18n-he/tools/assemble.py --craft-i18n $source --out $out
+          @("CRAFT_I18N_DIR=$out", 'CRAFT_I18N_REQUIRED=1') | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: The suite's fonts, when they can be fetched (a build without them warns and uses the system's)
+        shell: pwsh
         run: |
-          set -euo pipefail
-          if curl -fsSL -o "$RUNNER_TEMP/craft-fonts.tar.gz" "https://codeload.github.com/storytold/craft-fonts/tar.gz/${CRAFT_FONTS_REF}"; then
-            mkdir -p "$RUNNER_TEMP/craft-fonts"
-            tar -xzf "$RUNNER_TEMP/craft-fonts.tar.gz" -C "$RUNNER_TEMP/craft-fonts" --strip-components=1
-            echo "CRAFT_FONTS_DIR=$RUNNER_TEMP/craft-fonts" >> "$GITHUB_ENV"
-          else
-            echo "::warning::craft-fonts ${CRAFT_FONTS_REF} could not be fetched; building with the installed fonts"
-          fi
+          $archive = Join-Path $env:RUNNER_TEMP 'craft-fonts.tar.gz'
+          $dir = Join-Path $env:RUNNER_TEMP 'craft-fonts'
+          try {
+            Invoke-WebRequest -Uri "https://codeload.github.com/storytold/craft-fonts/tar.gz/${env:CRAFT_FONTS_REF}" -OutFile $archive
+            New-Item -ItemType Directory -Force -Path $dir | Out-Null
+            tar -xzf $archive -C $dir --strip-components=1
+            "CRAFT_FONTS_DIR=$dir" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          } catch {
+            Write-Output "::warning::craft-fonts $($env:CRAFT_FONTS_REF) could not be fetched; building with the system's fonts"
+          }
       - name: Version
+        shell: pwsh
         id: version
         run: |
-          set -euo pipefail
-          version=$(awk '
-            /^\[/ { in_pkg = ($0 == "[workspace.package]"); next }
-            in_pkg && $1 == "version" { gsub(/[" ]/, "", $3); print $3; exit }
-          ' Cargo.toml)
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "WordCraft $version, Hebrew build" >> "$GITHUB_STEP_SUMMARY"
-      - name: Build and package (tar.gz and AppImage)
-        run: packaging/linux/package.sh --formats "tar appimage"
+          $inPkg = $false
+          $version = $null
+          foreach ($line in Get-Content Cargo.toml) {
+            if ($line -match '^\s*\[') { $inPkg = ($line.Trim() -eq '[workspace.package]'); continue }
+            if ($inPkg -and $line -match '^\s*version\s*=\s*"([^"]+)"') { $version = $Matches[1]; break }
+          }
+          if (-not $version) { throw 'could not read [workspace.package] version from Cargo.toml' }
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "WordCraft $version, Hebrew build (Windows x64)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+      - name: Build and package (MSI and portable zip)
+        shell: pwsh
+        run: packaging/windows/package.ps1 -Arch x64
+      - name: What was built
+        shell: pwsh
+        run: Get-ChildItem dist/release | Format-Table Name, Length
       - uses: actions/upload-artifact@v4
         with:
-          name: wordcraft-${{ steps.version.outputs.version }}-hebrew-linux-x86_64
-          path: dist/release/*
+          name: wordcraft-${{ steps.version.outputs.version }}-hebrew-windows-x64
+          path: |
+            dist/release/*.msi
+            dist/release/*.zip
           if-no-files-found: error
           retention-days: 30
 
@@ -205,7 +238,7 @@ jobs:
           ref: main
       - uses: actions/download-artifact@v4
         with:
-          name: wordcraft-${{ needs.build.outputs.version }}-hebrew-linux-x86_64
+          name: wordcraft-${{ needs.build.outputs.version }}-hebrew-windows-x64
           path: dist
       - name: Release a version this fork has not published yet
         env:
@@ -213,28 +246,42 @@ jobs:
           VERSION: ${{ needs.build.outputs.version }}
         run: |
           set -euo pipefail
-          tag="v${VERSION}-he.1"
+          # A tag of its own: `v<version>-he.1` already holds the Linux packages of this version.
+          tag="v${VERSION}-he.win.1"
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "::notice::$tag is already published; today's build is on this run's artifacts"
             exit 0
           fi
-          (cd dist && sha256sum ./* >"$RUNNER_TEMP/sums.txt" && mv "$RUNNER_TEMP/sums.txt" SHA256SUMS.txt)
+          {
+            sha256sum ./dist/*
+          } > "$RUNNER_TEMP/sums.txt"
+          mv "$RUNNER_TEMP/sums.txt" ./dist/SHA256SUMS.txt
           cat >"$RUNNER_TEMP/notes.md" <<'NOTES'
-          WordCraft __VERSION__ של המאגר המקורי storytold/wordcraft, עם ממשק בעברית.
+          WordCraft __VERSION__ של המאגר המקורי storytold/wordcraft, עם ממשק בעברית — ל-Windows.
 
-          - הבסיס מתעדכן כל יום מהמאגר המקורי ונבנה מחדש; אין כאן גירסה שמתבשלת מהצד.
+          - **להתקנה:** `wordcraft-__VERSION__-windows-x64.msi` — לחיצה כפולה, התקנה למשתמש הנוכחי
+            (בלי הרשאות מנהל). אפשר גם "Everyone on this computer" להתקנה לכל המשתמשים.
+          - **בלי התקנה:** `wordcraft-__VERSION__-windows-x64-portable.zip` — חילוץ והרצת
+            `wordcraft.exe`.
+          - **הקובץ לא חתום.** Windows תציג "unknown publisher": „More info” ואז „Run anyway”.
           - הממשק: אנגלית ועברית. מחרוזת שעדיין אין לה תרגום מוצגת באנגלית.
-          - להפעלה: ה-AppImage (הרשאה להרצה ואז הפעלה), או ה-`tar.gz` (חילוץ והרצת `bin/wordcraft`).
-          - מה שעוד לא נתמך: פריסת ממשק מימין לשמאל. התפריטים עצמם בעברית ונפרסים נכון,
-            אבל סרגל הכלים נשאר מסודר משמאל לימין.
+          - הפריסה מתהפכת לימין-שמאל אוטומטית כששפת הממשק עברית (File › Options › Interface).
+          - הבסיס מתעדכן כל יום מהמאגר המקורי ונבנה מחדש.
 
           WordCraft __VERSION__ from storytold/wordcraft, built with the Hebrew interface in
-          `i18n-he/`. Interface languages: English and Hebrew (a string with no Hebrew row shows in
-          English). The interface layout is still left to right; each Hebrew label lays out right
-          to left. Rebuilt automatically from upstream's newest `main` every day.
+          `i18n-he/`, for Windows x64:
+
+          - **Install:** `wordcraft-__VERSION__-windows-x64.msi` (per user, no admin needed; the
+            installer also offers "Everyone on this computer").
+          - **Or run it portable:** `wordcraft-__VERSION__-windows-x64-portable.zip`.
+
+          The build is **unsigned**, so Windows shows an "unknown publisher" SmartScreen prompt:
+          choose "More info" then "Run anyway". Interface languages: English and Hebrew (a string
+          with no Hebrew row shows in English); the layout mirrors right to left when the interface
+          language is Hebrew. Rebuilt automatically from upstream's newest `main` every day.
           NOTES
           sed -i "s/__VERSION__/${VERSION}/g" "$RUNNER_TEMP/notes.md"
           gh release create "$tag" ./dist/* \
             --target main \
-            --title "WordCraft ${VERSION} בעברית" \
+            --title "WordCraft ${VERSION} בעברית (Windows)" \
             --notes-file "$RUNNER_TEMP/notes.md"

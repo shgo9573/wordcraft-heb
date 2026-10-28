@@ -1,0 +1,140 @@
+# Parked: the Linux packages (tar.gz + AppImage) and their release.
+#
+# GitHub Actions runs a workflow only when its file ends in `.yml` or `.yaml`, so this one is off —
+# on purpose, to leave the daily minutes for the Windows installer (`sync-upstream.yml`).
+#
+# To build Linux again: rename this file to `linux-release.yml` (Actions › the file, or
+# `git mv .github/workflows/linux-release.yml.ym .github/workflows/linux-release.yml`), push, and run
+# "Hebrew Linux build" from the Actions tab (or wait for the daily schedule). Nothing else in the
+# fork needs to change: the Linux path is upstream's `packaging/linux/package.sh`, unchanged.
+name: Hebrew Linux build
+
+on:
+  schedule:
+    - cron: "37 4 * * *" # every day at 04:37 UTC, after the Windows sync has merged upstream
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hebrew-linux
+  cancel-in-progress: false
+
+env:
+  CRAFT_FONTS_REF: b076417b5880bd4154bd22f00695b1d28c6bea83
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  build:
+    name: Build (Linux x86_64)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Check the Hebrew catalogs and the code overlay
+        run: |
+          set -euo pipefail
+          rev=$(tr -d '[:space:]' < craft-i18n.rev)
+          curl -fsSL -o "$RUNNER_TEMP/craft-i18n.tar.gz" "https://codeload.github.com/storytold/craft-i18n/tar.gz/$rev"
+          mkdir -p "$RUNNER_TEMP/craft-i18n"
+          tar -xzf "$RUNNER_TEMP/craft-i18n.tar.gz" -C "$RUNNER_TEMP/craft-i18n" --strip-components=1
+          python3 i18n-he/tools/check.py --craft-i18n "$RUNNER_TEMP/craft-i18n"
+          python3 i18n-he/tools/apply_code_overlay.py --check
+          python3 i18n-he/tools/record_code_overlay.py --check
+      - name: Install the Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev \
+            libxi-dev libgtk-3-dev libfontconfig1-dev libfreetype-dev mesa-vulkan-drivers zsync
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: hebrew-linux-x86_64
+      - name: Interface catalogs, with Hebrew laid over craft-i18n
+        run: |
+          set -euo pipefail
+          python3 i18n-he/tools/assemble.py --craft-i18n "$RUNNER_TEMP/craft-i18n" --out "$RUNNER_TEMP/craft-i18n-he"
+          {
+            echo "CRAFT_I18N_DIR=$RUNNER_TEMP/craft-i18n-he"
+            echo "CRAFT_I18N_REQUIRED=1"
+          } >> "$GITHUB_ENV"
+      - name: The suite's fonts, when they can be fetched (a build without them warns and uses the system's)
+        run: |
+          set -euo pipefail
+          if curl -fsSL -o "$RUNNER_TEMP/craft-fonts.tar.gz" "https://codeload.github.com/storytold/craft-fonts/tar.gz/${CRAFT_FONTS_REF}"; then
+            mkdir -p "$RUNNER_TEMP/craft-fonts"
+            tar -xzf "$RUNNER_TEMP/craft-fonts.tar.gz" -C "$RUNNER_TEMP/craft-fonts" --strip-components=1
+            echo "CRAFT_FONTS_DIR=$RUNNER_TEMP/craft-fonts" >> "$GITHUB_ENV"
+          else
+            echo "::warning::craft-fonts ${CRAFT_FONTS_REF} could not be fetched; building with the installed fonts"
+          fi
+      - name: Version
+        id: version
+        run: |
+          set -euo pipefail
+          version=$(awk '
+            /^\[/ { in_pkg = ($0 == "[workspace.package]"); next }
+            in_pkg && $1 == "version" { gsub(/[" ]/, "", $3); print $3; exit }
+          ' Cargo.toml)
+          {
+            echo "version=$version"
+          } >> "$GITHUB_OUTPUT"
+          echo "WordCraft $version, Hebrew build (Linux x86_64)" >> "$GITHUB_STEP_SUMMARY"
+      - name: Build and package (tar.gz and AppImage)
+        run: packaging/linux/package.sh --formats "tar appimage"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wordcraft-${{ steps.version.outputs.version }}-hebrew-linux-x86_64
+          path: dist/release/*
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Publish the Linux release
+    needs: [build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/download-artifact@v4
+        with:
+          name: wordcraft-${{ needs.build.outputs.version }}-hebrew-linux-x86_64
+          path: dist
+      - name: Release a version this fork has not published yet
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          set -euo pipefail
+          tag="v${VERSION}-he.lin.1"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "::notice::$tag is already published; today's build is on this run's artifacts"
+            exit 0
+          fi
+          {
+            sha256sum ./dist/*
+          } > "$RUNNER_TEMP/sums.txt"
+          mv "$RUNNER_TEMP/sums.txt" ./dist/SHA256SUMS.txt
+          cat >"$RUNNER_TEMP/notes.md" <<'NOTES'
+          WordCraft __VERSION__ של המאגר המקורי storytold/wordcraft, עם ממשק בעברית — ל-Linux.
+
+          - להפעלה: ה-AppImage (הרשאה להרצה ואז הפעלה), או ה-`tar.gz` (חילוץ והרצת `bin/wordcraft`).
+          - הממשק: אנגלית ועברית; הפריסה מתהפכת לימין-שמאל כששפת הממשק עברית.
+
+          WordCraft __VERSION__ from storytold/wordcraft, built with the Hebrew interface in
+          `i18n-he/`, for Linux x86_64 (AppImage and tar.gz).
+          NOTES
+          sed -i "s/__VERSION__/${VERSION}/g" "$RUNNER_TEMP/notes.md"
+          gh release create "$tag" ./dist/* \
+            --target main \
+            --title "WordCraft ${VERSION} בעברית (Linux)" \
+            --notes-file "$RUNNER_TEMP/notes.md"
