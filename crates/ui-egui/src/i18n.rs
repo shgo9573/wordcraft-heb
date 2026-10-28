@@ -14,6 +14,12 @@
 //! (Windows display language, macOS preferred languages, `LANG`/`LC_*` elsewhere) when there is a
 //! catalog for it, and English otherwise. File ▸ Options ▸ Interface language picks one by hand.
 //!
+//! This fork opens in Hebrew instead ([`DEFAULT_LANGUAGE`]): a profile that never chose an
+//! interface language — every profile saved by a version before this one, which wrote `auto` and
+//! nothing else — shows Hebrew, and Hebrew is one row of the Options language list like any other.
+//! Choosing a language there, `Automatic` included, is kept. The app asks for it at startup
+//! (`UiState::adopt_default_language`), so tests and the shared state keep their English labels.
+//!
 //! # Adding or changing a translation
 //! In craft-i18n: add rows to `locales/<locale>/wordcraft.tsv` (its `docs/integration.md`); they
 //! show here once `craft-i18n.rev` moves to a commit that has them. A feature PR here adds the
@@ -61,6 +67,13 @@ static I18N: LazyLock<I18n> = LazyLock::new(|| {
 
 /// The `language` setting that follows the system.
 pub const AUTO: &str = "auto";
+
+/// The interface language this fork opens in: Hebrew. A new profile, and every profile that never
+/// chose a language, shows Hebrew — which is what this fork exists for. File ▸ Options ▸ Interface
+/// language lists every other language beside it, `Automatic` (the system's language) among them,
+/// and a choice there is what the app keeps from then on
+/// ([`UiState::adopt_default_language`](crate::UiState)).
+pub const DEFAULT_LANGUAGE: &str = "he";
 
 /// One interface language WordCraft offers: what the app needs beyond the catalogs. Its name and
 /// translations come from craft-i18n.

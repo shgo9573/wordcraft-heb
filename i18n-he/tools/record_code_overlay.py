@@ -34,6 +34,7 @@ from pathlib import Path
 # not here: it is left exactly as upstream has it, because a mirrored ribbon piled its groups on
 # top of each other (see `crates/ui-egui/src/rtl.rs`).
 FILES = [
+    "apps/wordcraft/src/main.rs",
     "crates/control-key/src/lib.rs",
     "crates/proof/src/hyphen.rs",
     "crates/proof/src/lang.rs",

@@ -281,7 +281,8 @@ jobs:
             `wordcraft.exe`. הגירסה הניידת שומרת הכל בתיקייה שלידה (`WordCraft-data`): הגדרות,
             מילון משתמש, גופנים ועותקי שחזור — לא נכתב דבר ב-`%APPDATA%`, ומחיקת התיקייה מוחקת הכל.
           - **הקובץ לא חתום.** Windows תציג "unknown publisher": „More info” ואז „Run anyway”.
-          - הממשק: אנגלית ועברית. מחרוזת שעדיין אין לה תרגום מוצגת באנגלית.
+          - הממשק: עברית כברירת מחדל, ואנגלית וכל שאר השפות לפי בחירה (File › Options › Interface
+            language). מחרוזת שעדיין אין לה תרגום מוצגת באנגלית.
           - כששפת הממשק עברית (File › Options › Interface): התפריטים, תיבות הדו-שיח, פס הגלילה ופס
             הסטטוס מתהפכים לימין-שמאל. סרגל הכלים עצמו נשאר בסדר משמאל לימין (הפריסה שלו מחושבת
             בעצמה), והתוויות בעברית.
@@ -298,6 +299,9 @@ jobs:
             run; everything it saves (settings, user dictionary, fonts, recovery copies) stays in
             `WordCraft-data` beside the exe, nothing is written to `%APPDATA%`, and deleting the
             folder removes every trace.
+
+          The interface opens in **Hebrew** (this fork's default; File ▸ Options ▸ Interface
+          language has English, `Automatic` and every other language, and a choice is kept).
 
           The build is **unsigned**, so Windows shows an "unknown publisher" SmartScreen prompt:
           choose "More info" then "Run anyway". Interface languages: English and Hebrew (a string

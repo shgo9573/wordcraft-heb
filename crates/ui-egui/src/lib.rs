@@ -198,7 +198,14 @@ pub struct UiState {
     /// Desktop: the main window's size and position, restored at the next launch.
     pub window: Option<window_geometry::WindowGeometry>,
     /// Interface language: `auto` (follow the system) or a code from [`i18n::LANGUAGES`].
+    /// A profile that never chose one opens in [`i18n::DEFAULT_LANGUAGE`]
+    /// ([`UiState::adopt_default_language`]).
     pub language: String,
+    /// Has an interface language been chosen (File ▸ Options ▸ Interface language, or the
+    /// `ui.language` command)? `false` in a `ui.json` written before this setting, whose
+    /// `language` is `auto` whether or not anyone wanted the system's language — so that file
+    /// opens in Hebrew instead ([`UiState::adopt_default_language`]).
+    pub language_chosen: bool,
     /// Editing preferences; the session owns them while running (see [`WordApp::prefs`]).
     pub editing: wordcraft_engine::Prefs,
     /// Read Aloud speed (1 = normal) and whether it skips citations and bibliographies.
@@ -319,6 +326,7 @@ impl Default for UiState {
             author: String::new(),
             window: None,
             language: i18n::AUTO.into(),
+            language_chosen: false,
             editing: wordcraft_engine::Prefs::default(),
             read_aloud_rate: 1.0,
             read_aloud_skip_citations: true,
@@ -361,6 +369,24 @@ impl UiState {
         }
         migrate_units(&mut v);
         Some(options::lenient(&v))
+    }
+
+    /// This fork opens in Hebrew: a profile that has never chosen an interface language gets
+    /// [`i18n::DEFAULT_LANGUAGE`] here, when the app loads its preferences.
+    ///
+    /// Versions before [`UiState::language_chosen`] wrote `auto` on the first run whether or not
+    /// anyone had chosen anything, so `auto` on its own cannot mean "the system's language": a
+    /// profile without the flag is one that never chose, and it moves to Hebrew. A choice made in
+    /// File ▸ Options ▸ Interface language, `Automatic` included, sets the flag (the `ui.language`
+    /// command), and is kept.
+    ///
+    /// Not part of [`UiState::default`] or [`UiState::from_json`]: the interface is one thing for
+    /// this fork's app and another for its tests (which read the English labels) and for the other
+    /// front ends that share this state, so the app asks for it, in `load_prefs`.
+    pub fn adopt_default_language(&mut self) {
+        if !self.language_chosen && self.language.eq_ignore_ascii_case(i18n::AUTO) {
+            self.language = i18n::DEFAULT_LANGUAGE.to_string();
+        }
     }
 
     /// How many recent documents to list.

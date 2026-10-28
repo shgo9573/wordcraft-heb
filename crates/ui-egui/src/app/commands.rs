@@ -648,7 +648,12 @@ impl WordApp {
                 // `auto` (follow the system) or a language code; anything else is an error.
                 if let Some(v) = s("value") {
                     match i18n::normalize_pref(v) {
-                        Some(code) => self.ui.language = code.to_string(),
+                        Some(code) => {
+                            self.ui.language = code.to_string();
+                            // A choice, `auto` included: kept across launches, where a profile that
+                            // never chose opens in Hebrew ([`UiState::adopt_default_language`]).
+                            self.ui.language_chosen = true;
+                        }
                         None => {
                             let codes: Vec<&str> = i18n::Lang::all().map(i18n::Lang::code).collect();
                             return Some(Err(format!("unknown language `{v}`; use auto or one of {}", codes.join(", "))));

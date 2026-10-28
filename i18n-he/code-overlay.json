@@ -1,4 +1,10 @@
 {
+ "apps/wordcraft/src/main.rs": [
+  {
+   "after": "        app.apply_prefs(ui);\n    }\n",
+   "insert": "    // This fork's default: Hebrew, for a new profile and for one that never chose a language.\n    // A choice in File ▸ Options ▸ Interface language, `Automatic` included, is kept.\n    app.ui.adopt_default_language();\n"
+  }
+ ],
  "crates/control-key/src/lib.rs": [
   {
    "after": "use std::path::{Path, PathBuf};\n\n",
@@ -139,6 +145,10 @@
    "old": "        if !self.styled || lang.prefers_hans() != self.fonts_hans || lang.prefers_korean() != self.fonts_korean || system_cjk != self.fonts_system_cjk\n"
   },
   {
+   "after": "            let mut faces = self.canvas.ime_faces.clone();\n",
+   "insert": "            // Interface text in a script the interface faces leave out (Hebrew, Arabic, Thai …)\n            // borrows a document face, as the caption does: the Hebrew menus, dialogs and the\n            // language picker would otherwise draw as boxes. Looked at again only when the fonts\n            // are installed, that is when the language changes.\n            //\n            // Every language's own name, not just this one's: File ▸ Options lists them all, so a\n            // Hebrew interface (the default) shows „עברית” in that list before Hebrew is the\n            // current language — and after switching away from it.\n            let names = i18n::Lang::all().map(i18n::Lang::name);\n            faces.extend(theme::faces_for_interface_text(lang.catalog_texts().chain(names)));\n"
+  },
+  {
    "after": "            self.fonts_system_cjk = system_cjk;\n",
    "insert": "            self.fonts_lang = lang.code();\n"
   }
@@ -161,20 +171,76 @@
  ],
  "crates/ui-egui/src/i18n.rs": [
   {
-   "after": "        self.info().and_then(|l| l.editing_lang)\n",
-   "insert": "    }\n\n    /// Is the interface written right to left (Hebrew, and Arabic when its catalog comes)? Then\n    /// egui's chrome mirrors (`Style::right_to_left`) and the app's own rows open a right-to-left\n    /// layout ([`crate::rtl`]).\n    pub fn is_rtl(self) -> bool {\n        matches!(self.code(), \"he\" | \"ar\" | \"fa\" | \"ur\")\n"
+   "after": "//! catalog for it, and English otherwise. File ▸ Options ▸ Interface language picks one by hand.\n//!\n",
+   "insert": "//! This fork opens in Hebrew instead ([`DEFAULT_LANGUAGE`]): a profile that never chose an\n//! interface language — every profile saved by a version before this one, which wrote `auto` and\n//! nothing else — shows Hebrew, and Hebrew is one row of the Options language list like any other.\n//! Choosing a language there, `Automatic` included, is kept. The app asks for it at startup\n//! (`UiState::adopt_default_language`), so tests and the shared state keep their English labels.\n//!\n"
+  },
+  {
+   "after": "//! English only.\n",
+   "insert": "//!\n//! # Hebrew (this fork)\n//! Hebrew is not in storytold/craft-i18n yet, so its catalogs live in this fork, in\n//! `i18n-he/locales/he/` (`README.md` there): `i18n-he/tools/assemble.py` lays them over a\n//! craft-i18n checkout to make the `CRAFT_I18N_DIR` a build embeds, and the daily\n//! `sync-upstream` workflow does that against upstream's newest `main`. Strings with no Hebrew\n//! row show in English, so the catalog can grow without breaking anything.\n"
+  },
+  {
+   "after": "pub const AUTO: &str = \"auto\";\n\n",
+   "insert": "/// The interface language this fork opens in: Hebrew. A new profile, and every profile that never\n/// chose a language, shows Hebrew — which is what this fork exists for. File ▸ Options ▸ Interface\n/// language lists every other language beside it, `Automatic` (the system's language) among them,\n/// and a choice there is what the app keeps from then on\n/// ([`UiState::adopt_default_language`](crate::UiState)).\npub const DEFAULT_LANGUAGE: &str = \"he\";\n\n"
+  },
+  {
+   "new": "pub static LANGUAGES: [LangInfo; 28] = [\n",
+   "old": "pub static LANGUAGES: [LangInfo; 27] = [\n"
+  },
+  {
+   "after": "    LangInfo { code: \"sl\", prefer_hans: false, editing_lang: None },\n",
+   "insert": "    // Hebrew, right to left; `he`, `he-IL` and `he_IL.UTF-8` resolve here. Its catalog is\n    // this fork's (`i18n-he/`, laid over craft-i18n by `i18n-he/tools/assemble.py`), not\n    // storytold/craft-i18n's: it is embedded whenever that overlay is in `CRAFT_I18N_DIR`. The\n    // interface mirrors right to left ([`Lang::is_rtl`], `crate::rtl`), and WordCraft proofs\n    // Hebrew (`ProofLang::He`), so new documents are written in Hebrew.\n    LangInfo { code: \"he\", prefer_hans: false, editing_lang: Some(\"he-IL\") },\n"
+  },
+  {
+   "after": "        self.info().and_then(|l| l.editing_lang)\n    }\n\n",
+   "insert": "    /// Is the interface written right to left (Hebrew, and Arabic when its catalog comes)? Then\n    /// egui's chrome mirrors (`Style::right_to_left`) and the app's own rows open a right-to-left\n    /// layout ([`crate::rtl`]).\n    pub fn is_rtl(self) -> bool {\n        matches!(self.code(), \"he\" | \"ar\" | \"fa\" | \"ur\")\n    }\n\n"
+  },
+  {
+   "new": "    pub fn catalog_texts(self) -> impl Iterator<Item = &'static str> {\n",
+   "old": "    fn catalog_texts(self) -> impl Iterator<Item = &'static str> {\n"
   }
  ],
  "crates/ui-egui/src/i18n/tests.rs": [
   {
+   "after": "    };\n",
+   "insert": "}\n\n/// Does this build embed this fork's Hebrew catalog? A catalog directory laid out from\n/// storytold/craft-i18n alone (`craft-i18n.rev`) has no `he` yet, so Hebrew is listed but not\n/// offered there; the daily build lays `i18n-he/` over it (`i18n-he/tools/assemble.py`).\nfn offers_hebrew() -> bool {\n    CRAFT_I18N.iter().any(|(code, ..)| *code == \"he\")\n"
+  },
+  {
+   "new": "    assert!(r[\"available\"].as_array().is_some_and(|a| a.len() == LANGUAGES.len() - usize::from(!offers_hebrew())));\n",
+   "old": "    assert!(r[\"available\"].as_array().is_some_and(|a| a.len() == LANGUAGES.len()));\n"
+  },
+  {
+   "after": "    assert_eq!(app.run(\"ui.language\", serde_json::json!({})).unwrap()[\"language\"], AUTO);\n",
+   "insert": "}\n\n/// This fork opens in Hebrew, and Hebrew is one row of File ▸ Options ▸ Interface language like\n/// every other language. A profile that never chose a language moves to it; a choice (`Automatic`\n/// included) is kept.\n#[test]\nfn this_fork_opens_in_hebrew_and_offers_hebrew_in_the_language_list() {\n    needs_catalogs!();\n    if !offers_hebrew() {\n        return;\n    }\n    assert_eq!(DEFAULT_LANGUAGE, \"he\");\n    let he = lang(DEFAULT_LANGUAGE);\n    assert!(he.is_rtl(), \"Hebrew mirrors the interface\");\n    assert_eq!(he.name(), \"עברית\", \"the picker shows it under its own name\");\n    assert!(Lang::for_picker().iter().any(|l| l.code() == DEFAULT_LANGUAGE), \"Hebrew is in the picker\");\n\n    // `ui.json` from a version before `languageChosen`: `auto` was written on the first run\n    // whether or not anyone had chosen, so such a profile opens in Hebrew.\n    let mut old: crate::UiState = crate::UiState::from_json(br#\"{\"tab\":\"Home\",\"language\":\"auto\"}\"#).unwrap();\n    assert!(!old.language_chosen);\n    old.adopt_default_language();\n    assert_eq!(old.language, DEFAULT_LANGUAGE);\n    assert_eq!(Lang::from_pref(&old.language), he);\n\n    // A choice is kept, and choosing `Automatic` records one, so `auto` survives a restart.\n    let mut chosen: crate::UiState = crate::UiState::from_json(br#\"{\"language\":\"auto\",\"languageChosen\":true}\"#).unwrap();\n    chosen.adopt_default_language();\n    assert_eq!(chosen.language, AUTO, \"the user's Automatic stays automatic\");\n    let mut app = crate::WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::new()), Default::default());\n    assert!(!app.ui.language_chosen, \"a new window has not chosen a language\");\n    app.run(\"ui.language\", serde_json::json!({\"value\": \"auto\"})).unwrap();\n    assert!(app.ui.language_chosen, \"picking Automatic is a choice\");\n    let restored: crate::UiState = serde_json::from_str(&serde_json::to_string(&app.ui).unwrap()).unwrap();\n    assert_eq!(restored.language, AUTO);\n"
+  },
+  {
    "new": "    assert_eq!(with, [(\"pt-br\", \"pt-BR\"), (\"pl\", \"pl-PL\"), (\"cs\", \"cs-CZ\"), (\"tr\", \"tr-TR\"), (\"it\", \"it-IT\"), (\"he\", \"he-IL\")]);\n",
    "old": "    assert_eq!(with, [(\"pt-br\", \"pt-BR\"), (\"pl\", \"pl-PL\"), (\"cs\", \"cs-CZ\"), (\"tr\", \"tr-TR\"), (\"it\", \"it-IT\")]);\n"
+  },
+  {
+   "new": "    // This fork's Hebrew is offered only when its overlay is embedded (see `offers_hebrew`).\n    let listed: Vec<&str> = LANGUAGES.iter().map(|l| l.code).filter(|c| *c != \"he\" || offers_hebrew()).collect();\n",
+   "old": "    let listed: Vec<&str> = LANGUAGES.iter().map(|l| l.code).collect();\n"
   }
  ],
  "crates/ui-egui/src/lib.rs": [
   {
    "after": "pub mod ribbon_fit;\n",
    "insert": "pub mod rtl;\n"
+  },
+  {
+   "after": "    /// Interface language: `auto` (follow the system) or a code from [`i18n::LANGUAGES`].\n",
+   "insert": "    /// A profile that never chose one opens in [`i18n::DEFAULT_LANGUAGE`]\n    /// ([`UiState::adopt_default_language`]).\n"
+  },
+  {
+   "after": "    pub language: String,\n",
+   "insert": "    /// Has an interface language been chosen (File ▸ Options ▸ Interface language, or the\n    /// `ui.language` command)? `false` in a `ui.json` written before this setting, whose\n    /// `language` is `auto` whether or not anyone wanted the system's language — so that file\n    /// opens in Hebrew instead ([`UiState::adopt_default_language`]).\n    pub language_chosen: bool,\n"
+  },
+  {
+   "after": "            language: i18n::AUTO.into(),\n",
+   "insert": "            language_chosen: false,\n"
+  },
+  {
+   "after": "        Some(options::lenient(&v))\n",
+   "insert": "    }\n\n    /// This fork opens in Hebrew: a profile that has never chosen an interface language gets\n    /// [`i18n::DEFAULT_LANGUAGE`] here, when the app loads its preferences.\n    ///\n    /// Versions before [`UiState::language_chosen`] wrote `auto` on the first run whether or not\n    /// anyone had chosen anything, so `auto` on its own cannot mean \"the system's language\": a\n    /// profile without the flag is one that never chose, and it moves to Hebrew. A choice made in\n    /// File ▸ Options ▸ Interface language, `Automatic` included, sets the flag (the `ui.language`\n    /// command), and is kept.\n    ///\n    /// Not part of [`UiState::default`] or [`UiState::from_json`]: the interface is one thing for\n    /// this fork's app and another for its tests (which read the English labels) and for the other\n    /// front ends that share this state, so the app asks for it, in `load_prefs`.\n    pub fn adopt_default_language(&mut self) {\n        if !self.language_chosen && self.language.eq_ignore_ascii_case(i18n::AUTO) {\n            self.language = i18n::DEFAULT_LANGUAGE.to_string();\n        }\n"
   },
   {
    "after": "    fonts_system_cjk: bool,\n",
@@ -205,6 +271,10 @@
   {
    "after": "            fonts_system_cjk: _,\n",
    "insert": "            fonts_lang: _,\n"
+  },
+  {
+   "after": "            language: _,\n",
+   "insert": "            language_chosen: _,\n"
   }
  ]
 }

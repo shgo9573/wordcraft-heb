@@ -201,6 +201,9 @@ fn load_prefs(app: &mut WordApp) {
     {
         app.apply_prefs(ui);
     }
+    // This fork's default: Hebrew, for a new profile and for one that never chose a language.
+    // A choice in File ▸ Options ▸ Interface language, `Automatic` included, is kept.
+    app.ui.adopt_default_language();
 }
 
 /// Fonts the user added (#582) live in `fonts` in the settings folder: load them, and store fonts
