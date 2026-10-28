@@ -11,3 +11,7 @@ plan/
 # A craft-i18n checkout laid out with the Hebrew catalogs (i18n-he/README.md).
 /.he-catalogs/
 /craft-i18n/
+
+# Python leaves these behind when the tools are run or imported.
+__pycache__/
+*.pyc
