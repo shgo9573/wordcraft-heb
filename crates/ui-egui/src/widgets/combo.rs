@@ -319,11 +319,7 @@ fn combo_impl(ui: &mut Ui, options: ComboOptions<'_>) -> Option<String> {
         // It reaches one border width under the field, so the border between them is one line: two
         // borders side by side read as a double-width divider. The arrow is on the field's right,
         // or its left in a Hebrew interface.
-        let ar_radius = if rtl {
-            CornerRadius { nw: r.ne, sw: r.se, ne: 0, se: 0 }
-        } else {
-            CornerRadius { nw: 0, sw: 0, ne: r.ne, se: r.se }
-        };
+        let ar_radius = if rtl { CornerRadius { nw: r.ne, sw: r.se, ne: 0, se: 0 } } else { CornerRadius { nw: 0, sw: 0, ne: r.ne, se: r.se } };
         let under = if rtl {
             Rect::from_min_max(ar.min, pos2(ar.max.x + ARROW_BORDER, ar.max.y))
         } else {
