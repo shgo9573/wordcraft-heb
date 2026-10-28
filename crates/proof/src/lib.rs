@@ -501,7 +501,10 @@ fn accepted_by_options(word: &str, opts: &Options) -> bool {
     w.chars().count() <= 1
         || !w.chars().any(char::is_alphabetic)
         || (opts.ignore_numbers && w.chars().any(|c| c.is_ascii_digit()))
-        || (opts.ignore_uppercase && w.chars().all(|c| !c.is_lowercase()))
+        // Capitals, not every script: Hebrew, Arabic and Japanese have no case at all, so "no
+        // lowercase letter" says nothing there (`שלום` is no acronym), and only a word that
+        // really carries an uppercase letter is taken as capitals.
+        || (opts.ignore_uppercase && w.chars().any(char::is_uppercase) && w.chars().all(|c| !c.is_lowercase()))
         // The whole word: the languages split a hyphenated word into its parts, and an added
         // `Unigranrio-RJ` is none of them (#2082).
         || in_user_dictionary(&w.to_lowercase())
@@ -1695,6 +1698,18 @@ mod tests {
         let path = std::env::temp_dir().join(format!("wc-dict-{}-missing.txt", std::process::id()));
         let _ = std::fs::remove_file(&path);
         assert!(load_user_dictionary(&path).is_empty());
+    }
+
+    /// A script without case is not "written in capitals": the UPPERCASE option must not accept
+    /// every Hebrew (or Japanese) word as a correct one.
+    #[test]
+    fn a_script_without_case_is_not_capitals() {
+        let opts = Options::default();
+        assert!(accepted_by_options("NASA", &opts));
+        assert!(accepted_by_options("ДОМ", &opts), "Cyrillic has capitals too");
+        assert!(!accepted_by_options("שלום", &opts));
+        assert!(!accepted_by_options("日本語", &opts));
+        assert!(!accepted_by_options("дом", &opts));
     }
 
     /// #100: runs are proofed when their language has a dictionary (the default language too)

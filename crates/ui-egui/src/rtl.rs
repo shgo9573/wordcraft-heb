@@ -102,7 +102,8 @@ mod tests {
                 seen.push("a".to_string());
             });
             rtl = Some(is_rtl(ui));
-        });
+        })
+        .drop_without_applying_deltas();
         assert_eq!(rtl, Some(false));
         assert_eq!(seen, ["a"]);
     }
@@ -118,7 +119,8 @@ mod tests {
                 let b = ui.label("b").rect.left();
                 xs = (a, b);
             });
-        });
+        })
+        .drop_without_applying_deltas();
         assert!(xs.0 > xs.1, "the first widget sits right of the second: {xs:?}");
     }
 
@@ -130,7 +132,8 @@ mod tests {
             let row = with_layout(ui, Layout::left_to_right(Align::Center), |ui| (ui.layout().main_dir(), ui.layout().cross_align()));
             let column = with_layout(ui, Layout::top_down(Align::Min), |ui| (ui.layout().main_dir(), ui.layout().cross_align()));
             dirs = vec![row.inner, column.inner];
-        });
+        })
+        .drop_without_applying_deltas();
         assert_eq!(dirs[0], (egui::Direction::LeftToRight, Align::Center), "no style, no mirror");
         assert_eq!(dirs[1], (egui::Direction::TopDown, Align::Min));
         ctx.all_styles_mut(|s| s.set_right_to_left(true));
@@ -140,7 +143,8 @@ mod tests {
             let other = with_layout(ui, Layout::right_to_left(Align::Max), |ui| ui.layout().main_dir());
             let column = with_layout(ui, Layout::top_down(Align::Min), |ui| ui.layout().main_dir());
             mirrored = vec![row.inner, other.inner, column.inner];
-        });
+        })
+        .drop_without_applying_deltas();
         assert_eq!(mirrored, [egui::Direction::RightToLeft, egui::Direction::LeftToRight, egui::Direction::TopDown]);
     }
 }

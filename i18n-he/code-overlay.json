@@ -61,6 +61,10 @@
    "insert": "        ProofLang::He => Some(\"he_IL\"),\n"
   },
   {
+   "new": "        // Capitals, not every script: Hebrew, Arabic and Japanese have no case at all, so \"no\n        // lowercase letter\" says nothing there (`שלום` is no acronym), and only a word that\n        // really carries an uppercase letter is taken as capitals.\n        || (opts.ignore_uppercase && w.chars().any(char::is_uppercase) && w.chars().all(|c| !c.is_lowercase()))\n",
+   "old": "        || (opts.ignore_uppercase && w.chars().all(|c| !c.is_lowercase()))\n"
+  },
+  {
    "after": "        ProofLang::Cs => \"Možná pravopisná chyba\",\n",
    "insert": "        ProofLang::He => \"ייתכן שגיאת כתיב\",\n"
   },
@@ -91,12 +95,30 @@
   {
    "after": "        assert_eq!(found[5..7].iter().map(|(lang, _)| *lang).collect::<Vec<_>>(), [ProofLang::Ru, ProofLang::Cs], \"{found:?}\");\n",
    "insert": "        // Hebrew comes from the system (`he_IL`), not from a folder, so only its language belongs\n        // here; its own tests install a dictionary directly, concurrently with this one.\n        assert_eq!(found[7].0, ProofLang::He, \"{found:?}\");\n"
+  },
+  {
+   "after": "        assert!(load_user_dictionary(&path).is_empty());\n    }\n\n",
+   "insert": "    /// A script without case is not \"written in capitals\": the UPPERCASE option must not accept\n    /// every Hebrew (or Japanese) word as a correct one.\n    #[test]\n    fn a_script_without_case_is_not_capitals() {\n        let opts = Options::default();\n        assert!(accepted_by_options(\"NASA\", &opts));\n        assert!(accepted_by_options(\"ДОМ\", &opts), \"Cyrillic has capitals too\");\n        assert!(!accepted_by_options(\"שלום\", &opts));\n        assert!(!accepted_by_options(\"日本語\", &opts));\n        assert!(!accepted_by_options(\"дом\", &opts));\n    }\n\n"
+  }
+ ],
+ "crates/ui-egui/src/app.rs": [
+  {
+   "after": "            fonts_system_cjk: false,\n",
+   "insert": "            fonts_lang: \"\",\n"
   }
  ],
  "crates/ui-egui/src/app/fonts.rs": [
   {
    "after": "    pub(super) fn install_ui_fonts(&mut self, ctx: &egui::Context, lang: i18n::Lang) {\n",
    "insert": "        // A right-to-left interface (Hebrew) mirrors egui's own chrome: menus and submenus open to\n        // the left, combo boxes and collapsing headers put their marker first, scroll bars sit on\n        // the left and a window's close button moves to the left edge. The app's own rows and\n        // groups flip through `crate::rtl`. Set every frame (a change only rewrites the styles),\n        // since an interface language can change without a font change.\n        let rtl = lang.is_rtl();\n        if ctx.global_style().right_to_left != rtl {\n            ctx.all_styles_mut(|s| s.set_right_to_left(rtl));\n        }\n"
+  },
+  {
+   "new": "        if !self.styled\n            || lang.code() != self.fonts_lang\n            || lang.prefers_hans() != self.fonts_hans\n            || lang.prefers_korean() != self.fonts_korean\n            || system_cjk != self.fonts_system_cjk\n",
+   "old": "        if !self.styled || lang.prefers_hans() != self.fonts_hans || lang.prefers_korean() != self.fonts_korean || system_cjk != self.fonts_system_cjk\n"
+  },
+  {
+   "after": "            self.fonts_system_cjk = system_cjk;\n",
+   "insert": "            self.fonts_lang = lang.code();\n"
   }
  ],
  "crates/ui-egui/src/chrome.rs": [
@@ -131,6 +153,10 @@
   {
    "after": "pub mod ribbon_fit;\n",
    "insert": "pub mod rtl;\n"
+  },
+  {
+   "after": "    fonts_system_cjk: bool,\n",
+   "insert": "    /// The interface language whose script the installed UI fonts' borrowed faces cover (`\"\"`\n    /// before the first install): switching to Hebrew installs a Hebrew face even though the CJK\n    /// settings do not change.\n    fonts_lang: &'static str,\n"
   }
  ],
  "crates/ui-egui/src/mini_toolbar.rs": [
@@ -197,6 +223,12 @@
   {
    "new": "            // A Hebrew interface lays a group's buttons out right to left.\n            let layout = crate::rtl::left_to_right(ui, egui::Align::Min);\n            let content = ui.allocate_ui_with_layout(vec2(ui.available_width(), CONTENT_H), layout, |ui| {\n",
    "old": "            let content = ui.allocate_ui_with_layout(vec2(ui.available_width(), CONTENT_H), egui::Layout::left_to_right(egui::Align::Min), |ui| {\n"
+  }
+ ],
+ "crates/ui-egui/src/window_ui.rs": [
+  {
+   "after": "            fonts_system_cjk: _,\n",
+   "insert": "            fonts_lang: _,\n"
   }
  ]
 }

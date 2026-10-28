@@ -516,6 +516,10 @@ pub struct WordApp {
     fonts_korean: bool,
     /// Whether the installed UI fonts include an installed CJK fallback font (#241).
     fonts_system_cjk: bool,
+    /// The interface language whose script the installed UI fonts' borrowed faces cover (`""`
+    /// before the first install): switching to Hebrew installs a Hebrew face even though the CJK
+    /// settings do not change.
+    fonts_lang: &'static str,
     /// CJK text is (about to be) on screen in a non-CJK interface, e.g. the language names in
     /// File ▸ Options: load the installed CJK fallback font if no embedded face covers it.
     pub(crate) want_system_cjk: bool,
