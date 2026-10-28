@@ -37,7 +37,7 @@ pub fn is_rtl(ui: &Ui) -> bool {
 /// right edge starts at `-∞`, whose rect is `NaN` and stops the frame. The screen is the bound:
 /// a row never needs to be wider than that to place its widgets.
 fn bounded(ui: &Ui, size: egui::Vec2) -> egui::Vec2 {
-    let screen = ui.ctx().screen_rect().size();
+    let screen = ui.ctx().content_rect().size();
     let finite = |v: f32, fallback: f32| if v.is_finite() && v >= 0.0 { v } else { fallback };
     egui::vec2(finite(size.x, screen.x), finite(size.y, screen.y))
 }
@@ -85,6 +85,15 @@ pub fn horizontal_wrapped<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> Inn
     } else {
         ui.horizontal_wrapped(add)
     }
+}
+
+/// A box for what cannot be mirrored: [`egui::Grid`] measures every cell from the row's left
+/// edge, and a right-to-left row's left edge is at `-∞` (that row runs left without a bound), so
+/// every cell it measures there comes out `NaN` wide and the frame stops. The box starts where
+/// the cursor is and is laid out left to right, as the grid expects; left to right, this is the
+/// scope the grid was drawn in anyway.
+pub fn grid_box<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
+    ui.with_layout(Layout::top_down(Align::Min), add)
 }
 
 /// [`Ui::with_layout`], mirrored when the interface is right to left: a horizontal layout
