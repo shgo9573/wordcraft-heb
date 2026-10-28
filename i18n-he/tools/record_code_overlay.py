@@ -86,32 +86,78 @@ def hunks_for(before: str, after: str, path: str) -> list[dict]:
     ops = difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes()
     skips = SKIP_IN.get(path, [])
     hunks: list[dict] = []
+    # Where the last change left off, in both files. A hunk may take the lines before it as context
+    # to stand out — but not past this line: those lines belong to an earlier change, and a copy of
+    # them that both hunks repeat is a block applied twice.
+    floor_a = floor_b = 0
     for index, (tag, i1, i2, j1, j2) in enumerate(ops):
         if tag == "equal":
             continue
         old, made = "".join(a[i1:i2]), "".join(b[j1:j2])
         if any(marker in old for marker in skips):
+            floor_a, floor_b = i2, j2
             continue
         previous = [op for op in ops[:index] if op[0] == "equal"]
         before_i, before_j = (previous[-1][2], previous[-1][4]) if previous else (0, 0)
+        after_op = next((op for op in ops[index + 1 :] if op[0] != "equal"), None)
+        back = min(6, before_i - floor_a, before_j - floor_b)
+        forward = min(6, after_op[1] - i2, after_op[3] - j2) if after_op else 6
         if not old.strip():
-            for n in range(1, 7):
-                anchor = "".join(a[max(0, before_i - n) : before_i])
+            for n in range(1, back + 1):
+                anchor = "".join(a[before_i - n : before_i])
                 if anchor and before.count(anchor) == 1:
                     break
             else:
                 raise SystemExit(f"error: {path}: no unique line to insert after:\n{made}")
             hunks.append({"after": anchor, "insert": made})
-            continue
-        for n in range(0, 7):
-            old_n = "".join(a[max(0, before_i - n) : before_i]) + old
-            new_n = "".join(b[max(0, before_j - n) : before_j]) + made
-            if before.count(old_n) == 1:
-                break
         else:
-            raise SystemExit(f"error: {path}: no unique text to replace:\n{old}")
-        hunks.append({"old": old_n, "new": new_n})
+            # Context the change shares with the lines around it, so that it stands out: the same
+            # lines on both sides, taken from before the change (never from an earlier one) or,
+            # when that is not enough, from after it.
+            for total in range(0, back + forward + 1):
+                for n in range(max(0, total - forward), min(back, total) + 1):
+                    m = total - n
+                    old_n = "".join(a[before_i - n : before_i]) + old + "".join(a[i2 : i2 + m])
+                    new_n = "".join(b[before_j - n : before_j]) + made + "".join(b[j2 : j2 + m])
+                    if before.count(old_n) == 1:
+                        break
+                else:
+                    continue
+                break
+            else:
+                raise SystemExit(f"error: {path}: no unique text to replace:\n{old}")
+            hunks.append({"old": old_n, "new": new_n})
+        floor_a, floor_b = i2, j2
     return hunks
+
+
+def unfaithful(root: Path, base: str, table: dict[str, list[dict]]) -> list[str]:
+    """Replay the table on the base and report the files whose code it does not reproduce.
+
+    A table is only worth replaying if applying it to upstream's tree gives this fork's code: the
+    same tokens, whatever the formatting. Anything else (a hunk that repeats lines another hunk
+    already wrote, one that no longer matches) would be found by the daily sync, after a push.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from apply_code_overlay import apply_fonts, apply_hunks, apply_i18n, apply_tests, apply_theme  # noqa: E402
+
+    spelled_out = {
+        "crates/ui-egui/src/i18n.rs": apply_i18n,
+        "crates/ui-egui/src/i18n/tests.rs": apply_tests,
+        "crates/ui-egui/src/theme.rs": apply_theme,
+        "crates/ui-egui/src/app/fonts.rs": apply_fonts,
+    }
+    problems: list[str] = []
+    for path, hunks in table.items():
+        made, _ = spelled_out.get(path, lambda text: (text, []))(base_text(root, base, path))
+        try:
+            made, _ = apply_hunks(made, hunks, path)
+        except SystemExit as gone:
+            problems.append(f"{path}: the table does not apply to {base[:12]}: {gone}")
+            continue
+        if not same_code(made, (root / path).read_text(encoding="utf-8")):
+            problems.append(f"{path}: replaying the table on {base[:12]} gives other code than the tree")
+    return problems
 
 
 def missing_from_tree(root: Path, table: dict[str, list[dict]]) -> list[str]:
@@ -172,7 +218,7 @@ def main() -> int:
         raise SystemExit(f"error: {args.base} already contains the overlay: pass upstream's commit, not this fork's")
     target.write_text(json.dumps(table, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
     print(f"ok: {sum(len(h) for h in table.values())} change(s) in {len(table)} file(s) recorded")
-    problems = missing_from_tree(root, table)
+    problems = missing_from_tree(root, table) + unfaithful(root, args.base, table)
     for line in problems:
         print(f"error: {line}", file=sys.stderr)
     return 1 if problems else 0

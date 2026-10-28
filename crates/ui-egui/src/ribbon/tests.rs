@@ -361,7 +361,7 @@ fn a_hebrew_ribbon_starts_at_the_right() {
 /// paragraph's reading order and starts, on the right, with Align Right and right-to-left.
 #[test]
 fn a_hebrew_alignment_row_starts_with_align_right() {
-    let app = WordApp::new(Session::new(wordcraft_engine::sample::sample_document()), crate::Services::default());
+    let mut app = WordApp::new(Session::new(wordcraft_engine::sample::sample_document()), crate::Services::default());
     app.run("ui.tab", json!({"tab": "Home"})).unwrap();
     let mut h = egui_kittest::Harness::builder().with_size(vec2(2560.0, 900.0)).build_ui_state(
         |ui, app: &mut WordApp| {
