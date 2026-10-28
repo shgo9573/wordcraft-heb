@@ -45,6 +45,11 @@ pub enum ProofLang {
     /// Czech (`cs`, `cs-CZ`): the installed Hunspell dictionary, dictionary-driven suggestions
     /// and generic punctuation checks. Hyphenation keeps the fallback English patterns.
     Cs,
+    /// Hebrew (`he`, `he-IL`; also the old `iw` and ISO 639-2 `heb`): the installed Hunspell
+    /// `he_IL` dictionary (when there is one), Hebrew's particles as prefixes, niqqud ignored,
+    /// suggestions that know the final letters, and Hebrew grammar messages. Without the
+    /// dictionary the grammar checks still run and no word is marked as English.
+    He,
     /// Indonesian (`id`, `id-ID`; also the old `in` and ISO 639-2 `ind`): the installed Hunspell
     /// `id_ID` dictionary, dictionary-driven suggestions and generic checks with Indonesian
     /// messages. Hyphenation keeps the fallback English patterns.
@@ -79,7 +84,7 @@ pub enum ProofLang {
 
 impl ProofLang {
     /// Every language with a spelling dictionary, in display order.
-    pub const PROOFED: [ProofLang; 15] = [
+    pub const PROOFED: [ProofLang; 16] = [
         ProofLang::En,
         ProofLang::EnGb,
         ProofLang::EnCa,
@@ -90,6 +95,7 @@ impl ProofLang {
         ProofLang::Tr,
         ProofLang::Ru,
         ProofLang::Cs,
+        ProofLang::He,
         ProofLang::Id,
         ProofLang::Es,
         ProofLang::EsMx,
@@ -122,6 +128,8 @@ impl ProofLang {
             ProofLang::Ru
         } else if primary.eq_ignore_ascii_case("cs") || primary.eq_ignore_ascii_case("ces") || primary.eq_ignore_ascii_case("cze") {
             ProofLang::Cs
+        } else if primary.eq_ignore_ascii_case("he") || primary.eq_ignore_ascii_case("heb") || primary.eq_ignore_ascii_case("iw") {
+            ProofLang::He
         } else if primary.eq_ignore_ascii_case("id") || primary.eq_ignore_ascii_case("ind") || primary.eq_ignore_ascii_case("in") {
             ProofLang::Id
         } else if primary.eq_ignore_ascii_case("es") || primary.eq_ignore_ascii_case("spa") {
@@ -179,6 +187,7 @@ impl ProofLang {
             ProofLang::Tr => "tr",
             ProofLang::Ru => "ru",
             ProofLang::Cs => "cs",
+            ProofLang::He => "he",
             ProofLang::Id => "id",
             ProofLang::Es | ProofLang::EsMx | ProofLang::Es419 | ProofLang::EsUy => "es",
             ProofLang::De => "de",
@@ -357,6 +366,11 @@ mod tests {
         assert!(ProofLang::Ru.is_proofed());
         assert_eq!(ProofLang::Ru.code(), "ru");
         assert!(ProofLang::PROOFED.contains(&ProofLang::Ru));
+        // Hebrew: `he`, its old code `iw`, and ISO 639-2 `heb`.
+        for t in ["he", "he-IL", "HE_il", "he_IL.UTF-8", "heb", "IW"] {
+            assert_eq!(ProofLang::from_tag(Some(t)), ProofLang::He, "{t}");
+        }
+        assert!(ProofLang::He.is_proofed() && ProofLang::He.code() == "he");
         assert_eq!(ProofLang::Pl.code(), "pl");
         assert_eq!(ProofLang::Pt.code(), "pt");
         assert!(ProofLang::It.is_proofed());

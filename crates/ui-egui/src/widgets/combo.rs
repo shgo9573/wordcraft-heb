@@ -452,7 +452,8 @@ fn heading_row(ui: &mut Ui, text: &str, size: egui::Vec2, rule: bool) {
     if rule {
         ui.painter().hline(ui.max_rect().x_range(), ui.cursor().top(), line);
     }
-    ui.allocate_ui_with_layout(size, egui::Layout::left_to_right(egui::Align::Center), |ui| {
+    let layout = crate::rtl::left_to_right(ui, egui::Align::Center);
+    ui.allocate_ui_with_layout(size, layout, |ui| {
         ui.set_min_size(size);
         ui.add_space(6.0);
         ui.add(egui::Label::new(egui::RichText::new(text).small().color(weak)).selectable(false));

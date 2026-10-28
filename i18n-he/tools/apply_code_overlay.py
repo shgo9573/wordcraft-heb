@@ -11,6 +11,12 @@ this script. Running it on a tree that already has them changes nothing.
     python3 i18n-he/tools/apply_code_overlay.py            # apply
     python3 i18n-he/tools/apply_code_overlay.py --check    # only report what is missing
 
+The right-to-left interface and Hebrew proofing are larger: `code-overlay.json` lists, per upstream
+file, the exact upstream text a change replaces (or the line it goes after) and the text it becomes,
+and `code/` holds the files this fork adds whole (`crates/ui-egui/src/rtl.rs`,
+`crates/proof/src/he/`). `--check` also reports when a copy in `code/` has drifted from the file it
+mirrors.
+
 Exit 1 when a change could not be applied: upstream has moved the code the change hangs on, and a
 person has to look.
 """
@@ -18,6 +24,7 @@ person has to look.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -25,8 +32,9 @@ from pathlib import Path
 HE_ROW = '''    // Hebrew, right to left; `he`, `he-IL` and `he_IL.UTF-8` resolve here. Its catalog is
     // this fork's (`i18n-he/`, laid over craft-i18n by `i18n-he/tools/assemble.py`), not
     // storytold/craft-i18n's: it is embedded whenever that overlay is in `CRAFT_I18N_DIR`. The
-    // interface keeps its left-to-right layout, and each Hebrew label lays out right to left.
-    LangInfo { code: "he", prefer_hans: false, editing_lang: None },
+    // interface mirrors right to left ([`Lang::is_rtl`], `crate::rtl`), and WordCraft proofs
+    // Hebrew (`ProofLang::He`), so new documents are written in Hebrew.
+    LangInfo { code: "he", prefer_hans: false, editing_lang: Some("he-IL") },
 '''
 
 TESTS_HELPER = """/// Does this build embed this fork's Hebrew catalog? A catalog directory laid out from
@@ -103,9 +111,18 @@ def missing_he_row(source: str) -> bool:
     return 'code: "he"' not in source
 
 
+HE_ROW_ANY = re.compile(r'    // Hebrew, right to left;.*?\n(?:    //.*?\n)*    LangInfo \{ code: "he", prefer_hans: false, editing_lang: [^}]*\},\n', re.S)
+
+
 def apply_i18n(source: str) -> tuple[str, list[str]]:
     """The `he` row in `LANGUAGES` and the public `catalog_texts`."""
     notes: list[str] = []
+    if not missing_he_row(source) and HE_ROW not in source:
+        # A row the earlier overlay wrote (it said the interface stays left to right): bring it up
+        # to date, since the row now carries the Hebrew editing language.
+        source, count = HE_ROW_ANY.subn(HE_ROW, source, count=1)
+        if count:
+            notes.append("i18n.rs: the `he` row (Hebrew editing language)")
     if missing_he_row(source):
         declaration = re.search(r"pub static LANGUAGES: \[LangInfo; (\d+)\] = \[", source)
         if not declaration:
@@ -162,23 +179,98 @@ def apply_fonts(source: str) -> tuple[str, list[str]]:
     return source.replace(FONTS_ANCHOR, FONTS_ANCHOR + FONTS_LINES, 1), ["app/fonts.rs: borrow document faces for the interface text"]
 
 
+def apply_hunks(source: str, hunks: list[dict], name: str) -> tuple[str, list[str]]:
+    """The one-line-to-one-block edits `code-overlay.json` lists for a file, idempotently.
+
+    A hunk either replaces `old` with `new` (both exact upstream text, unique in the file) or puts
+    `insert` after the unique line `after`. A hunk already applied is skipped, so running this on
+    this fork's own tree changes nothing.
+    """
+    notes: list[str] = []
+    for hunk in hunks:
+        if "old" in hunk:
+            if hunk["new"] in source:
+                continue
+            if hunk["old"] not in source:
+                raise SystemExit(f"error: {name} no longer has the text a Hebrew change replaces:\n{hunk['old']}")
+            source = source.replace(hunk["old"], hunk["new"], 1)
+        else:
+            if hunk["insert"] in source:
+                continue
+            if source.count(hunk["after"]) != 1:
+                raise SystemExit(f"error: {name} no longer has the line a Hebrew change follows ({source.count(hunk['after'])} matches):\n{hunk['after']}")
+            source = source.replace(hunk["after"], hunk["after"] + hunk["insert"], 1)
+        first = next((line.strip() for line in hunk.get("insert", hunk.get("new", "")).splitlines() if line.strip()), "")
+        notes.append(f"{name}: {first[:70]}")
+    return source, notes
+
+
+def apply_generic(root: Path, path: Path, hunks: list[dict]) -> tuple[str, list[str]]:
+    name = str(path.relative_to(root))
+    return apply_hunks(path.read_text(encoding="utf-8"), hunks, name)
+
+
+def copy_new_files(root: Path, code: Path, check: bool, missing: list[str]) -> list[str]:
+    """The files this fork adds whole: `code/crates/...` mirrors the tree's `crates/...`."""
+    notes: list[str] = []
+    for source in sorted(code.rglob("*.rs")):
+        relative = source.relative_to(code)
+        target = root / relative
+        if check:
+            if not target.exists():
+                missing.append(f"{relative}: missing (copy it from {source.relative_to(root)})")
+            elif target.read_bytes() != source.read_bytes():
+                missing.append(f"{relative}: drifted from {source.relative_to(root)}")
+            continue
+        if target.exists() and target.read_bytes() == source.read_bytes():
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(source.read_bytes())
+        notes.append(f"{relative}: copied")
+    return notes
+
+
 def main() -> int:
     root = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--check", action="store_true", help="report what is missing instead of writing")
+    parser.add_argument("--files", action="store_true", help="print the files the overlay writes, one per line")
     args = parser.parse_args()
 
+    # The four changes the Hebrew catalog alone needs, spelled out above.
     targets = {
         root / "crates/ui-egui/src/i18n.rs": (apply_i18n, ["pub fn catalog_texts", 'code: "he"']),
         root / "crates/ui-egui/src/theme.rs": (apply_theme, ["fn faces_for_interface_text", "fn interface_char_covered"]),
         root / "crates/ui-egui/src/app/fonts.rs": (apply_fonts, ["faces_for_interface_text"]),
         root / "crates/ui-egui/src/i18n/tests.rs": (apply_tests, ["fn offers_hebrew()"]),
     }
+    # Everything the right-to-left interface and Hebrew proofing touch, checked against upstream's
+    # exact text (`code-overlay.json`) plus the files this fork adds whole (`code/`).
+    hunks: dict[str, list[dict]] = json.loads((root / "i18n-he/code-overlay.json").read_text(encoding="utf-8"))
+    generics = {root / relative: patch for relative, patch in hunks.items()}
+    code = root / "i18n-he/code"
+
+    if args.files:
+        # The workflow takes upstream's version of a conflicting one of these and runs the overlay
+        # again, so the list has to come from the overlay itself, not a copy of it.
+        paths = {path.relative_to(root) for path in list(targets) + list(generics)}
+        paths |= {path.relative_to(code) for path in code.rglob("*.rs")}
+        for path in sorted(paths):
+            print(path)
+        return 0
+
+    missing: list[str] = []
     if args.check:
-        missing = []
         for path, (_, markers) in targets.items():
             source = path.read_text(encoding="utf-8")
             missing += [f"{path.relative_to(root)}: no `{m}`" for m in markers if m not in source]
+        for path, patch in generics.items():
+            source = path.read_text(encoding="utf-8") if path.exists() else ""
+            for hunk in patch:
+                applied, wanted = hunk.get("insert", hunk.get("new", "")), hunk.get("old", hunk.get("after", ""))
+                if applied not in source:
+                    missing.append(f"{path.relative_to(root)}: no `{wanted.strip().splitlines()[0][:70]}`")
+        missing += copy_new_files(root, code, check=True, missing=[])
         for line in missing:
             print(f"error: {line}", file=sys.stderr)
         if missing:
@@ -195,6 +287,17 @@ def main() -> int:
             changed += 1
         for note in notes:
             print(note)
+    for path, patch in generics.items():
+        source = path.read_text(encoding="utf-8")
+        patched, notes = apply_generic(root, path, patch)
+        if patched != source:
+            path.write_text(patched, encoding="utf-8", newline="\n")
+            changed += 1
+        for note in notes:
+            print(note)
+    for note in copy_new_files(root, code, check=False, missing=[]):
+        print(note)
+        changed += 1
     print("ok: nothing to do, the overlay is already in place" if changed == 0 else f"ok: {changed} file(s) updated")
     return 0
 

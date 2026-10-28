@@ -136,8 +136,9 @@ pub static LANGUAGES: [LangInfo; 28] = [
     // Hebrew, right to left; `he`, `he-IL` and `he_IL.UTF-8` resolve here. Its catalog is
     // this fork's (`i18n-he/`, laid over craft-i18n by `i18n-he/tools/assemble.py`), not
     // storytold/craft-i18n's: it is embedded whenever that overlay is in `CRAFT_I18N_DIR`. The
-    // interface keeps its left-to-right layout, and each Hebrew label lays out right to left.
-    LangInfo { code: "he", prefer_hans: false, editing_lang: None },
+    // interface mirrors right to left ([`Lang::is_rtl`], `crate::rtl`), and WordCraft proofs
+    // Hebrew (`ProofLang::He`), so new documents are written in Hebrew.
+    LangInfo { code: "he", prefer_hans: false, editing_lang: Some("he-IL") },
 ];
 
 /// A language the UI can be shown in: English, or an offered language whose catalogs are embedded.
@@ -194,6 +195,13 @@ impl Lang {
     /// The language new blank documents are written in with this interface ([`LangInfo::editing_lang`]).
     pub fn editing_lang(self) -> Option<&'static str> {
         self.info().and_then(|l| l.editing_lang)
+    }
+
+    /// Is the interface written right to left (Hebrew, and Arabic when its catalog comes)? Then
+    /// egui's chrome mirrors (`Style::right_to_left`) and the app's own rows open a right-to-left
+    /// layout ([`crate::rtl`]).
+    pub fn is_rtl(self) -> bool {
+        matches!(self.code(), "he" | "ar" | "fa" | "ur")
     }
 
     /// Is the interface written in CJK script (its own name is), so it needs a CJK face?

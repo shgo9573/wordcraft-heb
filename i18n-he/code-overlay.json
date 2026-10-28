@@ -1,0 +1,202 @@
+{
+ "crates/proof/src/hyphen.rs": [
+  {
+   "after": "        return core_breaks_pl(core);\n",
+   "insert": "    }\n    // Hebrew words take no break: the patterns here are English, and a Hebrew word written\n    // without niqqud breaks nowhere that a pattern could guess.\n    if lang == ProofLang::He && core.iter().any(|&c| crate::he::is_hebrew_letter(c)) {\n        return (vec![], Source::None);\n"
+  },
+  {
+   "after": "            }\n        }\n    }\n\n",
+   "insert": "    /// Hebrew words take no break: the patterns here are English, and a word written without\n    /// niqqud has no vowel a pattern could break it at. Latin words inside Hebrew text still do.\n    #[test]\n    fn hebrew_words_take_no_break() {\n        for w in [\"בית\", \"שלום\", \"מהספר\", \"ובבית־ספר\"] {\n            assert_eq!(word_breaks_in(w, ProofLang::He), (vec![], Source::None), \"{w}\");\n        }\n        assert_eq!(word_breaks_in(\"typography\", ProofLang::He), word_breaks_in(\"typography\", ProofLang::En));\n    }\n\n"
+  }
+ ],
+ "crates/proof/src/lang.rs": [
+  {
+   "after": "    Cs,\n",
+   "insert": "    /// Hebrew (`he`, `he-IL`; also the old `iw` and ISO 639-2 `heb`): the installed Hunspell\n    /// `he_IL` dictionary (when there is one), Hebrew's particles as prefixes, niqqud ignored,\n    /// suggestions that know the final letters, and Hebrew grammar messages. Without the\n    /// dictionary the grammar checks still run and no word is marked as English.\n    He,\n"
+  },
+  {
+   "new": "    pub const PROOFED: [ProofLang; 16] = [\n",
+   "old": "    pub const PROOFED: [ProofLang; 15] = [\n"
+  },
+  {
+   "after": "        ProofLang::Cs,\n",
+   "insert": "        ProofLang::He,\n"
+  },
+  {
+   "after": "            ProofLang::Cs\n",
+   "insert": "        } else if primary.eq_ignore_ascii_case(\"he\") || primary.eq_ignore_ascii_case(\"heb\") || primary.eq_ignore_ascii_case(\"iw\") {\n            ProofLang::He\n"
+  },
+  {
+   "after": "            ProofLang::Cs => \"cs\",\n",
+   "insert": "            ProofLang::He => \"he\",\n"
+  },
+  {
+   "after": "        assert!(ProofLang::PROOFED.contains(&ProofLang::Ru));\n",
+   "insert": "        // Hebrew: `he`, its old code `iw`, and ISO 639-2 `heb`.\n        for t in [\"he\", \"he-IL\", \"HE_il\", \"he_IL.UTF-8\", \"heb\", \"IW\"] {\n            assert_eq!(ProofLang::from_tag(Some(t)), ProofLang::He, \"{t}\");\n        }\n        assert!(ProofLang::He.is_proofed() && ProofLang::He.code() == \"he\");\n"
+  }
+ ],
+ "crates/proof/src/lib.rs": [
+  {
+   "after": "//!   spelling, MIT); no spelling or grammar marks yet.\n",
+   "insert": "//! - **Hebrew** ([`ProofLang::He`], module [`he`]): the installed Hunspell `he_IL` dictionary (not\n//!   bundled), with Hebrew's particles as prefixes (`ובבית`, `מהספר`), niqqud ignored, suggestions\n//!   that know the five final letters (`שלומ` → `שלום`), and Hebrew grammar messages (a word\n//!   written twice, spacing around punctuation and around the maqaf). Without the dictionary\n//!   Hebrew has no spelling marks, but the grammar checks still run; Hebrew words aren't\n//!   hyphenated.\n"
+  },
+  {
+   "after": "pub mod es;\n",
+   "insert": "pub mod he;\n"
+  },
+  {
+   "after": "        (ProofLang::Cs, cs::installed_path()),\n",
+   "insert": "        (ProofLang::He, he::installed_path()),\n"
+  },
+  {
+   "after": "        ProofLang::Id => \"id_ID\",\n",
+   "insert": "        ProofLang::He => \"he_IL\",\n"
+  },
+  {
+   "after": "        ProofLang::Cs => cs::has_dictionary(),\n",
+   "insert": "        ProofLang::He => he::has_dictionary(),\n"
+  },
+  {
+   "after": "        ProofLang::Cs => Some(\"cs_CZ\"),\n",
+   "insert": "        ProofLang::He => Some(\"he_IL\"),\n"
+  },
+  {
+   "after": "        ProofLang::Cs => \"Možná pravopisná chyba\",\n",
+   "insert": "        ProofLang::He => \"ייתכן שגיאת כתיב\",\n"
+  },
+  {
+   "after": "        ProofLang::Cs => accepted_by_options(word, opts) || cs::is_correct_with_options(word, opts),\n",
+   "insert": "        ProofLang::He => accepted_by_options(word, opts) || he::is_correct_with_options(word, opts),\n"
+  },
+  {
+   "after": "        ProofLang::Cs => cs::suggest(word, max),\n",
+   "insert": "        ProofLang::He => he::suggest(word, max),\n"
+  },
+  {
+   "after": "        ProofLang::Cs => cs::grammar::check(text),\n",
+   "insert": "        // Hebrew has no capitals either.\n        ProofLang::He => he::grammar::check(text),\n"
+  },
+  {
+   "after": "            (ProofLang::Cs, \"cs_CZ\"),\n",
+   "insert": "            (ProofLang::He, \"he_IL\"),\n"
+  },
+  {
+   "new": "        // Turkish has no test dictionary to put in the folder; Russian, Czech, Hebrew, Indonesian\n        // and the Spanishes follow it.\n",
+   "old": "        // Turkish has no test dictionary to put in the folder; Russian, Czech, Indonesian and the Spanishes follow it.\n"
+  },
+  {
+   "new": "            found[8..],\n",
+   "old": "            found[7..],\n"
+  },
+  {
+   "after": "        assert_eq!(found[5..7].iter().map(|(lang, _)| *lang).collect::<Vec<_>>(), [ProofLang::Ru, ProofLang::Cs], \"{found:?}\");\n",
+   "insert": "        // Hebrew comes from the system (`he_IL`), not from a folder, so only its language belongs\n        // here; its own tests install a dictionary directly, concurrently with this one.\n        assert_eq!(found[7].0, ProofLang::He, \"{found:?}\");\n"
+  }
+ ],
+ "crates/ui-egui/src/app/fonts.rs": [
+  {
+   "after": "    pub(super) fn install_ui_fonts(&mut self, ctx: &egui::Context, lang: i18n::Lang) {\n",
+   "insert": "        // A right-to-left interface (Hebrew) mirrors egui's own chrome: menus and submenus open to\n        // the left, combo boxes and collapsing headers put their marker first, scroll bars sit on\n        // the left and a window's close button moves to the left edge. The app's own rows and\n        // groups flip through `crate::rtl`. Set every frame (a change only rewrites the styles),\n        // since an interface language can change without a font change.\n        let rtl = lang.is_rtl();\n        if ctx.global_style().right_to_left != rtl {\n            ctx.all_styles_mut(|s| s.set_right_to_left(rtl));\n        }\n"
+  }
+ ],
+ "crates/ui-egui/src/chrome.rs": [
+  {
+   "new": "            }\n            crate::rtl::horizontal_centered(ui, |ui| {\n",
+   "old": "            }\n            ui.horizontal_centered(|ui| {\n"
+  }
+ ],
+ "crates/ui-egui/src/dialogs/chrome.rs": [
+  {
+   "new": "    crate::rtl::horizontal(ui, |ui| {\n        // The buttons sit at the dialog's trailing edge: right in an English interface, left in\n        // a Hebrew one.\n        crate::rtl::with_layout(ui, egui::Layout::right_to_left(egui::Align::Center), |ui| {\n",
+   "old": "    ui.horizontal(|ui| {\n        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {\n"
+  },
+  {
+   "new": "    let mut close = ui.input(|i| i.key_pressed(egui::Key::Escape));\n    crate::rtl::with_layout(ui, egui::Layout::right_to_left(egui::Align::Center), |ui| {\n",
+   "old": "    let mut close = ui.input(|i| i.key_pressed(egui::Key::Escape));\n    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {\n"
+  }
+ ],
+ "crates/ui-egui/src/i18n.rs": [
+  {
+   "after": "        self.info().and_then(|l| l.editing_lang)\n",
+   "insert": "    }\n\n    /// Is the interface written right to left (Hebrew, and Arabic when its catalog comes)? Then\n    /// egui's chrome mirrors (`Style::right_to_left`) and the app's own rows open a right-to-left\n    /// layout ([`crate::rtl`]).\n    pub fn is_rtl(self) -> bool {\n        matches!(self.code(), \"he\" | \"ar\" | \"fa\" | \"ur\")\n"
+  }
+ ],
+ "crates/ui-egui/src/i18n/tests.rs": [
+  {
+   "new": "    assert_eq!(with, [(\"pt-br\", \"pt-BR\"), (\"pl\", \"pl-PL\"), (\"cs\", \"cs-CZ\"), (\"tr\", \"tr-TR\"), (\"it\", \"it-IT\"), (\"he\", \"he-IL\")]);\n",
+   "old": "    assert_eq!(with, [(\"pt-br\", \"pt-BR\"), (\"pl\", \"pl-PL\"), (\"cs\", \"cs-CZ\"), (\"tr\", \"tr-TR\"), (\"it\", \"it-IT\")]);\n"
+  }
+ ],
+ "crates/ui-egui/src/lib.rs": [
+  {
+   "after": "pub mod ribbon_fit;\n",
+   "insert": "pub mod rtl;\n"
+  }
+ ],
+ "crates/ui-egui/src/mini_toolbar.rs": [
+  {
+   "new": "        let layout = crate::rtl::left_to_right(ui, Align::Center);\n        ui.allocate_ui_with_layout(Vec2::new(ui.available_width(), ROW_H), layout, |ui| {\n",
+   "old": "        ui.allocate_ui_with_layout(Vec2::new(ui.available_width(), ROW_H), Layout::left_to_right(Align::Center), |ui| {\n"
+  }
+ ],
+ "crates/ui-egui/src/options.rs": [
+  {
+   "after": "        ProofLang::Cs => tl!(\"Czech\"),\n",
+   "insert": "        ProofLang::He => tl!(\"Hebrew\"),\n"
+  },
+  {
+   "new": "            crate::rtl::horizontal(ui, |ui| {\n                let layout = crate::rtl::left_to_right(ui, egui::Align::Center);\n                ui.allocate_ui_with_layout(vec2(220.0, 20.0), layout, |ui| {\n",
+   "old": "            ui.horizontal(|ui| {\n                ui.allocate_ui_with_layout(vec2(220.0, 20.0), egui::Layout::left_to_right(egui::Align::Center), |ui| {\n"
+  }
+ ],
+ "crates/ui-egui/src/ribbon.rs": [
+  {
+   "new": "            crate::rtl::horizontal_centered(ui, |ui| {\n",
+   "old": "            ui.horizontal_centered(|ui| {\n"
+  },
+  {
+   "new": "                crate::rtl::with_layout(ui, egui::Layout::right_to_left(egui::Align::Center), |ui| {\n",
+   "old": "                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {\n"
+  },
+  {
+   "new": "                    crate::rtl::with_layout(ui, egui::Layout::left_to_right(egui::Align::Center), |ui| {\n",
+   "old": "                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {\n"
+  },
+  {
+   "new": "                // A Hebrew interface mirrors the tab's groups: they start at the right edge.\n                crate::rtl::horizontal_top(ui, |ui| {\n",
+   "old": "                ui.horizontal_top(|ui| {\n"
+  }
+ ],
+ "crates/ui-egui/src/ribbon/design.rs": [
+  {
+   "new": "    let layout = crate::rtl::left_to_right(ui, egui::Align::Min);\n    let mut gui = ui.new_child(egui::UiBuilder::new().max_rect(gallery).layout(layout));\n",
+   "old": "    let mut gui = ui.new_child(egui::UiBuilder::new().max_rect(gallery).layout(egui::Layout::left_to_right(egui::Align::Min)));\n"
+  }
+ ],
+ "crates/ui-egui/src/ribbon/language.rs": [
+  {
+   "new": "pub(crate) const PROOFING_LANGUAGES: [(&str, &str); 17] = [\n",
+   "old": "pub(crate) const PROOFING_LANGUAGES: [(&str, &str); 16] = [\n"
+  },
+  {
+   "after": "    (\"es-UY\", \"Spanish (Uruguay)\"),\n",
+   "insert": "    (\"he-IL\", \"Hebrew\"),\n"
+  },
+  {
+   "after": "            wordcraft_engine::proof::ProofLang::Cs => \"Czech\".into(),\n",
+   "insert": "            wordcraft_engine::proof::ProofLang::He => \"Hebrew\".into(),\n"
+  }
+ ],
+ "crates/ui-egui/src/widgets/combo.rs": [
+  {
+   "new": "    let layout = crate::rtl::left_to_right(ui, egui::Align::Center);\n    ui.allocate_ui_with_layout(size, layout, |ui| {\n",
+   "old": "    ui.allocate_ui_with_layout(size, egui::Layout::left_to_right(egui::Align::Center), |ui| {\n"
+  }
+ ],
+ "crates/ui-egui/src/widgets/groups.rs": [
+  {
+   "new": "            // A Hebrew interface lays a group's buttons out right to left.\n            let layout = crate::rtl::left_to_right(ui, egui::Align::Min);\n            let content = ui.allocate_ui_with_layout(vec2(ui.available_width(), CONTENT_H), layout, |ui| {\n",
+   "old": "            let content = ui.allocate_ui_with_layout(vec2(ui.available_width(), CONTENT_H), egui::Layout::left_to_right(egui::Align::Min), |ui| {\n"
+  }
+ ]
+}

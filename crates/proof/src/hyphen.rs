@@ -134,6 +134,11 @@ fn core_breaks(core: &[char], lang: ProofLang) -> (Vec<usize>, Source) {
     if lang == ProofLang::Pl {
         return core_breaks_pl(core);
     }
+    // Hebrew words take no break: the patterns here are English, and a Hebrew word written
+    // without niqqud breaks nowhere that a pattern could guess.
+    if lang == ProofLang::He && core.iter().any(|&c| crate::he::is_hebrew_letter(c)) {
+        return (vec![], Source::None);
+    }
     // Bulgarian words follow the Bulgarian syllable rules; Latin-script words in a Bulgarian run
     // (`WordCraft`, `email`) are hyphenated as English, as in any other language.
     if lang == ProofLang::Bg && core.iter().all(|&c| crate::bg::is_letter(c)) {
@@ -880,6 +885,16 @@ mod tests {
                 assert_eq!(hyphen_points_in(w, &Limits::default(), lang), hyphen_points(w, &Limits::default()), "{w}");
             }
         }
+    }
+
+    /// Hebrew words take no break: the patterns here are English, and a word written without
+    /// niqqud has no vowel a pattern could break it at. Latin words inside Hebrew text still do.
+    #[test]
+    fn hebrew_words_take_no_break() {
+        for w in ["בית", "שלום", "מהספר", "ובבית־ספר"] {
+            assert_eq!(word_breaks_in(w, ProofLang::He), (vec![], Source::None), "{w}");
+        }
+        assert_eq!(word_breaks_in("typography", ProofLang::He), word_breaks_in("typography", ProofLang::En));
     }
 
     #[test]

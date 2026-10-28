@@ -185,8 +185,10 @@ pub(crate) fn ok_cancel_responses(ui: &mut Ui, draw_ok: impl FnOnce(&mut Ui) -> 
 pub(crate) fn buttons(ui: &mut Ui, ok: &str) -> (bool, bool) {
     let mut r = (false, false);
     ui.add_space(8.0);
-    ui.horizontal(|ui| {
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+    crate::rtl::horizontal(ui, |ui| {
+        // The buttons sit at the dialog's trailing edge: right in an English interface, left in
+        // a Hebrew one.
+        crate::rtl::with_layout(ui, egui::Layout::right_to_left(egui::Align::Center), |ui| {
             // Enter and Escape belong to the Colors dialog while it is open above this one.
             let keys = !crate::colors::is_open(ui.ctx());
             let (okb, cancelb) = ok_cancel_responses(ui, |ui| ui.add(crate::widgets::primary_button(ui, ok)), tl!("Cancel"));
@@ -205,7 +207,7 @@ pub(crate) fn buttons(ui: &mut Ui, ok: &str) -> (bool, bool) {
 pub(super) fn close_button(ui: &mut Ui) -> bool {
     ui.add_space(8.0);
     let mut close = ui.input(|i| i.key_pressed(egui::Key::Escape));
-    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+    crate::rtl::with_layout(ui, egui::Layout::right_to_left(egui::Align::Center), |ui| {
         close |= ui.add(crate::widgets::primary_button(ui, tl!("Close"))).clicked();
     });
     close

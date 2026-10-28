@@ -1,14 +1,15 @@
 name: Hebrew build (daily upstream sync)
 
 # Keeps this fork from going stale: every day it takes storytold/wordcraft's newest `main`, merges
-# it, re-applies this fork's Hebrew overlay (the catalogs in `i18n-he/` and the four small code
-# changes `i18n-he/tools/apply_code_overlay.py` makes), pushes the result to `main`, and builds a
-# Linux release with Hebrew embedded. A version upstream has not shipped before gets published as
+# it, re-applies this fork's Hebrew overlay (the catalogs in `i18n-he/`, and the code changes in
+# `i18n-he/code-overlay.json` + `i18n-he/code/` that `i18n-he/tools/apply_code_overlay.py` makes:
+# the right-to-left interface and Hebrew proofing), pushes the result to `main`, and builds a Linux
+# release with Hebrew embedded. A version upstream has not shipped before gets published as
 # a GitHub release of this fork (`v<version>-he.1`); a day without a new version leaves the build
 # on the run's artifacts.
 #
 # The Hebrew catalogs themselves are never touched by the merge: upstream has no `i18n-he/`, so
-# they cannot conflict. The only files that can conflict are the three the overlay edits, and those
+# they cannot conflict. The only files that can conflict are the ones the overlay edits, and those
 # are resolved by taking upstream's version and running the overlay again.
 
 on:
@@ -24,9 +25,8 @@ on:
     branches: [main]
     paths:
       - "i18n-he/**"
-      - "crates/ui-egui/src/i18n.rs"
-      - "crates/ui-egui/src/theme.rs"
-      - "crates/ui-egui/src/app/fonts.rs"
+      - "crates/ui-egui/src/**"
+      - "crates/proof/src/**"
       - ".github/workflows/sync-upstream.yml"
   pull_request:
     paths:
@@ -68,6 +68,8 @@ jobs:
         run: python3 i18n-he/tools/check.py --craft-i18n "$RUNNER_TEMP/craft-i18n"
       - name: Check that the Hebrew code overlay is in place
         run: python3 i18n-he/tools/apply_code_overlay.py --check
+      - name: Check that the recorded overlay matches the code
+        run: python3 i18n-he/tools/record_code_overlay.py --check
       - name: Assemble the catalogs a build would embed
         run: python3 i18n-he/tools/assemble.py --craft-i18n "$RUNNER_TEMP/craft-i18n" --out "$RUNNER_TEMP/craft-i18n-he"
 
@@ -104,7 +106,7 @@ jobs:
             # version of a conflicted one and apply the overlay again below. Any other conflict is a
             # real one, and fails the job for a person to resolve.
             if ! git merge --no-ff --no-commit upstream/main; then
-              overlay="crates/ui-egui/src/i18n.rs crates/ui-egui/src/theme.rs crates/ui-egui/src/app/fonts.rs crates/ui-egui/src/i18n/tests.rs"
+              overlay=$(python3 i18n-he/tools/apply_code_overlay.py --files | tr '\n' ' ')
               while read -r file; do
                 case " $overlay " in
                   *" $file "*) git checkout --theirs -- "$file" && git add -- "$file" ;;
@@ -125,6 +127,7 @@ jobs:
           echo "upstream=$upstream" >> "$GITHUB_OUTPUT"
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
+
 
   build:
     name: Build (Linux x86_64)

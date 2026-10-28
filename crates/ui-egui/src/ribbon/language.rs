@@ -1,7 +1,7 @@
 use super::*;
 
 /// The proofing languages the Language menu offers: tag and English name (translated when drawn).
-pub(crate) const PROOFING_LANGUAGES: [(&str, &str); 16] = [
+pub(crate) const PROOFING_LANGUAGES: [(&str, &str); 17] = [
     ("en-US", "English (United States)"),
     ("en-GB", "English (United Kingdom)"),
     ("en-AU", "English (Australia)"),
@@ -18,6 +18,7 @@ pub(crate) const PROOFING_LANGUAGES: [(&str, &str); 16] = [
     ("es-MX", "Spanish (Mexico)"),
     ("es-419", "Spanish (Latin America)"),
     ("es-UY", "Spanish (Uruguay)"),
+    ("he-IL", "Hebrew"),
 ];
 
 /// The English name of a proofing language tag, as the status bar shows it (no tag: WordCraft's
@@ -57,6 +58,7 @@ pub(crate) fn language_name(tag: Option<&str>) -> String {
             wordcraft_engine::proof::ProofLang::Tr => "Turkish".into(),
             wordcraft_engine::proof::ProofLang::Ru => "Russian".into(),
             wordcraft_engine::proof::ProofLang::Cs => "Czech".into(),
+            wordcraft_engine::proof::ProofLang::He => "Hebrew".into(),
             wordcraft_engine::proof::ProofLang::Id => "Indonesian".into(),
             wordcraft_engine::proof::ProofLang::Es => "Spanish (Spain)".into(),
             wordcraft_engine::proof::ProofLang::De => "German (Germany)".into(),
