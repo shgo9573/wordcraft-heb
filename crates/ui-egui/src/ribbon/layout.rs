@@ -149,7 +149,10 @@ pub(super) fn layout(app: &mut WordApp, ui: &mut Ui) {
                 let mut l = rp.indent_left / k;
                 let mut b = rp.space_before;
                 ui.label(egui::RichText::new(tl!("Left:")).small());
-                if ui.add_sized(FIELD, egui::DragValue::new(&mut l).speed(3.6 / k).range(-792.0 / k..=1584.0 / k).measure(u).max_decimals(2)).changed() {
+                if ui
+                    .add_sized(FIELD, egui::DragValue::new(&mut l).speed(3.6 / k).range(-792.0 / k..=1584.0 / k).measure(u).max_decimals(2))
+                    .changed()
+                {
                     let _ = app.run("para.indents", json!({"left": l * k}));
                 }
                 spaced(ui, egui::RichText::new(tl!("Before:")).small());
@@ -160,7 +163,10 @@ pub(super) fn layout(app: &mut WordApp, ui: &mut Ui) {
                 let mut r = rp.indent_right / k;
                 let mut a = rp.space_after;
                 ui.label(egui::RichText::new(tl!("Right:")).small());
-                if ui.add_sized(FIELD, egui::DragValue::new(&mut r).speed(3.6 / k).range(-792.0 / k..=1584.0 / k).measure(u).max_decimals(2)).changed() {
+                if ui
+                    .add_sized(FIELD, egui::DragValue::new(&mut r).speed(3.6 / k).range(-792.0 / k..=1584.0 / k).measure(u).max_decimals(2))
+                    .changed()
+                {
                     let _ = app.run("para.indents", json!({"right": r * k}));
                 }
                 spaced(ui, egui::RichText::new(tl!("After:")).small());
