@@ -61,6 +61,10 @@
    "insert": "        ProofLang::He => Some(\"he_IL\"),\n"
   },
   {
+   "new": "        // Capitals, not every script: Hebrew, Arabic and Japanese have no case at all, so \"no\n        // lowercase letter\" says nothing there (`שלום` is no acronym), and only a word that\n        // really carries an uppercase letter is taken as capitals.\n        || (opts.ignore_uppercase && w.chars().any(char::is_uppercase) && w.chars().all(|c| !c.is_lowercase()))\n",
+   "old": "        || (opts.ignore_uppercase && w.chars().all(|c| !c.is_lowercase()))\n"
+  },
+  {
    "after": "        ProofLang::Cs => \"Možná pravopisná chyba\",\n",
    "insert": "        ProofLang::He => \"ייתכן שגיאת כתיב\",\n"
   },
@@ -91,6 +95,10 @@
   {
    "after": "        assert_eq!(found[5..7].iter().map(|(lang, _)| *lang).collect::<Vec<_>>(), [ProofLang::Ru, ProofLang::Cs], \"{found:?}\");\n",
    "insert": "        // Hebrew comes from the system (`he_IL`), not from a folder, so only its language belongs\n        // here; its own tests install a dictionary directly, concurrently with this one.\n        assert_eq!(found[7].0, ProofLang::He, \"{found:?}\");\n"
+  },
+  {
+   "after": "        assert!(load_user_dictionary(&path).is_empty());\n    }\n\n",
+   "insert": "    /// A script without case is not \"written in capitals\": the UPPERCASE option must not accept\n    /// every Hebrew (or Japanese) word as a correct one.\n    #[test]\n    fn a_script_without_case_is_not_capitals() {\n        let opts = Options::default();\n        assert!(accepted_by_options(\"NASA\", &opts));\n        assert!(accepted_by_options(\"ДОМ\", &opts), \"Cyrillic has capitals too\");\n        assert!(!accepted_by_options(\"שלום\", &opts));\n        assert!(!accepted_by_options(\"日本語\", &opts));\n        assert!(!accepted_by_options(\"дом\", &opts));\n    }\n\n"
   }
  ],
  "crates/ui-egui/src/app/fonts.rs": [
