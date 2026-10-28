@@ -264,13 +264,33 @@ pub(super) fn home(app: &mut WordApp, ui: &mut Ui) {
             ui.add_space(3.0);
             crate::widgets::row(ui, |ui| {
                 use wordcraft_doc::Align as A;
-                small(ui, app, "alignLeft", None, "Align Left", crate::widgets::ButtonAction::new("para.alignLeft", json!({}), align == A::Left));
-                small(ui, app, "alignCenter", None, "Center", crate::widgets::ButtonAction::new("para.alignCenter", json!({}), align == A::Center));
-                small(ui, app, "alignRight", None, "Align Right", crate::widgets::ButtonAction::new("para.alignRight", json!({}), align == A::Right));
-                small(ui, app, "justify", None, "Justify", crate::widgets::ButtonAction::new("para.justify", json!({}), align == A::Justify));
+                // These buttons, and the pair of text directions after them, are where mirrored
+                // order alone reads wrong: a Hebrew row would start (at the right) with the
+                // flush-left icon and end with the flush-right one. The icons face the way the text
+                // does, so the row keeps the paragraph's reading order — in a Hebrew one it starts
+                // with Align Right, and the directions start with right-to-left.
+                let mut aligns = [
+                    ("alignLeft", "Align Left", "para.alignLeft", align == A::Left),
+                    ("alignCenter", "Center", "para.alignCenter", align == A::Center),
+                    ("alignRight", "Align Right", "para.alignRight", align == A::Right),
+                    ("justify", "Justify", "para.justify", align == A::Justify),
+                ];
+                let mut directions =
+                    [("textLtr", "Left-to-Right Text Direction", "para.ltr", !rtl), ("textRtl", "Right-to-Left Text Direction", "para.rtl", rtl)];
+                if crate::rtl::is_rtl(ui) {
+                    // The row is drawn from its right edge in a Hebrew interface, so the first
+                    // button here is the rightmost one: the flush-right icon must come first and the
+                    // flush-left one after Center, and Justify — which faces nowhere — stays last.
+                    aligns.swap(0, 2);
+                    directions.reverse();
+                }
+                for (icon, tip, cmd, on) in aligns {
+                    small(ui, app, icon, None, tip, crate::widgets::ButtonAction::new(cmd, json!({}), on));
+                }
                 ui.add_space(4.0);
-                small(ui, app, "textLtr", None, "Left-to-Right Text Direction", crate::widgets::ButtonAction::new("para.ltr", json!({}), !rtl));
-                small(ui, app, "textRtl", None, "Right-to-Left Text Direction", crate::widgets::ButtonAction::new("para.rtl", json!({}), rtl));
+                for (icon, tip, cmd, on) in directions {
+                    small(ui, app, icon, None, tip, crate::widgets::ButtonAction::new(cmd, json!({}), on));
+                }
                 ui.add_space(4.0);
                 menu_button(
                     ui,

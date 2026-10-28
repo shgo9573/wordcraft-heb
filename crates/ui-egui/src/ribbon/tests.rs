@@ -356,6 +356,53 @@ fn a_hebrew_ribbon_starts_at_the_right() {
     assert!(he_font.max.x <= he_clipboard.min.x + 0.5, "Font is drawn to the left of Clipboard: {he_clipboard:?} {he_font:?}");
 }
 
+/// The alignment buttons and the text directions are the one row whose order does not simply
+/// reverse in a Hebrew interface: their icons face the way the text does, so the row keeps the
+/// paragraph's reading order and starts, on the right, with Align Right and right-to-left.
+#[test]
+fn a_hebrew_alignment_row_starts_with_align_right() {
+    let mut app = WordApp::new(Session::new(wordcraft_engine::sample::sample_document()), crate::Services::default());
+    app.run("ui.tab", json!({"tab": "Home"})).unwrap();
+    let mut h = egui_kittest::Harness::builder().with_size(vec2(2560.0, 900.0)).build_ui_state(
+        |ui, app: &mut WordApp| {
+            let ctx = ui.ctx().clone();
+            app.logic(&ctx);
+            app.ui(ui);
+        },
+        app,
+    );
+    let mut rows = std::collections::HashMap::new();
+    for lang in ["en", "he"] {
+        h.state_mut().run("ui.language", json!({"value": lang})).unwrap();
+        h.run_steps(4);
+        crate::widgets::BUTTON_RECTS.with(|b| b.borrow_mut().clear());
+        h.run_steps(1);
+        // The last frame's boxes: a step may draw more than one.
+        let found: std::collections::HashMap<String, egui::Rect> = crate::widgets::BUTTON_RECTS.with(|b| b.borrow().iter().cloned().collect());
+        rows.insert(lang, found);
+    }
+    let (Some(en), Some(he)) = (rows.get("en"), rows.get("he")) else { panic!("both ribbons drew buttons: {rows:?}") };
+    // The boxes are keyed by the command a button runs (`small` records the `ButtonAction`'s id).
+    let (align_left, center, align_right, justify) = ("para.alignLeft", "para.alignCenter", "para.alignRight", "para.justify");
+    let (text_ltr, text_rtl) = ("para.ltr", "para.rtl");
+    for (name, boxes) in [("en", en), ("he", he)] {
+        for id in [align_left, center, align_right, justify, text_ltr, text_rtl] {
+            assert!(boxes.contains_key(id), "the {name} Home tab shows {id}: {:?}", boxes.keys());
+        }
+    }
+    // English: left, center, right, justify — then left-to-right, right-to-left.
+    assert!(en[align_left].min.x < en[center].min.x);
+    assert!(en[center].min.x < en[align_right].min.x);
+    assert!(en[align_right].min.x < en[justify].min.x);
+    assert!(en[text_ltr].min.x < en[text_rtl].min.x);
+    // Hebrew: the row runs right to left and keeps the paragraph's order, so Align Right is the
+    // rightmost of the four and the directions start with right-to-left.
+    assert!(he[align_right].min.x > he[center].min.x, "Align Right is right of Center: {:?} {:?}", he[align_right], he[center]);
+    assert!(he[center].min.x > he[align_left].min.x, "Center is right of Align Left: {:?} {:?}", he[center], he[align_left]);
+    assert!(he[align_left].min.x > he[justify].min.x, "Align Left is right of Justify: {:?} {:?}", he[align_left], he[justify]);
+    assert!(he[text_rtl].min.x > he[text_ltr].min.x, "the directions start with right-to-left: {:?} {:?}", he[text_rtl], he[text_ltr]);
+}
+
 /// No group's content runs into its label: View › Show stacked four check boxes in a column
 /// made for three, so "Hide White Space" was drawn under "Show". Every tab, every language.
 #[test]

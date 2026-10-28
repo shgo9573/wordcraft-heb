@@ -52,4 +52,12 @@ thread_local! {
 }
 
 #[cfg(test)]
+thread_local! {
+    /// Where each small button of the ribbon was drawn, by the command it runs: a row whose icons
+    /// face the text (the alignments, the text directions) keeps its reading order in a Hebrew
+    /// interface, so its boxes say which button came first.
+    pub(crate) static BUTTON_RECTS: std::cell::RefCell<Vec<(String, egui::Rect)>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+#[cfg(test)]
 mod tests;

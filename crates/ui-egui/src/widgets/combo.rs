@@ -217,6 +217,9 @@ fn combo_impl(ui: &mut Ui, options: ComboOptions<'_>) -> Option<String> {
     let mut s: ComboSearch = if search { ui.data_mut(|d| d.get_temp(search_id)).unwrap_or_default() } else { ComboSearch::default() };
     let mut focused = false;
     let t = Tokens::get(ui.ctx());
+    // A Hebrew row runs the other way: the arrow is on the field's left, and the outline is
+    // rounded on the outside of the pair, which is now its right.
+    let rtl = crate::rtl::is_rtl(ui);
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing = vec2(0.0, 0.0);
         // The field and its arrow share one outline: rounded on the outside, square where they
@@ -224,8 +227,14 @@ fn combo_impl(ui: &mut Ui, options: ComboOptions<'_>) -> Option<String> {
         let r = ui.visuals().widgets.inactive.corner_radius;
         let w = &mut ui.visuals_mut().widgets;
         for v in [&mut w.noninteractive, &mut w.inactive, &mut w.hovered, &mut w.active, &mut w.open] {
-            v.corner_radius.ne = 0;
-            v.corner_radius.se = 0;
+            // The field keeps the rounded corners that face away from the arrow.
+            if rtl {
+                v.corner_radius.nw = 0;
+                v.corner_radius.sw = 0;
+            } else {
+                v.corner_radius.ne = 0;
+                v.corner_radius.se = 0;
+            }
         }
         // Up/Down move the list's highlight: take them before the text field moves its cursor.
         let mut step = 0i32;
@@ -240,6 +249,9 @@ fn combo_impl(ui: &mut Ui, options: ComboOptions<'_>) -> Option<String> {
             });
         }
         let te = egui::TextEdit::singleline(&mut text).id(te_id).desired_width(width - 16.0).font(regular(12.0)).margin(vec2(4.0, 3.0));
+        // The value starts at the field's reading edge: the left in an English interface, the right
+        // in a Hebrew one, where the arrow is on its left and a left-aligned value would touch it.
+        let te = if rtl { te.horizontal_align(egui::Align::RIGHT) } else { te };
         // The arrow's box is painted here, under the field, once its size is known.
         let arrow_bg = ui.painter().add(egui::Shape::Noop);
         let resp = ui.add(te);
@@ -304,10 +316,15 @@ fn combo_impl(ui: &mut Ui, options: ComboOptions<'_>) -> Option<String> {
             let arrow_name = crate::i18n::fmt(tl!("{name} options"), &[("name", tip)]);
             aresp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), &arrow_name));
         }
-        // It reaches one border width under the field, so the field's right border is the only line
-        // between them: two borders side by side read as a double-width divider.
-        let ar_radius = CornerRadius { nw: 0, sw: 0, ne: r.ne, se: r.se };
-        let under = Rect::from_min_max(pos2(ar.min.x - ARROW_BORDER, ar.min.y), ar.max);
+        // It reaches one border width under the field, so the border between them is one line: two
+        // borders side by side read as a double-width divider. The arrow is on the field's right,
+        // or its left in a Hebrew interface.
+        let ar_radius = if rtl { CornerRadius { nw: r.ne, sw: r.se, ne: 0, se: 0 } } else { CornerRadius { nw: 0, sw: 0, ne: r.ne, se: r.se } };
+        let under = if rtl {
+            Rect::from_min_max(ar.min, pos2(ar.max.x + ARROW_BORDER, ar.max.y))
+        } else {
+            Rect::from_min_max(pos2(ar.min.x - ARROW_BORDER, ar.min.y), ar.max)
+        };
         let fill = if aresp.hovered() { t.hover } else { t.input };
         let arrow_box = egui::epaint::RectShape::new(under, ar_radius, fill, Stroke::new(ARROW_BORDER, t.input_border), egui::StrokeKind::Inside);
         ui.painter().set(arrow_bg, arrow_box);
@@ -469,7 +486,7 @@ fn heading_row(ui: &mut Ui, text: &str, size: egui::Vec2, rule: bool) {
     if rule {
         ui.painter().hline(ui.max_rect().x_range(), ui.cursor().top(), line);
     }
-    ui.allocate_ui_with_layout(size, egui::Layout::left_to_right(egui::Align::Center), |ui| {
+    ui.allocate_ui_with_layout(size, crate::rtl::left_to_right(ui, egui::Align::Center), |ui| {
         ui.set_min_size(size);
         ui.add_space(6.0);
         ui.add(egui::Label::new(egui::RichText::new(text).small().color(weak)).selectable(false));
