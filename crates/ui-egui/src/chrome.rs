@@ -555,7 +555,7 @@ pub fn status_bar(app: &mut WordApp, ui: &mut Ui) {
             if !app.has_document() {
                 return;
             }
-            ui.horizontal_centered(|ui| {
+            crate::rtl::horizontal_centered(ui, |ui| {
                 ui.spacing_mut().item_spacing = vec2(14.0, 0.0);
                 let l = app.session.layout();
                 let page = if let Some(p) = app.canvas.viewed_page {

@@ -390,6 +390,7 @@ fn language_name(lang: wordcraft_engine::proof::ProofLang) -> &'static str {
         ProofLang::Tr => tl!("Turkish"),
         ProofLang::Ru => tl!("Russian"),
         ProofLang::Cs => tl!("Czech"),
+        ProofLang::He => tl!("Hebrew"),
         ProofLang::Id => tl!("Indonesian"),
         ProofLang::Es => tl!("Spanish (Spain)"),
         ProofLang::EsMx => tl!("Spanish (Mexico)"),
@@ -409,8 +410,9 @@ fn custom_dictionary(app: &mut WordApp, ui: &mut Ui) {
     }
     egui::ScrollArea::vertical().id_salt("options_dictionary").max_height(180.0).show(ui, |ui| {
         for w in &words {
-            ui.horizontal(|ui| {
-                ui.allocate_ui_with_layout(vec2(220.0, 20.0), egui::Layout::left_to_right(egui::Align::Center), |ui| {
+            crate::rtl::horizontal(ui, |ui| {
+                let layout = crate::rtl::left_to_right(ui, egui::Align::Center);
+                ui.allocate_ui_with_layout(vec2(220.0, 20.0), layout, |ui| {
                     ui.set_min_width(220.0);
                     ui.add(egui::Label::new(w.as_str()).truncate());
                 });

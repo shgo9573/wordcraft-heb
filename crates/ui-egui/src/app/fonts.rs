@@ -154,6 +154,15 @@ impl WordApp {
     /// Install the interface fonts when the language, the CJK fallback, or a caption fallback
     /// face has changed since the last install.
     pub(super) fn install_ui_fonts(&mut self, ctx: &egui::Context, lang: i18n::Lang) {
+        // A right-to-left interface (Hebrew) mirrors egui's own chrome: menus and submenus open to
+        // the left, combo boxes and collapsing headers put their marker first, scroll bars sit on
+        // the left and a window's close button moves to the left edge. The app's own rows and
+        // groups flip through `crate::rtl`. Set every frame (a change only rewrites the styles),
+        // since an interface language can change without a font change.
+        let rtl = lang.is_rtl();
+        if ctx.global_style().right_to_left != rtl {
+            ctx.all_styles_mut(|s| s.set_right_to_left(rtl));
+        }
         let system_cjk = self.fonts_system_cjk || self.want_system_cjk || lang.uses_cjk();
         if !self.styled || lang.prefers_hans() != self.fonts_hans || lang.prefers_korean() != self.fonts_korean || system_cjk != self.fonts_system_cjk
         {

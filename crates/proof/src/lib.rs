@@ -41,6 +41,12 @@
 //!   existing English fallback.
 //! - **German** ([`ProofLang::De`]): hyphenation by `hyph-utf8`'s German patterns (reformed
 //!   spelling, MIT); no spelling or grammar marks yet.
+//! - **Hebrew** ([`ProofLang::He`], module [`he`]): the installed Hunspell `he_IL` dictionary (not
+//!   bundled), with Hebrew's particles as prefixes (`ובבית`, `מהספר`), niqqud ignored, suggestions
+//!   that know the five final letters (`שלומ` → `שלום`), and Hebrew grammar messages (a word
+//!   written twice, spacing around punctuation and around the maqaf). Without the dictionary
+//!   Hebrew has no spelling marks, but the grammar checks still run; Hebrew words aren't
+//!   hyphenated.
 //! - **Other languages** ([`ProofLang::Other`]): no spelling or grammar marks, like Word without
 //!   the language's proofing tools.
 //! - **Hyphenation** ([`hyphen`]): dictionary, Liang patterns (English, Polish, Portuguese,
@@ -55,6 +61,7 @@ pub mod cs;
 pub mod dict;
 pub mod en_variants;
 pub mod es;
+pub mod he;
 pub mod hr;
 pub mod hunspell;
 pub mod hyphen;
@@ -185,6 +192,7 @@ pub fn installed_dictionaries() -> Vec<(ProofLang, Option<std::path::PathBuf>)> 
         (ProofLang::Tr, tr::installed_path()),
         (ProofLang::Ru, ru::installed_path()),
         (ProofLang::Cs, cs::installed_path()),
+        (ProofLang::He, he::installed_path()),
         (ProofLang::Id, id::installed_path()),
         (ProofLang::Es, es::installed_path(ProofLang::Es)),
         (ProofLang::EsMx, es::installed_path(ProofLang::EsMx)),
@@ -204,6 +212,7 @@ pub fn dictionary_load_error(lang: ProofLang) -> Option<String> {
         ProofLang::Hr => "hr_HR",
         ProofLang::Tr => "tr_TR",
         ProofLang::Id => "id_ID",
+        ProofLang::He => "he_IL",
         ProofLang::Es | ProofLang::EsMx | ProofLang::Es419 | ProofLang::EsUy => es::dictionary_name(lang),
         _ => return None,
     };
@@ -446,6 +455,7 @@ fn dictionary_loaded(lang: ProofLang) -> Option<bool> {
         ProofLang::Tr => tr::has_dictionary(),
         ProofLang::Ru => ru::has_dictionary(),
         ProofLang::Cs => cs::has_dictionary(),
+        ProofLang::He => he::has_dictionary(),
         ProofLang::Id => id::has_dictionary(),
         l if l.is_spanish() => es::has_dictionary(l),
         _ => return None,
@@ -464,6 +474,7 @@ fn dictionary_needed(lang: ProofLang, installed: bool) -> Option<&'static str> {
         ProofLang::Tr => Some("tr_TR"),
         ProofLang::Ru => Some("ru_RU"),
         ProofLang::Cs => Some("cs_CZ"),
+        ProofLang::He => Some("he_IL"),
         ProofLang::Id => Some("id_ID"),
         l if l.is_spanish() => Some(es::dictionary_name(l)),
         _ => None,
@@ -747,6 +758,7 @@ fn spelling_issue(text: &str, a: usize, b: usize, lang: ProofLang, opts: &Option
         ProofLang::Tr => "Olası yazım hatası",
         ProofLang::Ru => "Возможна орфографическая ошибка",
         ProofLang::Cs => "Možná pravopisná chyba",
+        ProofLang::He => "ייתכן שגיאת כתיב",
         ProofLang::Id => "Kemungkinan salah eja",
         ProofLang::Es | ProofLang::EsMx | ProofLang::Es419 | ProofLang::EsUy => "Posible error ortográfico",
         _ => "Possible spelling mistake",
@@ -786,6 +798,7 @@ pub fn is_correct_in_with(word: &str, lang: ProofLang, opts: &Options) -> bool {
             accepted_by_options(word, opts) || es::is_correct_with_options(word, lang, opts)
         }
         ProofLang::Cs => accepted_by_options(word, opts) || cs::is_correct_with_options(word, opts),
+        ProofLang::He => accepted_by_options(word, opts) || he::is_correct_with_options(word, opts),
         ProofLang::Id => accepted_by_options(word, opts) || id::is_correct_with_options(word, opts),
         ProofLang::Bg | ProofLang::De | ProofLang::Other => true,
     }
@@ -804,6 +817,7 @@ pub fn suggest_in(word: &str, max: usize, lang: ProofLang) -> Vec<String> {
         ProofLang::Tr => tr::suggest(word, max),
         ProofLang::Ru => ru::suggest(word, max),
         ProofLang::Cs => cs::suggest(word, max),
+        ProofLang::He => he::suggest(word, max),
         ProofLang::Id => id::suggest(word, max),
         ProofLang::Es | ProofLang::EsMx | ProofLang::Es419 | ProofLang::EsUy => es::suggest(word, max, lang),
         ProofLang::Bg | ProofLang::De | ProofLang::Other => Vec::new(),
@@ -832,6 +846,8 @@ fn grammar_in(text: &str, lang: ProofLang, capital_first: bool) -> Vec<Issue> {
         ProofLang::Ru => ru::grammar::check_with(text, capital_first),
         // Czech has no sentence-capital rule, so a list item needs no exception.
         ProofLang::Cs => cs::grammar::check(text),
+        // Hebrew has no capitals either.
+        ProofLang::He => he::grammar::check(text),
         ProofLang::Id => id::grammar::check(text),
         // Spanish has no sentence-capital rule either.
         ProofLang::Es | ProofLang::EsMx | ProofLang::Es419 | ProofLang::EsUy => es::grammar::check(text, lang),
@@ -1031,6 +1047,7 @@ mod tests {
             (ProofLang::Tr, "tr_TR"),
             (ProofLang::Ru, "ru_RU"),
             (ProofLang::Cs, "cs_CZ"),
+            (ProofLang::He, "he_IL"),
             (ProofLang::Id, "id_ID"),
             // #3360: each Spanish variety names its own.
             (ProofLang::Es, "es_ES"),
@@ -1096,11 +1113,12 @@ mod tests {
         let before = dictionary_generation();
         set_dictionaries_folder(Some(dir.clone()));
         assert!(dictionary_generation() > before, "cached checks are dropped");
-        // Turkish has no test dictionary to put in the folder; Russian, Czech, Indonesian and the Spanishes follow it.
+        // Turkish has no test dictionary to put in the folder; Russian, Czech, Hebrew, Indonesian
+        // and the Spanishes follow it.
         let found = installed_dictionaries();
         assert_eq!(found.get(4).map(|(lang, _)| *lang), Some(ProofLang::Tr));
         assert_eq!(
-            found[7..],
+            found[8..],
             [
                 (ProofLang::Id, Some(dir.join("id_ID.dic"))),
                 (ProofLang::Es, Some(dir.join("es_ES.dic"))),
@@ -1126,6 +1144,9 @@ mod tests {
         // test modules do, concurrently, in tests of their own — asserting an exact path here
         // would race them for no reason this test needs to care about.
         assert_eq!(found[5..7].iter().map(|(lang, _)| *lang).collect::<Vec<_>>(), [ProofLang::Ru, ProofLang::Cs], "{found:?}");
+        // Hebrew comes from the system (`he_IL`), not from a folder, so only its language belongs
+        // here; its own tests install a dictionary directly, concurrently with this one.
+        assert_eq!(found[7].0, ProofLang::He, "{found:?}");
         assert!(is_correct_in("chrząszcz", ProofLang::Pl) && !is_correct_in("chrzonszcz", ProofLang::Pl));
         assert!(is_correct_in("tenés", ProofLang::EsUy) && !is_correct_in("prueva", ProofLang::EsUy));
         assert!(is_correct_in("дом", ProofLang::Ru) && !is_correct_in("дум", ProofLang::Ru));
