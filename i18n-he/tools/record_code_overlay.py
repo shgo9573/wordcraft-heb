@@ -34,6 +34,7 @@ FILES = [
     "crates/proof/src/hyphen.rs",
     "crates/proof/src/lang.rs",
     "crates/proof/src/lib.rs",
+    "crates/ui-egui/src/app.rs",
     "crates/ui-egui/src/app/fonts.rs",
     "crates/ui-egui/src/chrome.rs",
     "crates/ui-egui/src/dialogs/chrome.rs",
@@ -47,6 +48,7 @@ FILES = [
     "crates/ui-egui/src/ribbon/language.rs",
     "crates/ui-egui/src/widgets/combo.rs",
     "crates/ui-egui/src/widgets/groups.rs",
+    "crates/ui-egui/src/window_ui.rs",
 ]
 
 # Written by `apply_code_overlay.py` itself (the Hebrew row and its comment), not recorded here.

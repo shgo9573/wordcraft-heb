@@ -164,7 +164,11 @@ impl WordApp {
             ctx.all_styles_mut(|s| s.set_right_to_left(rtl));
         }
         let system_cjk = self.fonts_system_cjk || self.want_system_cjk || lang.uses_cjk();
-        if !self.styled || lang.prefers_hans() != self.fonts_hans || lang.prefers_korean() != self.fonts_korean || system_cjk != self.fonts_system_cjk
+        if !self.styled
+            || lang.code() != self.fonts_lang
+            || lang.prefers_hans() != self.fonts_hans
+            || lang.prefers_korean() != self.fonts_korean
+            || system_cjk != self.fonts_system_cjk
         {
             // Every window's borrowed faces: the fonts are the app's.
             let mut faces = self.canvas.ime_faces.clone();
@@ -184,6 +188,7 @@ impl WordApp {
             self.fonts_hans = lang.prefers_hans();
             self.fonts_korean = lang.prefers_korean();
             self.fonts_system_cjk = system_cjk;
+            self.fonts_lang = lang.code();
             // Mod with -, = and 0 are Word shortcuts (optional hyphen, subscript, paragraph spacing);
             // egui's keyboard zoom would also scale the whole window on them. Zoom is View › Zoom.
             // egui quits on Command-Q, which is Ctrl+Q off the Mac: Word's Reset Paragraph
