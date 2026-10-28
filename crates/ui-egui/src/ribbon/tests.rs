@@ -375,7 +375,11 @@ fn ribbon_groups_fit_above_their_labels() {
         h.state_mut().run("ui.language", json!({"value": lang.code()})).unwrap();
         for tab in TABS.iter().filter(|t| **t != "File") {
             h.state_mut().run("ui.tab", json!({"tab": tab})).unwrap();
-            h.run_steps(2);
+            // A frame that panics says which tab and language it was drawing: the ribbon's own
+            // message names neither.
+            if let Err(panic) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| h.run_steps(2))) {
+                panic!("while drawing {} › {tab}: {panic:?}", lang.code());
+            }
             crate::widgets::TALL_GROUPS.with(|g| g.borrow_mut().clear());
             h.run_steps(1);
             let found = crate::widgets::TALL_GROUPS.with(|g| g.take());

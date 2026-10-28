@@ -35,6 +35,7 @@ pub fn group_titled(ui: &mut Ui, id_title: &str, title: &str, launcher: Option<&
         // room a group's controls are given is read off this row (inside a right-to-left row the
         // space to the left is unbounded), so the two directions give exactly the same box.
         let row_w = ui.available_width();
+        debug_assert!(row_w.is_finite(), "group {id_title}: the ribbon row's width is {row_w}");
         let column = if rtl { egui::Layout::top_down(egui::Align::Max) } else { egui::Layout::top_down(egui::Align::Min) };
         let controls = if rtl { egui::Layout::right_to_left(egui::Align::Min) } else { egui::Layout::left_to_right(egui::Align::Min) };
         let inner = ui.with_layout(column, |ui| {

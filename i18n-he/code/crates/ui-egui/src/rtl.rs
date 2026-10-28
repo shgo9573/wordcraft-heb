@@ -32,12 +32,22 @@ pub fn is_rtl(ui: &Ui) -> bool {
     ui.style().right_to_left
 }
 
+/// A size a child can be laid out in: a right-to-left row can be offered an unbounded one (the
+/// space to its left has no end at the edge of the window), and a row laid out `∞` wide from the
+/// right edge starts at `-∞`, whose rect is `NaN` and stops the frame. The screen is the bound:
+/// a row never needs to be wider than that to place its widgets.
+fn bounded(ui: &Ui, size: egui::Vec2) -> egui::Vec2 {
+    let screen = ui.ctx().screen_rect().size();
+    let finite = |v: f32, fallback: f32| if v.is_finite() && v >= 0.0 { v } else { fallback };
+    egui::vec2(finite(size.x, screen.x), finite(size.y, screen.y))
+}
+
 /// [`Ui::horizontal`], right to left when the interface is.
 pub fn horizontal<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
     if is_rtl(ui) {
         // The size `Ui::horizontal` reserves: the room left in the row, one control line tall.
         let size = egui::vec2(ui.available_size_before_wrap().x, ui.spacing().interact_size.y);
-        ui.allocate_ui_with_layout(size, Layout::right_to_left(Align::Center), add)
+        ui.allocate_ui_with_layout(bounded(ui, size), Layout::right_to_left(Align::Center), add)
     } else {
         ui.horizontal(add)
     }
@@ -46,7 +56,7 @@ pub fn horizontal<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerRespon
 /// [`Ui::horizontal_centered`], right to left when the interface is.
 pub fn horizontal_centered<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
     if is_rtl(ui) {
-        let size = ui.available_size_before_wrap();
+        let size = bounded(ui, ui.available_size_before_wrap());
         let layout = Layout::right_to_left(Align::Center).with_cross_align(Align::Center);
         ui.allocate_ui_with_layout(size, layout, add)
     } else {
@@ -58,7 +68,7 @@ pub fn horizontal_centered<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> In
 /// the row of controls in a folded group's drop-down.
 pub fn horizontal_top<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
     if is_rtl(ui) {
-        let size = ui.available_size_before_wrap();
+        let size = bounded(ui, ui.available_size_before_wrap());
         let layout = Layout::right_to_left(Align::Center).with_cross_align(Align::Min);
         ui.allocate_ui_with_layout(size, layout, add)
     } else {
@@ -69,7 +79,7 @@ pub fn horizontal_top<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerRe
 /// [`Ui::horizontal_wrapped`], right to left when the interface is.
 pub fn horizontal_wrapped<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
     if is_rtl(ui) {
-        let size = egui::vec2(ui.available_size_before_wrap().x, ui.spacing().interact_size.y);
+        let size = bounded(ui, egui::vec2(ui.available_size_before_wrap().x, ui.spacing().interact_size.y));
         let layout = Layout::right_to_left(Align::Center).with_main_wrap(true);
         ui.allocate_ui_with_layout(size, layout, add)
     } else {

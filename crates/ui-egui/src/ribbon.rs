@@ -353,6 +353,9 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                 // edge and the rest run leftwards (`crate::rtl`, `widgets::group_titled`).
                 crate::rtl::horizontal_top(ui, |ui| {
                     ui.spacing_mut().item_spacing = vec2(2.0, 2.0);
+                    // A group is measured along this row: an unbounded one has no edge to start
+                    // at, and would place its groups at infinity.
+                    debug_assert!(ui.available_width().is_finite(), "the ribbon row of `{}` has no width", app.ui.tab);
                     match entry {
                         // Every tab hidden: nothing to show.
                         Some(e) if e.hidden => return,
