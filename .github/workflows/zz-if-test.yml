@@ -31,12 +31,13 @@ jobs:
         run: echo "version=1.2.3" >> "$GITHUB_OUTPUT"
   releaseA:
     needs: [build]
-    if: needs.build.result == 'success'
+    if: ${{ always() && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - run: echo "releaseA ran, version=${{ needs.build.outputs.version }}"
   releaseB:
     needs: [build]
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - run: echo "releaseB ran"
