@@ -4,24 +4,39 @@ on:
     paths:
       - ".github/workflows/zz-if-test.yml"
 jobs:
-  fakebuild:
+  catalogs:
     runs-on: ubuntu-latest
     steps:
-      - run: echo fake build
-  with-if:
-    needs: [fakebuild]
-    if: needs.fakebuild.result == 'success'
+      - run: echo catalogs
+  sync:
+    needs: [catalogs]
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.m.outputs.changed }}
+    steps:
+      - id: m
+        run: echo "changed=false" >> "$GITHUB_OUTPUT"
+  build:
+    needs: [catalogs, sync]
+    if: |
+      !failure() && !cancelled() && needs.catalogs.result == 'success' &&
+      (needs.sync.outputs.changed == 'true' || github.event_name == 'push' ||
+       github.event_name == 'workflow_dispatch' || inputs.force-build)
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - id: v
+        run: echo "version=1.2.3" >> "$GITHUB_OUTPUT"
+  releaseA:
+    needs: [build]
+    if: needs.build.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - run: echo "with-if ran; event=${{ github.event_name }}"
-  with-braces:
-    needs: [fakebuild]
-    if: ${{ needs.fakebuild.result == 'success' && github.event_name != 'push' }}
+      - run: echo "releaseA ran, version=${{ needs.build.outputs.version }}"
+  releaseB:
+    needs: [build]
     runs-on: ubuntu-latest
     steps:
-      - run: echo "with-braces ran"
-  no-if:
-    needs: [fakebuild]
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "no-if ran"
+      - run: echo "releaseB ran"
