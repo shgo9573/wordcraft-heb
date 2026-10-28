@@ -1,0 +1,78 @@
+name: Hebrew check (Rust)
+
+# The Hebrew overlay's Rust — `crates/ui-egui/src/rtl.rs`, `crates/proof/src/he/` and the call
+# sites it converts — has to compile, and the Hebrew proofing tests have to pass, before a pull
+# request is merged. This is a workflow of its own so the daily sync's long package build
+# (`sync-upstream.yml`, whose concurrency group pauses everything else) does not hold a pull
+# request's verdict back.
+
+on:
+  pull_request:
+    paths:
+      - "i18n-he/**"
+      - "crates/**"
+      - ".github/workflows/hebrew-check.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hebrew-check-${{ github.head_ref }}
+  cancel-in-progress: true
+
+env:
+  CRAFT_FONTS_REF: b076417b5880bd4154bd22f00695b1d28c6bea83
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  check:
+    name: Check (Rust)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check every catalog row (craft-i18n's rules, plus this fork's)
+        run: |
+          set -euo pipefail
+          rev=$(tr -d '[:space:]' < craft-i18n.rev)
+          curl -fsSL -o "$RUNNER_TEMP/craft-i18n.tar.gz" "https://codeload.github.com/storytold/craft-i18n/tar.gz/$rev"
+          mkdir -p "$RUNNER_TEMP/craft-i18n"
+          tar -xzf "$RUNNER_TEMP/craft-i18n.tar.gz" -C "$RUNNER_TEMP/craft-i18n" --strip-components=1
+          python3 i18n-he/tools/check.py --craft-i18n "$RUNNER_TEMP/craft-i18n"
+      - name: Check that the Hebrew code overlay is in place and recorded
+        run: |
+          python3 i18n-he/tools/apply_code_overlay.py --check
+          python3 i18n-he/tools/record_code_overlay.py --check
+      - name: Install the Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev \
+            libxi-dev libgtk-3-dev libfontconfig1-dev libfreetype-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: hebrew-check
+      - name: Interface catalogs, with Hebrew laid over craft-i18n
+        run: |
+          set -euo pipefail
+          python3 i18n-he/tools/assemble.py --craft-i18n "$RUNNER_TEMP/craft-i18n" --out "$RUNNER_TEMP/craft-i18n-he"
+          echo "CRAFT_I18N_DIR=$RUNNER_TEMP/craft-i18n-he" >> "$GITHUB_ENV"
+          echo "CRAFT_I18N_REQUIRED=1" >> "$GITHUB_ENV"
+      - name: The suite's fonts, when they can be fetched (a check without them warns and uses the system's)
+        run: |
+          set -euo pipefail
+          if curl -fsSL -o "$RUNNER_TEMP/craft-fonts.tar.gz" "https://codeload.github.com/storytold/craft-fonts/tar.gz/${CRAFT_FONTS_REF}"; then
+            mkdir -p "$RUNNER_TEMP/craft-fonts"
+            tar -xzf "$RUNNER_TEMP/craft-fonts.tar.gz" -C "$RUNNER_TEMP/craft-fonts" --strip-components=1
+            echo "CRAFT_FONTS_DIR=$RUNNER_TEMP/craft-fonts" >> "$GITHUB_ENV"
+          else
+            echo "::warning::craft-fonts ${CRAFT_FONTS_REF} could not be fetched; checking with the installed fonts"
+          fi
+      - name: cargo check over the workspace
+        run: cargo check --workspace --all-targets
+      - name: The proofing crate's tests (Hebrew spelling, suggestions, grammar and hyphenation among them)
+        run: cargo test -p wordcraft-proof --lib
+      - name: The interface crate's own tests (the right-to-left layout among them)
+        run: cargo test -p wordcraft-ui-egui --lib
