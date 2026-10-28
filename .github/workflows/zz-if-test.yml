@@ -1,0 +1,27 @@
+name: if-test
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/zz-if-test.yml"
+jobs:
+  fakebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo fake build
+  with-if:
+    needs: [fakebuild]
+    if: needs.fakebuild.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "with-if ran; event=${{ github.event_name }}"
+  with-braces:
+    needs: [fakebuild]
+    if: ${{ needs.fakebuild.result == 'success' && github.event_name != 'push' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "with-braces ran"
+  no-if:
+    needs: [fakebuild]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "no-if ran"
