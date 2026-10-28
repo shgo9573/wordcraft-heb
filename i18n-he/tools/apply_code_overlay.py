@@ -184,6 +184,12 @@ def apply_fonts(source: str) -> tuple[str, list[str]]:
     return source.replace(FONTS_ANCHOR, FONTS_ANCHOR + FONTS_LINES, 1), ["app/fonts.rs: borrow document faces for the interface text"]
 
 
+def squeezed(text: str) -> str:
+    """`text` with every run of whitespace made one space: `--check` asks whether the code is
+    there, and the CI's `cargo fmt --all` moves line breaks without changing it."""
+    return " ".join(text.split())
+
+
 def apply_hunks(source: str, hunks: list[dict], name: str) -> tuple[str, list[str]]:
     """The one-line-to-one-block edits `code-overlay.json` lists for a file, idempotently.
 
@@ -272,9 +278,9 @@ def main() -> int:
             source = path.read_text(encoding="utf-8")
             missing += [f"{path.relative_to(root)}: no `{m}`" for m in markers if m not in source]
         for path, patch in generics.items():
-            source = path.read_text(encoding="utf-8") if path.exists() else ""
+            source = squeezed(path.read_text(encoding="utf-8")) if path.exists() else ""
             for hunk in patch:
-                applied, wanted = hunk.get("insert", hunk.get("new", "")), hunk.get("old", hunk.get("after", ""))
+                applied, wanted = squeezed(hunk.get("insert", hunk.get("new", ""))), squeezed(hunk.get("old", hunk.get("after", "")))
                 # A deleting hunk leaves nothing to look for: it is applied when its text is gone.
                 if (applied not in source) if applied else (wanted in source):
                     missing.append(f"{path.relative_to(root)}: no `{wanted.strip().splitlines()[0][:70]}`")

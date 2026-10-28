@@ -105,18 +105,31 @@ def hunks_for(before: str, after: str, path: str) -> list[dict]:
     return hunks
 
 
+def squeezed(text: str) -> str:
+    """`text` with every run of whitespace made one space.
+
+    The CI formats the tree (`cargo fmt --all`) and commits the result, so the code a hunk records
+    is the same code with other line breaks and indentation afterwards. The overlay is about the
+    code, not about where rustfmt wrapped it: both checks compare it this way.
+    """
+    return " ".join(text.split())
+
+
 def missing_from_tree(root: Path, table: dict[str, list[dict]]) -> list[str]:
     """The recorded changes that the tree does not (or does still) show, and stale copies."""
     problems: list[str] = []
     for path, hunks in table.items():
-        source = (root / path).read_text(encoding="utf-8")
+        source = squeezed((root / path).read_text(encoding="utf-8"))
         for hunk in hunks:
             if "old" in hunk:
-                if hunk["new"] not in source:
-                    problems.append(f"{path}: misses the overlay's `{hunk['new'].strip().splitlines()[0][:60]}`")
-                elif hunk["old"] in source:
-                    problems.append(f"{path}: still has the text the overlay replaces: `{hunk['old'].strip().splitlines()[0][:60]}`")
-            elif hunk["insert"] not in source:
+                # The new text first: a change whose replacement happens to contain what it
+                # replaced (`run_steps(2)` in a block that is still `run_steps(2)` inside a
+                # `catch_unwind`) is applied, not half applied.
+                if squeezed(hunk["new"]) in source:
+                    continue
+                still = "still has the text the overlay replaces" if squeezed(hunk["old"]) in source else "has neither the overlay's text nor the text it replaces"
+                problems.append(f"{path}: {still}: `{hunk['old'].strip().splitlines()[0][:60]}`")
+            elif squeezed(hunk["insert"]) not in source:
                 problems.append(f"{path}: misses the overlay's `{hunk['insert'].strip().splitlines()[0][:60]}`")
     code = root / "i18n-he/code"
     for copy in sorted(code.rglob("*.rs")):
@@ -124,7 +137,7 @@ def missing_from_tree(root: Path, table: dict[str, list[dict]]) -> list[str]:
         target = root / relative
         if not target.exists():
             problems.append(f"{relative}: missing (copy it from {copy.relative_to(root)})")
-        elif target.read_bytes() != copy.read_bytes():
+        elif squeezed(target.read_text(encoding="utf-8")) != squeezed(copy.read_text(encoding="utf-8")):
             problems.append(f"{relative}: drifted from {copy.relative_to(root)}")
     return problems
 

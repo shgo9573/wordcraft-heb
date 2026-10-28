@@ -37,7 +37,7 @@ pub fn is_rtl(ui: &Ui) -> bool {
 /// right edge starts at `-∞`, whose rect is `NaN` and stops the frame. The screen is the bound:
 /// a row never needs to be wider than that to place its widgets.
 fn bounded(ui: &Ui, size: egui::Vec2) -> egui::Vec2 {
-    let screen = ui.ctx().screen_rect().size();
+    let screen = ui.ctx().content_rect().size();
     let finite = |v: f32, fallback: f32| if v.is_finite() && v >= 0.0 { v } else { fallback };
     egui::vec2(finite(size.x, screen.x), finite(size.y, screen.y))
 }
