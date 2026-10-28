@@ -55,19 +55,40 @@ def annotation(error: dict) -> str:
     return f"::error::{message}"
 
 
+def test_failures(lines: list[str]) -> list[str]:
+    """The part of a `cargo test` log that names the failing tests, with the panics around them."""
+    named = [index for index, line in enumerate(lines) if TEST_FAILURE.match(line) or line.strip() == "failures:"]
+    if not named:
+        return []
+    out: list[str] = []
+    shown: set[tuple[int, int]] = set()
+    for index in named:
+        start, end = max(0, index - CONTEXT), min(len(lines), index + CONTEXT + 1)
+        if any(start < shown_end and shown_start < end for shown_start, shown_end in shown):
+            continue
+        shown.add((start, end))
+        out += ["```", *[line.rstrip() for line in lines[start:end]], "```", ""]
+    return out
+
+
 def markdown(errors: list[dict], lines: list[str], title: str) -> str:
     out = [f"## {title}", ""]
+    # A test log first: cargo's own `error: test failed …` line is not the interesting one.
+    failures = test_failures(lines)
+    if failures:
+        out += [f"{len(failures) // 4} failure block(s) in the log:", ""] + failures
+        tail = [line for line in lines if not NOISE.match(line)][-20:]
+        out += ["The log's tail:", "", "```", *[line.rstrip() for line in tail], "```"]
+        return "\n".join(out) + "\n"
     if not errors:
+        # Not a rustc diagnostic: a dependency that failed to build or a tool that is missing.
         out += ["No rustc error line found; the log's tail:", "", "```", *[line.rstrip() for line in lines[-40:]], "```"]
         return "\n".join(out) + "\n"
     files = sorted({error["file"] for error in errors if error["file"]})
     out += [f"{len(errors)} error line(s) in {len(files)} file(s).", ""]
     shown: set[tuple[int, int]] = set()
     for error in errors[:MAX_REPORT_ERRORS]:
-        if error["file"]:
-            where = f"`{error['file']}:{error['line']}:{error['col']}`"
-        else:
-            where = "rustc"
+        where = f"`{error['file']}:{error['line']}:{error['col']}`" if error["file"] else "rustc"
         out.append(f"* {where} — {error['message']}")
         # The lines around an error explain it, once: the rest are one line each.
         if not error["file"]:

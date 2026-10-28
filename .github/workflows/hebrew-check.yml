@@ -81,6 +81,7 @@ jobs:
           python3 i18n-he/tools/rust_failures.py --annotate "$RUNNER_TEMP/rust.log"
           exit "$status"
       - name: The proofing crate's tests (Hebrew spelling, suggestions, grammar and hyphenation among them)
+        if: ${{ !cancelled() }}
         run: |
           set +e
           cargo test -p wordcraft-proof --lib 2>&1 | tee "$RUNNER_TEMP/proof-tests.log"
@@ -88,6 +89,7 @@ jobs:
           python3 i18n-he/tools/rust_failures.py --annotate --title "The proofing tests failed" "$RUNNER_TEMP/proof-tests.log"
           exit "$status"
       - name: The interface crate's own tests (the right-to-left layout among them)
+        if: ${{ !cancelled() }}
         run: |
           set +e
           cargo test -p wordcraft-ui-egui --lib 2>&1 | tee "$RUNNER_TEMP/ui-tests.log"
