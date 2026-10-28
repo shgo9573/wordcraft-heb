@@ -229,7 +229,9 @@ jobs:
   release:
     name: Publish the release
     needs: [build]
-    if: github.event_name != 'pull_request'
+    # Only when there is an installer to publish: `build` is skipped on a pull request, and a
+    # skipped job's result is not 'success', so a pull request never publishes.
+    if: needs.build.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
