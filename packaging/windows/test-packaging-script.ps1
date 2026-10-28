@@ -26,4 +26,11 @@ $signs = @($commands | Where-Object {
 })
 if ($signs.Count -ne 1) { throw 'Expected the MSI to be signed exactly once.' }
 if ($checks[0].Extent.StartOffset -ge $signs[0].Extent.StartOffset) { throw 'The MSI must pass the policy check before it is signed.' }
-Write-Output 'PASS the WordCraft MSI is policy-checked before it is signed.'
+# The portable zip is the no-install build: without `portable.txt` beside the exe the app writes its
+# profile to %APPDATA%\WordCraft, which is a copy that leaves traces (crates/control-key).
+$text = $ast.Extent.Text
+$marker = $text.IndexOf("Join-Path `$Portable 'portable.txt'")
+if ($marker -lt 0) { throw 'The portable zip must carry portable.txt: the marker that keeps the profile beside the app.' }
+if ($marker -gt $text.IndexOf('Compress-Archive')) { throw 'portable.txt must be written before the portable zip is compressed.' }
+Write-Output 'PASS the WordCraft MSI is policy-checked before it is signed, and the portable zip is portable.'
+
