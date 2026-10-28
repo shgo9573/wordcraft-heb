@@ -231,7 +231,11 @@ jobs:
     needs: [build]
     # Only when there is an installer to publish: `build` is skipped on a pull request, and a
     # skipped job's result is not 'success', so a pull request never publishes.
-    if: needs.build.result == 'success'
+    #
+    # `always()` is what makes it run at all: `build` needs `sync`, which is skipped on a push, and
+    # a skipped job anywhere above makes GitHub skip everything below it — an `if` without
+    # `always()` is not enough (a real run proved it: build succeeded and this job was skipped).
+    if: ${{ always() && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
