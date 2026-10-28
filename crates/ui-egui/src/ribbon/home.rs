@@ -275,7 +275,8 @@ pub(super) fn home(app: &mut WordApp, ui: &mut Ui) {
                     ("alignRight", "Align Right", "para.alignRight", align == A::Right),
                     ("justify", "Justify", "para.justify", align == A::Justify),
                 ];
-                let mut directions = [("textLtr", "Left-to-Right Text Direction", "para.ltr", !rtl), ("textRtl", "Right-to-Left Text Direction", "para.rtl", rtl)];
+                let mut directions =
+                    [("textLtr", "Left-to-Right Text Direction", "para.ltr", !rtl), ("textRtl", "Right-to-Left Text Direction", "para.rtl", rtl)];
                 if crate::rtl::is_rtl(ui) {
                     // The row is drawn from its right edge in a Hebrew interface, so the first
                     // button here is the rightmost one: the flush-right icon must come first and the
