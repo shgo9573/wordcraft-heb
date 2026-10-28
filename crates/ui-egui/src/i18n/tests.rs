@@ -169,6 +169,41 @@ fn the_language_setting_is_a_ui_command_and_persists() {
     assert_eq!(app.run("ui.language", serde_json::json!({})).unwrap()["language"], AUTO);
 }
 
+/// This fork opens in Hebrew, and Hebrew is one row of File ▸ Options ▸ Interface language like
+/// every other language. A profile that never chose a language moves to it; a choice (`Automatic`
+/// included) is kept.
+#[test]
+fn this_fork_opens_in_hebrew_and_offers_hebrew_in_the_language_list() {
+    needs_catalogs!();
+    if !offers_hebrew() {
+        return;
+    }
+    assert_eq!(DEFAULT_LANGUAGE, "he");
+    let he = lang(DEFAULT_LANGUAGE);
+    assert!(he.is_rtl(), "Hebrew mirrors the interface");
+    assert_eq!(he.name(), "עברית", "the picker shows it under its own name");
+    assert!(Lang::for_picker().iter().any(|l| l.code() == DEFAULT_LANGUAGE), "Hebrew is in the picker");
+
+    // `ui.json` from a version before `languageChosen`: `auto` was written on the first run
+    // whether or not anyone had chosen, so such a profile opens in Hebrew.
+    let mut old: crate::UiState = crate::UiState::from_json(br#"{"tab":"Home","language":"auto"}"#).unwrap();
+    assert!(!old.language_chosen);
+    old.adopt_default_language();
+    assert_eq!(old.language, DEFAULT_LANGUAGE);
+    assert_eq!(Lang::from_pref(&old.language), he);
+
+    // A choice is kept, and choosing `Automatic` records one, so `auto` survives a restart.
+    let mut chosen: crate::UiState = crate::UiState::from_json(br#"{"language":"auto","languageChosen":true}"#).unwrap();
+    chosen.adopt_default_language();
+    assert_eq!(chosen.language, AUTO, "the user's Automatic stays automatic");
+    let mut app = crate::WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::new()), Default::default());
+    assert!(!app.ui.language_chosen, "a new window has not chosen a language");
+    app.run("ui.language", serde_json::json!({"value": "auto"})).unwrap();
+    assert!(app.ui.language_chosen, "picking Automatic is a choice");
+    let restored: crate::UiState = serde_json::from_str(&serde_json::to_string(&app.ui).unwrap()).unwrap();
+    assert_eq!(restored.language, AUTO);
+}
+
 #[test]
 fn ukrainian_locales_and_saved_preference_work_without_changing_the_document() {
     needs_catalogs!();

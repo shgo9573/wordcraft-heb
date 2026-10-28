@@ -263,6 +263,7 @@ impl WordApp {
             author: _,
             window: _,
             language: _,
+            language_chosen: _,
             editing: _,
             read_aloud_rate: _,
             read_aloud_skip_citations: _,

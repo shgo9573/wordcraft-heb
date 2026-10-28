@@ -103,7 +103,12 @@ FONTS_LINES = '''            // Interface text in a script the interface faces l
             // borrows a document face, as the caption does: the Hebrew menus, dialogs and the
             // language picker would otherwise draw as boxes. Looked at again only when the fonts
             // are installed, that is when the language changes.
-            faces.extend(theme::faces_for_interface_text(lang.catalog_texts().chain(std::iter::once(lang.name()))));
+            //
+            // Every language's own name, not just this one's: File ▸ Options lists them all, so a
+            // Hebrew interface (the default) shows „עברית” in that list before Hebrew is the
+            // current language — and after switching away from it.
+            let names = i18n::Lang::all().map(i18n::Lang::name);
+            faces.extend(theme::faces_for_interface_text(lang.catalog_texts().chain(names)));
 '''
 
 
