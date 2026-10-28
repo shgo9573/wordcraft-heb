@@ -30,7 +30,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from code_match import has_code, same_code  # noqa: E402  (the sibling tool's matcher)
+from code_match import applied, has_code, same_code  # noqa: E402  (the sibling tool's matcher)
 
 # The files the Hebrew overlay edits, by their place in the tree. A file that upstream does not
 # have (it was renamed or removed) is reported, so the table stops quietly rotting. The ribbon is
@@ -57,12 +57,16 @@ FILES = [
     "crates/ui-egui/src/options.rs",
     "crates/ui-egui/src/ribbon.rs",
     "crates/ui-egui/src/ribbon/common.rs",
+    "crates/ui-egui/src/ribbon/design.rs",
+    "crates/ui-egui/src/ribbon/home.rs",
     "crates/ui-egui/src/ribbon/layout.rs",
+    "crates/ui-egui/src/ribbon/table.rs",
     "crates/ui-egui/src/ribbon/language.rs",
     "crates/ui-egui/src/ribbon/tests.rs",
     "crates/ui-egui/src/ribbon_fit.rs",
     "crates/ui-egui/src/widgets.rs",
     "crates/ui-egui/src/widgets/buttons.rs",
+    "crates/ui-egui/src/widgets/combo.rs",
     "crates/ui-egui/src/widgets/groups.rs",
     "crates/ui-egui/src/widgets/icon_buttons.rs",
     "crates/ui-egui/src/window_ui.rs",
@@ -116,21 +120,15 @@ def missing_from_tree(root: Path, table: dict[str, list[dict]]) -> list[str]:
     for path, hunks in table.items():
         source = (root / path).read_text(encoding="utf-8")
         for hunk in hunks:
-            if "old" in hunk and not hunk["new"]:
-                # A hunk that only deletes is applied when the text it removes is gone.
-                if has_code(source, hunk["old"]):
-                    problems.append(f"{path}: still has the line the overlay removes: `{hunk['old'].strip().splitlines()[0][:60]}`")
+            if applied(source, hunk):
                 continue
-            if "old" in hunk:
-                # The new text first: a change whose replacement happens to contain what it
-                # replaced (`run_steps(2)` in a block that is still `run_steps(2)` inside a
-                # `catch_unwind`) is applied, not half applied.
-                if has_code(source, hunk["new"]):
-                    continue
+            if "insert" in hunk:
+                problems.append(f"{path}: misses the overlay's `{hunk['insert'].strip().splitlines()[0][:60]}`")
+            elif not hunk["new"]:
+                problems.append(f"{path}: still has the line the overlay removes: `{hunk['old'].strip().splitlines()[0][:60]}`")
+            else:
                 still = "still has the text the overlay replaces" if has_code(source, hunk["old"]) else "has neither the overlay's text nor the text it replaces"
                 problems.append(f"{path}: {still}: `{hunk['old'].strip().splitlines()[0][:60]}`")
-            elif not has_code(source, hunk["insert"]):
-                problems.append(f"{path}: misses the overlay's `{hunk['insert'].strip().splitlines()[0][:60]}`")
     code = root / "i18n-he/code"
     for copy in sorted(code.rglob("*.rs")):
         relative = copy.relative_to(code)

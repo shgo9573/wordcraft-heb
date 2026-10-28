@@ -286,7 +286,10 @@ pub(super) fn table_layout(app: &mut WordApp, ui: &mut Ui) {
         });
     });
     group(ui, "Alignment", None, app, |ui, app| {
-        egui::Grid::new("cellalign").spacing(vec2(1.0, 1.0)).show(ui, |ui| {
+        // A grid measures its cells from its row's left edge, and a Hebrew row leaves that edge
+        // open: see `rtl::grid_box`. Its cells still go left to right, so in a Hebrew interface the
+        // right-hand cell of a row is the paragraph's start.
+        crate::rtl::grid_box(ui, |ui| egui::Grid::new("cellalign").spacing(vec2(1.0, 1.0)).show(ui, |ui| {
             for row in [
                 [("topLeft", "Align Top Left"), ("topCenter", "Align Top Center"), ("topRight", "Align Top Right")],
                 [("centerLeft", "Align Center Left"), ("center", "Align Center"), ("centerRight", "Align Center Right")],
@@ -297,7 +300,7 @@ pub(super) fn table_layout(app: &mut WordApp, ui: &mut Ui) {
                 }
                 ui.end_row();
             }
-        });
+        }));
         big(ui, app, "textDirection", "Text\nDirection", "table.textDirection", json!({}), false);
         big(ui, app, "cellMargins", "Cell\nMargins", "table.cellMargins", json!({}), false);
     });

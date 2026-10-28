@@ -30,7 +30,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from code_match import CODE_TOKEN, code_matches, has_code  # noqa: E402  (the sibling matcher)
+from code_match import applied, candidates, has_code  # noqa: E402  (the sibling matcher)
 
 HE_ROW = '''    // Hebrew, right to left; `he`, `he-IL` and `he_IL.UTF-8` resolve here. Its catalog is
     // this fork's (`i18n-he/`, laid over craft-i18n by `i18n-he/tools/assemble.py`), not
@@ -187,97 +187,26 @@ def apply_fonts(source: str) -> tuple[str, list[str]]:
     return source.replace(FONTS_ANCHOR, FONTS_ANCHOR + FONTS_LINES, 1), ["app/fonts.rs: borrow document faces for the interface text"]
 
 
-def _candidates(source: str, text: str, anchor: bool) -> list[tuple[int, int]]:
-    """Every place `source` could have `text`: exact first, then as code (whitespace ignored)."""
-    exact = [match.span() for match in re.finditer(re.escape(text), source)]
-    if exact:
-        return exact
-    where = code_matches(source, text)
-    spans = [match.span() for match in where]
-    return [span for span in spans if _whole_lines(source, span)] if anchor else spans
-
-
-def locate(source: str, text: str, name: str, what: str, anchor: bool) -> tuple[int, int] | None:
-    """Where `source` has `text`, or None; SystemExit when it has it more than once.
-
-    The text is looked for exactly first, which keeps the precision a hunk was recorded with (the
-    indentation of an anchor tells one closing brace from another). Only when the exact text has
-    moved — `cargo fmt` re-wrapped it on this fork's `main` — is it looked for as code, whitespace
-    ignored; an anchor then has to be a whole line or lines, since without its indentation a short
-    one (`}`, a blank line) would match in many places.
-    """
-    where = _candidates(source, text, anchor)
+def locate(source: str, text: str, name: str, what: str, anchor: bool = False) -> tuple[int, int] | None:
+    """Where `source` has `text`, or None; SystemExit when it has it more than once."""
+    where = candidates(source, text, anchor)
     if len(where) > 1:
         raise SystemExit(f"error: {name} has the text a Hebrew change {what} {len(where)} times:\n{text.strip().splitlines()[0][:70]}")
     return where[0] if where else None
-
-
-def _whole_lines(source: str, span: tuple[int, int]) -> bool:
-    """Does `span` start a line and end one?"""
-    start, end = span
-    starts_line = start == 0 or source[start - 1] == "\n"
-    ends_line = end == len(source) or source[end] == "\n"
-    return starts_line and ends_line
-
-
-def _tokens(text: str) -> list[str]:
-    return CODE_TOKEN.findall(text)
-
-
-def _contains_code(haystack: str, needle: str) -> bool:
-    """Is the code in `needle` in `haystack`, as one unbroken run of tokens, one inside another?"""
-    outer, inner = _tokens(haystack), _tokens(needle)
-    if not inner:
-        return True
-    return any(outer[k : k + len(inner)] == inner for k in range(len(outer) - len(inner) + 1))
-
-
-def _applied(source: str, hunk: dict, name: str) -> bool:
-    """Is this hunk already in `source`?
-
-    A replacement is applied when its new code is there and its old code is not (or when the new
-    code keeps the old one, as a change that only adds lines does). An insertion is applied when it
-    is where it goes — right after its anchor — because a short one (a lone `}`) is everywhere.
-    """
-    if "insert" in hunk:
-        inserted = _tokens(hunk["insert"])
-        where = _candidates(source, hunk["after"], anchor=True)
-        if not where:
-            # The line it goes after is gone (a later hunk, or upstream): the hunk is applied when
-            # what it inserts is somewhere in the file.
-            return has_code(source, hunk["insert"])
-        return any(_tokens(source[end:])[: len(inserted)] == inserted for _, end in where)
-    old, new = hunk["old"], hunk["new"]
-    if not has_code(source, new):
-        return False
-    return not has_code(source, old) or _contains_code(new, old)
 
 
 def apply_hunks(source: str, hunks: list[dict], name: str) -> tuple[str, list[str]]:
     """The edits `code-overlay.json` lists for a file, idempotently.
 
     A hunk replaces `old` with `new`, or inserts `insert` after the line `after`. A hunk already
-    applied is skipped ([`_applied`]), so running this on this fork's own tree changes nothing —
+    applied is skipped ([`applied`]), so running this on this fork's own tree changes nothing —
     however that tree is formatted ([`locate`]).
     """
     notes: list[str] = []
     for hunk in hunks:
-        if _applied(source, hunk, name):
+        if applied(source, hunk):
             continue
-        if "old" in hunk and not hunk["new"]:
-            found = locate(source, hunk["old"], name, "removes", anchor=False)
-            if found is None:
-                continue
-            source = _drop_line(source, *found)
-            notes.append(f"{name}: removed {hunk['old'].strip().splitlines()[0][:60]}")
-            continue
-        if "old" in hunk:
-            found = locate(source, hunk["old"], name, "replaces", anchor=False)
-            if found is None:
-                raise SystemExit(f"error: {name} no longer has the text a Hebrew change replaces:\n{hunk['old']}")
-            start, end = found
-            source = source[:start] + _keep_break(source, end, hunk["new"]) + source[end:]
-        else:
+        if "insert" in hunk:
             found = locate(source, hunk["after"], name, "follows", anchor=True)
             if found is None:
                 raise SystemExit(f"error: {name} no longer has the line a Hebrew change follows:\n{hunk['after']}")
@@ -289,6 +218,19 @@ def apply_hunks(source: str, hunks: list[dict], name: str) -> tuple[str, list[st
                 line_end = source.find("\n", end)
                 at = end if line_end == -1 else line_end + 1
             source = source[:at] + hunk["insert"] + source[at:]
+        elif not hunk["new"]:
+            found = locate(source, hunk["old"], name, "removes")
+            if found is None:
+                continue
+            source = _drop_line(source, *found)
+            notes.append(f"{name}: removed {hunk['old'].strip().splitlines()[0][:60]}")
+            continue
+        else:
+            found = locate(source, hunk["old"], name, "replaces")
+            if found is None:
+                raise SystemExit(f"error: {name} no longer has the text a Hebrew change replaces:\n{hunk['old']}")
+            start, end = found
+            source = source[:start] + _keep_break(source, end, hunk["new"]) + source[end:]
         first = next((line.strip() for line in hunk.get("insert", hunk.get("new", "")).splitlines() if line.strip()), "")
         notes.append(f"{name}: {first[:70]}")
     return source, notes
@@ -372,9 +314,8 @@ def main() -> int:
         for path, patch in generics.items():
             source = path.read_text(encoding="utf-8") if path.exists() else ""
             for hunk in patch:
-                applied, wanted = hunk.get("insert", hunk.get("new", "")), hunk.get("old", hunk.get("after", ""))
-                # A deleting hunk leaves nothing to look for: it is applied when its text is gone.
-                if (not has_code(source, applied)) if applied else has_code(source, wanted):
+                if not applied(source, hunk):
+                    wanted = hunk.get("insert", hunk.get("new", hunk.get("old", "")))
                     missing.append(f"{path.relative_to(root)}: no `{wanted.strip().splitlines()[0][:70]}`")
         missing += copy_new_files(root, code, check=True, missing=[])
         for line in missing:

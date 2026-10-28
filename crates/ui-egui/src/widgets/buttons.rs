@@ -147,6 +147,8 @@ pub fn small(ui: &mut Ui, app: &mut WordApp, icon: &str, label: Option<&str>, ti
     let t = Tokens::get(ui.ctx());
     let text_w = label.map(|l| ui.ctx().fonts_mut(|f| f.layout_no_wrap(l.to_string(), regular(11.5), t.text).size().x) + 6.0).unwrap_or(0.0);
     let (r, resp) = ui.allocate_exact_size(vec2(24.0 + text_w, 22.0), Sense::click());
+    #[cfg(test)]
+    super::BUTTON_RECTS.with(|b| b.borrow_mut().push((id.to_string(), r)));
     keytip_badge(ui, r, id, tip);
     let on = enabled(app, id);
     bg(ui, r, &resp, checked, &t);
