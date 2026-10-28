@@ -22,7 +22,7 @@ jobs:
     if: |
       !failure() && !cancelled() && needs.catalogs.result == 'success' &&
       (needs.sync.outputs.changed == 'true' || github.event_name == 'push' ||
-       github.event_name == 'workflow_dispatch' || inputs.force-build)
+       github.event_name == 'workflow_dispatch' || inputs.force-build || github.event_name == 'pull_request')
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.v.outputs.version }}
