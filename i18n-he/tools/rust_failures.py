@@ -34,7 +34,7 @@ MAX_ANNOTATIONS = 10
 MAX_REPORT_ERRORS = 40
 CONTEXT = 4
 # Lines kept after a `thread '…' panicked at` line, for the backtrace a panic prints.
-BACKTRACE_LINES = 30
+BACKTRACE_LINES = 150
 
 
 def parse(lines: list[str]) -> tuple[list[dict], list[str]]:
@@ -67,8 +67,15 @@ def test_failures(lines: list[str]) -> list[str]:
     for index in named:
         # A panic prints its message and then (with RUST_BACKTRACE) the frames: keep enough of
         # them to see which layout asked for the size.
-        after = BACKTRACE_LINES if lines[index].lstrip().startswith("thread '") else CONTEXT
-        start, end = max(0, index - CONTEXT), min(len(lines), index + after + 1)
+        if lines[index].lstrip().startswith("thread '"):
+            # A panic's message, its backtrace and the note after it: all of it, so the frame in
+            # this repository is in the report.
+            end = index + 1
+            while end < len(lines) and end - index < BACKTRACE_LINES and not lines[end].startswith("----") and not lines[end].startswith("failures:"):
+                end += 1
+        else:
+            end = index + CONTEXT + 1
+        start = max(0, index - CONTEXT)
         if any(start < shown_end and shown_start < end for shown_start, shown_end in shown):
             continue
         shown.add((start, end))
