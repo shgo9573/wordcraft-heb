@@ -333,8 +333,32 @@
    "insert": "/// A Hebrew ribbon starts its row at the window's right edge and runs left, the mirror of the\n/// English one: Home › Clipboard is the rightmost group, and Font is drawn to its left.\n#[test]\nfn a_hebrew_ribbon_starts_at_the_right() {\n    let mut app = WordApp::new(Session::new(wordcraft_engine::sample::sample_document()), crate::Services::default());\n    app.run(\"ui.tab\", json!({\"tab\": \"Home\"})).unwrap();\n    let width = 2560.0;\n    let mut h = egui_kittest::Harness::builder().with_size(vec2(width, 900.0)).build_ui_state(\n        |ui, app: &mut WordApp| {\n            let ctx = ui.ctx().clone();\n            app.logic(&ctx);\n            app.ui(ui);\n        },\n        app,\n    );\n    let mut boxes = std::collections::HashMap::new();\n    for lang in [\"en\", \"he\"] {\n        h.state_mut().run(\"ui.language\", json!({\"value\": lang})).unwrap();\n        h.run_steps(4);\n        crate::widgets::GROUP_RECTS.with(|g| g.borrow_mut().clear());\n        h.run_steps(1);\n        // The last frame's boxes: a step may draw more than one.\n        let found: std::collections::HashMap<String, egui::Rect> = crate::widgets::GROUP_RECTS.with(|g| g.borrow().iter().cloned().collect());\n        boxes.insert(lang, found);\n    }\n    let (Some(en), Some(he)) = (boxes.get(\"en\"), boxes.get(\"he\")) else { panic!(\"both ribbons drew groups: {boxes:?}\") };\n    let (Some(en_clipboard), Some(en_font)) = (en.get(\"Clipboard\"), en.get(\"Font\")) else {\n        panic!(\"the English Home tab shows Clipboard and Font: {en:?}\")\n    };\n    let (Some(he_clipboard), Some(he_font)) = (he.get(\"Clipboard\"), he.get(\"Font\")) else {\n        panic!(\"the Hebrew Home tab shows Clipboard and Font: {he:?}\")\n    };\n    assert!(en_clipboard.min.x < en_font.min.x, \"English runs left to right: {en_clipboard:?} {en_font:?}\");\n    assert!(he_clipboard.max.x > width - 40.0, \"the Hebrew row starts at the right edge: {he_clipboard:?}\");\n    assert!(he_font.max.x <= he_clipboard.min.x + 0.5, \"Font is drawn to the left of Clipboard: {he_clipboard:?} {he_font:?}\");\n}\n\n"
   },
   {
-   "new": "            // A frame that panics says which tab and language it was drawing: the ribbon's own\n            // message names neither.\n            if let Err(panic) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| h.run_steps(2))) {\n                panic!(\"while drawing {} › {tab}: {panic:?}\", lang.code());\n            }\n",
+   "after": "    let app = WordApp::new(Session::new(wordcraft_engine::sample::sample_document()), crate::Services::default());\n",
+   "insert": "    // A frame that panics is named: which language and tab it was drawing, what the panic said and\n    // where it came from. The ribbon's own message names none of them.\n    let drawing = std::sync::Arc::new(std::sync::Mutex::new(String::new()));\n    let previous = std::sync::Arc::new(std::sync::Mutex::new(Some(std::panic::take_hook())));\n    {\n        let (drawing, previous) = (drawing.clone(), previous.clone());\n        std::panic::set_hook(Box::new(move |info| {\n            let context = drawing.lock().map(|c| c.clone()).unwrap_or_default();\n            eprintln!(\"PANIC while drawing {context}: {}\", panic_message(info.payload()));\n            eprintln!(\"{}\", std::backtrace::Backtrace::force_capture());\n            if let Some(previous) = previous.lock().unwrap().as_ref() {\n                previous(info);\n            }\n        }));\n    }\n"
+  },
+  {
+   "after": "    let mut tall = Vec::new();\n",
+   "insert": "    let mut failed = Vec::new();\n"
+  },
+  {
+   "after": "        for tab in TABS.iter().filter(|t| **t != \"File\") {\n",
+   "insert": "            if let Ok(mut context) = drawing.lock() {\n                context.clear();\n                context.push_str(&format!(\"{} › {tab}\", lang.code()));\n            }\n"
+  },
+  {
+   "new": "            // A frame that panics is recorded and the rest are still drawn: the window into the\n            // fault is worth more than the first tab that hits it.\n            let frame = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {\n                h.run_steps(2);\n                crate::widgets::TALL_GROUPS.with(|g| g.borrow_mut().clear());\n                h.run_steps(1);\n                crate::widgets::TALL_GROUPS.with(|g| g.take())\n            }));\n            match frame {\n                Ok(found) => tall.extend(found.into_iter().map(|g| format!(\"{} {tab} › {g}\", lang.code()))),\n                Err(panic) => failed.push(format!(\"{} {tab} › {}\", lang.code(), panic_message(&*panic))),\n            }\n",
    "old": "            h.run_steps(2);\n"
+  },
+  {
+   "new": "",
+   "old": "            h.run_steps(1);\n            let found = crate::widgets::TALL_GROUPS.with(|g| g.take());\n            tall.extend(found.into_iter().map(|g| format!(\"{} {tab} › {g}\", lang.code())));\n"
+  },
+  {
+   "after": "            tall.extend(found.into_iter().map(|g| format!(\"{} {tab} › {g}\", lang.code())));\n        }\n",
+   "insert": "    }\n    // A panic hook outlives the test that set it, so put the one the harness brought back.\n    if let Some(previous) = previous.lock().unwrap().take() {\n        std::panic::set_hook(previous);\n"
+  },
+  {
+   "new": "    failed.sort();\n    assert!(tall.is_empty() && failed.is_empty(), \"groups taller than the ribbon: {tall:#?}\\nframes that did not draw: {failed:#?}\");\n}\n\n/// What a caught panic said, as text.\nfn panic_message(panic: &(dyn std::any::Any + Send)) -> String {\n    if let Some(m) = panic.downcast_ref::<&str>() {\n        (*m).to_string()\n    } else if let Some(m) = panic.downcast_ref::<String>() {\n        m.clone()\n    } else {\n        \"a panic without a message\".to_string()\n    }\n",
+   "old": "    assert!(tall.is_empty(), \"groups taller than the ribbon: {tall:#?}\");\n"
   }
  ],
  "crates/ui-egui/src/ribbon_fit.rs": [
