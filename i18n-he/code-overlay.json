@@ -1,4 +1,26 @@
 {
+ "crates/control-key/src/lib.rs": [
+  {
+   "after": "use std::path::{Path, PathBuf};\n\n",
+   "insert": "/// A file next to the executable that makes its folder the profile folder: the portable build\n/// ships one (`packaging/windows/package.ps1`), so a copy of the app carries its settings, user\n/// dictionary, fonts and recovery copies on a stick or in a synced folder.\npub const PORTABLE_MARKER: &str = \"portable.txt\";\n\n/// Where a portable copy keeps its profile: `<exe folder>/WordCraft-data`, beside the app rather\n/// than in `%APPDATA%`. Deleting this folder resets the app without touching the executable.\npub const PORTABLE_DATA: &str = \"WordCraft-data\";\n\n"
+  },
+  {
+   "new": "/// `WORDCRAFT_PROFILE_DIR` overrides the entire folder for isolated runs, and a portable copy\n/// keeps its own beside the executable ([`portable_dir`]).\n",
+   "old": "/// `WORDCRAFT_PROFILE_DIR` overrides the entire folder for isolated runs.\n"
+  },
+  {
+   "after": "        return Some(PathBuf::from(path));\n",
+   "insert": "    }\n    if let Some(dir) = std::env::current_exe().ok().as_deref().and_then(portable_dir) {\n        return Some(dir);\n"
+  },
+  {
+   "after": "            .map(|c| c.join(\"wordcraft\"))\n    }\n",
+   "insert": "}\n\n/// The profile folder of a portable copy: `<exe folder>/WordCraft-data` when `<exe folder>` holds\n/// [`PORTABLE_MARKER`], `None` otherwise. `exe` is the path of the running executable (a parameter\n/// so the rule is testable).\n///\n/// A folder that cannot be written to — the zip unpacked into `Program Files`, a read-only share,\n/// a CD — gives `None` too: settings that cannot be saved are worse than settings saved in the\n/// usual place.\npub fn portable_dir(exe: &Path) -> Option<PathBuf> {\n    let dir = exe.parent()?;\n    if !dir.join(PORTABLE_MARKER).is_file() {\n        return None;\n    }\n    let data = dir.join(PORTABLE_DATA);\n    std::fs::create_dir_all(&data).ok()?;\n    let probe = data.join(\".write-test\");\n    std::fs::write(&probe, b\"ok\").ok()?;\n    let _ = std::fs::remove_file(&probe);\n    Some(data)\n"
+  },
+  {
+   "after": "            assert!(name == \"wordcraft\" || name == \"WordCraft\", \"{}\", d.display());\n        }\n    }\n",
+   "insert": "\n    /// A temp folder standing in for the folder a portable copy sits in.\n    fn temp_app_folder(tag: &str) -> PathBuf {\n        let dir = std::env::temp_dir().join(format!(\"wordcraft-portable-{tag}-{}\", std::process::id()));\n        let _ = std::fs::remove_dir_all(&dir);\n        std::fs::create_dir_all(&dir).unwrap();\n        dir\n    }\n\n    #[test]\n    fn a_portable_copy_keeps_its_profile_beside_the_exe() {\n        let dir = temp_app_folder(\"marked\");\n        let exe = dir.join(\"wordcraft.exe\");\n        std::fs::write(&exe, b\"\").unwrap();\n        // No marker: the usual profile folder, wherever the app happens to be.\n        assert_eq!(portable_dir(&exe), None);\n        assert!(!dir.join(PORTABLE_DATA).exists(), \"and nothing is created beside it\");\n        std::fs::write(dir.join(PORTABLE_MARKER), b\"portable\").unwrap();\n        let data = portable_dir(&exe).expect(\"the marker makes the folder portable\");\n        assert_eq!(data, dir.join(PORTABLE_DATA));\n        assert!(data.is_dir(), \"and the profile folder exists\");\n        assert!(!data.join(\".write-test\").exists(), \"the write test leaves nothing behind\");\n        let _ = std::fs::remove_dir_all(&dir);\n    }\n"
+  }
+ ],
  "crates/proof/src/hyphen.rs": [
   {
    "after": "        return core_breaks_pl(core);\n",
@@ -159,44 +181,10 @@
    "insert": "    /// The interface language whose script the installed UI fonts' borrowed faces cover (`\"\"`\n    /// before the first install): switching to Hebrew installs a Hebrew face even though the CJK\n    /// settings do not change.\n    fonts_lang: &'static str,\n"
   }
  ],
- "crates/ui-egui/src/mini_toolbar.rs": [
-  {
-   "new": "        let layout = crate::rtl::left_to_right(ui, Align::Center);\n        ui.allocate_ui_with_layout(Vec2::new(ui.available_width(), ROW_H), layout, |ui| {\n",
-   "old": "        ui.allocate_ui_with_layout(Vec2::new(ui.available_width(), ROW_H), Layout::left_to_right(Align::Center), |ui| {\n"
-  }
- ],
  "crates/ui-egui/src/options.rs": [
   {
    "after": "        ProofLang::Cs => tl!(\"Czech\"),\n",
    "insert": "        ProofLang::He => tl!(\"Hebrew\"),\n"
-  },
-  {
-   "new": "            crate::rtl::horizontal(ui, |ui| {\n                let layout = crate::rtl::left_to_right(ui, egui::Align::Center);\n                ui.allocate_ui_with_layout(vec2(220.0, 20.0), layout, |ui| {\n",
-   "old": "            ui.horizontal(|ui| {\n                ui.allocate_ui_with_layout(vec2(220.0, 20.0), egui::Layout::left_to_right(egui::Align::Center), |ui| {\n"
-  }
- ],
- "crates/ui-egui/src/ribbon.rs": [
-  {
-   "new": "            crate::rtl::horizontal_centered(ui, |ui| {\n",
-   "old": "            ui.horizontal_centered(|ui| {\n"
-  },
-  {
-   "new": "                crate::rtl::with_layout(ui, egui::Layout::right_to_left(egui::Align::Center), |ui| {\n",
-   "old": "                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {\n"
-  },
-  {
-   "new": "                    crate::rtl::with_layout(ui, egui::Layout::left_to_right(egui::Align::Center), |ui| {\n",
-   "old": "                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {\n"
-  },
-  {
-   "new": "                // A Hebrew interface mirrors the tab's groups: they start at the right edge.\n                crate::rtl::horizontal_top(ui, |ui| {\n",
-   "old": "                ui.horizontal_top(|ui| {\n"
-  }
- ],
- "crates/ui-egui/src/ribbon/design.rs": [
-  {
-   "new": "    let layout = crate::rtl::left_to_right(ui, egui::Align::Min);\n    let mut gui = ui.new_child(egui::UiBuilder::new().max_rect(gallery).layout(layout));\n",
-   "old": "    let mut gui = ui.new_child(egui::UiBuilder::new().max_rect(gallery).layout(egui::Layout::left_to_right(egui::Align::Min)));\n"
   }
  ],
  "crates/ui-egui/src/ribbon/language.rs": [
@@ -211,18 +199,6 @@
   {
    "after": "            wordcraft_engine::proof::ProofLang::Cs => \"Czech\".into(),\n",
    "insert": "            wordcraft_engine::proof::ProofLang::He => \"Hebrew\".into(),\n"
-  }
- ],
- "crates/ui-egui/src/widgets/combo.rs": [
-  {
-   "new": "    let layout = crate::rtl::left_to_right(ui, egui::Align::Center);\n    ui.allocate_ui_with_layout(size, layout, |ui| {\n",
-   "old": "    ui.allocate_ui_with_layout(size, egui::Layout::left_to_right(egui::Align::Center), |ui| {\n"
-  }
- ],
- "crates/ui-egui/src/widgets/groups.rs": [
-  {
-   "new": "            // A Hebrew interface lays a group's buttons out right to left.\n            let layout = crate::rtl::left_to_right(ui, egui::Align::Min);\n            let content = ui.allocate_ui_with_layout(vec2(ui.available_width(), CONTENT_H), layout, |ui| {\n",
-   "old": "            let content = ui.allocate_ui_with_layout(vec2(ui.available_width(), CONTENT_H), egui::Layout::left_to_right(egui::Align::Min), |ui| {\n"
   }
  ],
  "crates/ui-egui/src/window_ui.rs": [

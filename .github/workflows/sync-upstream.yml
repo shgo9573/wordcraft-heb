@@ -252,12 +252,22 @@ jobs:
           VERSION: ${{ needs.build.outputs.version }}
         run: |
           set -euo pipefail
-          # A tag of its own: `v<version>-he.1` already holds the Linux packages of this version.
-          tag="v${VERSION}-he.win.1"
-          if gh release view "$tag" >/dev/null 2>&1; then
-            echo "::notice::$tag is already published; today's build is on this run's artifacts"
-            exit 0
+          # A tag of its own: `v<version>-he.1` holds the Linux packages of this version. Each build
+          # of a new commit gets the next number, so a fix reaches a download without waiting for
+          # upstream to bump the version — and a build of the commit already published does nothing.
+          current=$(git rev-parse HEAD)
+          latest=$(gh release list --limit 100 --json tagName --jq '.[].tagName' |
+            grep -E "^v${VERSION}-he\.win\.[0-9]+$" | sort -t. -k5 -n | tail -1 || true)
+          n=1
+          if [ -n "$latest" ]; then
+            if gh release view "$latest" --json body --jq .body | grep -q "commit: ${current}"; then
+              echo "::notice::$latest already carries ${current:0:7}; today's build is on this run's artifacts"
+              exit 0
+            fi
+            n=$(( ${latest##*.} + 1 ))
           fi
+          tag="v${VERSION}-he.win.${n}"
+          echo "publishing $tag for ${current:0:7}"
           {
             sha256sum ./dist/*
           } > "$RUNNER_TEMP/sums.txt"
@@ -268,25 +278,33 @@ jobs:
           - **להתקנה:** `wordcraft-__VERSION__-windows-x64.msi` — לחיצה כפולה, התקנה למשתמש הנוכחי
             (בלי הרשאות מנהל). אפשר גם "Everyone on this computer" להתקנה לכל המשתמשים.
           - **בלי התקנה:** `wordcraft-__VERSION__-windows-x64-portable.zip` — חילוץ והרצת
-            `wordcraft.exe`.
+            `wordcraft.exe`. הגירסה הניידת שומרת הכל בתיקייה שלידה (`WordCraft-data`): הגדרות,
+            מילון משתמש, גופנים ועותקי שחזור — לא נכתב דבר ב-`%APPDATA%`, ומחיקת התיקייה מוחקת הכל.
           - **הקובץ לא חתום.** Windows תציג "unknown publisher": „More info” ואז „Run anyway”.
           - הממשק: אנגלית ועברית. מחרוזת שעדיין אין לה תרגום מוצגת באנגלית.
           - הפריסה מתהפכת לימין-שמאל אוטומטית כששפת הממשק עברית (File › Options › Interface).
           - הבסיס מתעדכן כל יום מהמאגר המקורי ונבנה מחדש.
+
+          Built from storytold/wordcraft with the Hebrew interface in `i18n-he/`, commit: COMMIT.
 
           WordCraft __VERSION__ from storytold/wordcraft, built with the Hebrew interface in
           `i18n-he/`, for Windows x64:
 
           - **Install:** `wordcraft-__VERSION__-windows-x64.msi` (per user, no admin needed; the
             installer also offers "Everyone on this computer").
-          - **Or run it portable:** `wordcraft-__VERSION__-windows-x64-portable.zip`.
+          - **Or run it portable:** `wordcraft-__VERSION__-windows-x64-portable.zip` — unpack and
+            run; everything it saves (settings, user dictionary, fonts, recovery copies) stays in
+            `WordCraft-data` beside the exe, nothing is written to `%APPDATA%`, and deleting the
+            folder removes every trace.
 
           The build is **unsigned**, so Windows shows an "unknown publisher" SmartScreen prompt:
           choose "More info" then "Run anyway". Interface languages: English and Hebrew (a string
           with no Hebrew row shows in English); the layout mirrors right to left when the interface
-          language is Hebrew. Rebuilt automatically from upstream's newest `main` every day.
+          language is Hebrew: menus, dialogs, the scroll bar and the status bar mirror right to left;
+          the ribbon itself keeps its left-to-right order (it lays itself out). Rebuilt
+          automatically from upstream's newest `main` every day.
           NOTES
-          sed -i "s/__VERSION__/${VERSION}/g" "$RUNNER_TEMP/notes.md"
+          sed -i -e "s/__VERSION__/${VERSION}/g" -e "s/COMMIT/${current}/g" "$RUNNER_TEMP/notes.md"
           gh release create "$tag" ./dist/* \
             --target main \
             --title "WordCraft ${VERSION} בעברית (Windows)" \

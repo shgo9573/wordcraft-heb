@@ -3,13 +3,26 @@
 
 use std::path::{Path, PathBuf};
 
+/// A file next to the executable that makes its folder the profile folder: the portable build
+/// ships one (`packaging/windows/package.ps1`), so a copy of the app carries its settings, user
+/// dictionary, fonts and recovery copies on a stick or in a synced folder.
+pub const PORTABLE_MARKER: &str = "portable.txt";
+
+/// Where a portable copy keeps its profile: `<exe folder>/WordCraft-data`, beside the app rather
+/// than in `%APPDATA%`. Deleting this folder resets the app without touching the executable.
+pub const PORTABLE_DATA: &str = "WordCraft-data";
+
 /// The app's settings folder (preferences, logs, key files): macOS
 /// `~/Library/Application Support/WordCraft`, Windows `%APPDATA%\WordCraft`, otherwise
 /// `$XDG_CONFIG_HOME/wordcraft` or `~/.config/wordcraft`.
-/// `WORDCRAFT_PROFILE_DIR` overrides the entire folder for isolated runs.
+/// `WORDCRAFT_PROFILE_DIR` overrides the entire folder for isolated runs, and a portable copy
+/// keeps its own beside the executable ([`portable_dir`]).
 pub fn settings_dir() -> Option<PathBuf> {
     if let Some(path) = std::env::var_os("WORDCRAFT_PROFILE_DIR").filter(|p| !p.is_empty()) {
         return Some(PathBuf::from(path));
+    }
+    if let Some(dir) = std::env::current_exe().ok().as_deref().and_then(portable_dir) {
+        return Some(dir);
     }
     if cfg!(target_os = "macos") {
         std::env::var_os("HOME").map(|h| PathBuf::from(h).join("Library/Application Support/WordCraft"))
@@ -21,6 +34,26 @@ pub fn settings_dir() -> Option<PathBuf> {
             .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))
             .map(|c| c.join("wordcraft"))
     }
+}
+
+/// The profile folder of a portable copy: `<exe folder>/WordCraft-data` when `<exe folder>` holds
+/// [`PORTABLE_MARKER`], `None` otherwise. `exe` is the path of the running executable (a parameter
+/// so the rule is testable).
+///
+/// A folder that cannot be written to — the zip unpacked into `Program Files`, a read-only share,
+/// a CD — gives `None` too: settings that cannot be saved are worse than settings saved in the
+/// usual place.
+pub fn portable_dir(exe: &Path) -> Option<PathBuf> {
+    let dir = exe.parent()?;
+    if !dir.join(PORTABLE_MARKER).is_file() {
+        return None;
+    }
+    let data = dir.join(PORTABLE_DATA);
+    std::fs::create_dir_all(&data).ok()?;
+    let probe = data.join(".write-test");
+    std::fs::write(&probe, b"ok").ok()?;
+    let _ = std::fs::remove_file(&probe);
+    Some(data)
 }
 
 /// The `instance-id=` value of a `/.flatpak-info` file, only when it is `[A-Za-z0-9_-]+` (it
@@ -83,5 +116,29 @@ mod tests {
             let name = d.file_name().and_then(|n| n.to_str()).unwrap_or("");
             assert!(name == "wordcraft" || name == "WordCraft", "{}", d.display());
         }
+    }
+
+    /// A temp folder standing in for the folder a portable copy sits in.
+    fn temp_app_folder(tag: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("wordcraft-portable-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn a_portable_copy_keeps_its_profile_beside_the_exe() {
+        let dir = temp_app_folder("marked");
+        let exe = dir.join("wordcraft.exe");
+        std::fs::write(&exe, b"").unwrap();
+        // No marker: the usual profile folder, wherever the app happens to be.
+        assert_eq!(portable_dir(&exe), None);
+        assert!(!dir.join(PORTABLE_DATA).exists(), "and nothing is created beside it");
+        std::fs::write(dir.join(PORTABLE_MARKER), b"portable").unwrap();
+        let data = portable_dir(&exe).expect("the marker makes the folder portable");
+        assert_eq!(data, dir.join(PORTABLE_DATA));
+        assert!(data.is_dir(), "and the profile folder exists");
+        assert!(!data.join(".write-test").exists(), "the write test leaves nothing behind");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

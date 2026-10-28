@@ -29,8 +29,12 @@ import sys
 from pathlib import Path
 
 # The files the Hebrew overlay edits, by their place in the tree. A file that upstream does not
-# have (it was renamed or removed) is reported, so the table stops quietly rotting.
+# have (it was renamed or removed) is reported, so the table stops quietly rotting. The ribbon
+# (`ribbon.rs`, `widgets/groups.rs`, `mini_toolbar.rs`, `ribbon/design.rs`, `widgets/combo.rs`) is
+# not here: it is left exactly as upstream has it, because a mirrored ribbon piled its groups on
+# top of each other (see `crates/ui-egui/src/rtl.rs`).
 FILES = [
+    "crates/control-key/src/lib.rs",
     "crates/proof/src/hyphen.rs",
     "crates/proof/src/lang.rs",
     "crates/proof/src/lib.rs",
@@ -41,13 +45,8 @@ FILES = [
     "crates/ui-egui/src/i18n.rs",
     "crates/ui-egui/src/i18n/tests.rs",
     "crates/ui-egui/src/lib.rs",
-    "crates/ui-egui/src/mini_toolbar.rs",
     "crates/ui-egui/src/options.rs",
-    "crates/ui-egui/src/ribbon.rs",
-    "crates/ui-egui/src/ribbon/design.rs",
     "crates/ui-egui/src/ribbon/language.rs",
-    "crates/ui-egui/src/widgets/combo.rs",
-    "crates/ui-egui/src/widgets/groups.rs",
     "crates/ui-egui/src/window_ui.rs",
 ]
 

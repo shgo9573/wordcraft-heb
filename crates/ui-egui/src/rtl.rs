@@ -1,10 +1,20 @@
-//! Right-to-left interface layout: a Hebrew (or Arabic) interface mirrors what the app lays out
-//! itself. egui's own chrome — menus and submenus, combo boxes, collapsing headers, scroll bars,
-//! window title buttons — mirrors from `Style::right_to_left`, which
-//! [`WordApp::install_ui_fonts`](crate::WordApp) sets from the interface language. The rows,
-//! groups and bars that WordCraft draws open their layout here instead: `Ui::horizontal` and its
-//! variants follow the layout they are opened in, so a row opened right to left flips its
-//! children too.
+//! Right-to-left interface layout: a Hebrew (or Arabic) interface mirrors what egui draws itself,
+//! and the few rows WordCraft draws where a mirror is safe.
+//!
+//! egui's own chrome — menus and submenus, combo boxes, collapsing headers, scroll bars, window
+//! title buttons — mirrors from `Style::right_to_left`, which
+//! [`WordApp::install_ui_fonts`](crate::WordApp) sets from the interface language. Two surfaces of
+//! the app mirror with the helpers here: the status bar's row of labels and a dialog's button row
+//! (buttons belong at the trailing edge, which in Hebrew is the left one).
+//!
+//! **What stays left to right, and why:** the ribbon. It places its groups itself — `ribbon_fit`
+//! measures every group, plans how it shrinks into the window and where the scroll offset is, and
+//! all of that is written for a row that grows to the right. Opening the groups right to left piled
+//! them on top of each other at the left edge of the window (reported against a Windows build), so
+//! the ribbon keeps Word's left-to-right order in a Hebrew interface too, while its labels, the
+//! tab strip, the menus, the dialogs and the document itself are Hebrew. Same for the mini toolbar and the gallery rows that size
+//! themselves the same way. Fixing the ribbon properly means teaching `ribbon_fit` a mirrored row:
+//! a project of its own, not a flag.
 //!
 //! Every function takes the same arguments as the `Ui` method of its name, so a surface turns
 //! around by renaming the call. Left to right, they are the method itself: an English interface
@@ -41,6 +51,10 @@ pub fn horizontal_centered<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> In
 }
 
 /// [`Ui::horizontal_top`], right to left when the interface is.
+///
+/// No surface uses this now: the ribbon did, and a Hebrew ribbon piled its groups on top of each
+/// other (see the module note). A surface that measures its own children the way `ribbon_fit` does
+/// must be taught the mirrored row before it takes this.
 pub fn horizontal_top<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
     if is_rtl(ui) {
         let size = ui.available_size_before_wrap();
@@ -77,6 +91,9 @@ pub fn with_layout<R>(ui: &mut Ui, layout: Layout, add: impl FnOnce(&mut Ui) -> 
 
 /// [`Layout::left_to_right`], right to left when the interface is: for a layout handed to
 /// `allocate_ui_with_layout` or a child `Ui` rather than made by [`with_layout`].
+///
+/// Like [`horizontal_top`], unused while the ribbon is left to right: a row whose widths the code
+/// around it measures (`ui.cursor().min.x - start.x`) must not be mirrored.
 pub fn left_to_right(ui: &Ui, valign: Align) -> Layout {
     if is_rtl(ui) { Layout::right_to_left(valign) } else { Layout::left_to_right(valign) }
 }

@@ -179,6 +179,34 @@ if ($env:CRAFT_FONTS_DIR) {
     Copy-Item $ofl.FullName (Join-Path $Portable "OFL-$($ofl.Directory.Name).txt")
   }
 }
+# The marker that makes the copy portable: with `portable.txt` beside wordcraft.exe the app keeps
+# its profile (settings, user dictionary, fonts, recovery copies) in WordCraft-data in this folder
+# instead of %APPDATA%\WordCraft — so the folder can live on a stick or in a synced drive and be
+# deleted whole. `crates/control-key/src/lib.rs`, `portable_dir`.
+$Marker = Join-Path $Portable 'portable.txt'
+$MarkerLines = @(
+  'WordCraft portable.'
+  ''
+  'This file makes the app store its settings, user dictionary, fonts and recovery copies in the'
+  'WordCraft-data folder next to wordcraft.exe instead of in %APPDATA%\WordCraft, so this folder'
+  'can be carried on a USB stick or in a synced folder. Delete WordCraft-data to start fresh;'
+  'delete this file to go back to the usual profile folder.'
+  ''
+  'Nothing is installed, and nothing outside this folder is written.'
+  ''
+  '---'
+  ''
+  'WordCraft נייד.'
+  ''
+  'הקובץ הזה גורם לתוכנה לשמור את ההגדרות, מילון המשתמש, הגופנים ועותקי השחזור בתיקיית'
+  'WordCraft-data שליד wordcraft.exe, ולא ב-%APPDATA%\WordCraft — כך אפשר לקחת את התיקייה על'
+  'דיסק-און-קי או בתיקייה מסונכרנת. מחיקת WordCraft-data מאפסת את התוכנה; מחיקת הקובץ הזה'
+  'מחזירה את השמירה למקום הרגיל.'
+  ''
+  'אין התקנה, ולא נכתב דבר מחוץ לתיקייה הזאת.'
+)
+[System.IO.File]::WriteAllLines($Marker, $MarkerLines, [System.Text.UTF8Encoding]::new($false))
+
 $Zip = Join-Path $Dist "wordcraft-$Version-windows-$Arch-portable.zip"
 Remove-Item -Force $Zip -ErrorAction SilentlyContinue
 Compress-Archive -Path $Portable -DestinationPath $Zip

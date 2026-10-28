@@ -116,20 +116,20 @@ jobs:
           status=${PIPESTATUS[0]}
           python3 i18n-he/tools/rust_failures.py --annotate --title "The proofing tests failed" "$RUNNER_TEMP/proof-tests.log"
           exit "$status"
-      # Two gaps, both unrelated to Hebrew and both documented rather than hidden:
-      # * the Zotero tests open a socket to a fake server of their own and time out on a shared
-      #   runner;
-      # * `ribbon_groups_fit_above_their_labels` walks every language and, in Hebrew, hits egui's
-      #   `Negative desired size: [NaN 20.0]` inside a ribbon group — the width of a Hebrew group
-      #   title comes out as NaN, which `allocate_ui_with_layout` only asserts on in a debug build.
-      #   Chasing it needs the backtrace of a real run; until then the rest of the suite runs.
+      # One gap, unrelated to Hebrew and documented rather than hidden: the Zotero tests open a
+      # socket to a fake server of their own and time out on a shared runner.
+      # `ribbon_groups_fit_above_their_labels` runs here now. It used to hit egui's
+      # `Negative desired size: [NaN 20.0]` in Hebrew, the same fault that piled a Hebrew ribbon's
+      # groups on top of each other: the ribbon was opened right to left, and its own measuring
+      # (`cursor.min.x - start.x`, a row that grows right) can't take that. The ribbon lays its
+      # groups out as upstream does now (see `crates/ui-egui/src/rtl.rs`), so the test guards it.
       - name: The interface crate's own tests (the right-to-left layout among them)
         if: ${{ !cancelled() }}
         env:
           RUST_BACKTRACE: "1" # a failing layout says which frame asked for the size
         run: |
           set +e
-          cargo test -p wordcraft-ui-egui --lib -- --skip zotero:: --skip ribbon::tests::ribbon_groups_fit_above_their_labels 2>&1 | tee "$RUNNER_TEMP/ui-tests.log"
+          cargo test -p wordcraft-ui-egui --lib -- --skip zotero:: 2>&1 | tee "$RUNNER_TEMP/ui-tests.log"
           status=${PIPESTATUS[0]}
           python3 i18n-he/tools/rust_failures.py --annotate --title "The interface tests failed" "$RUNNER_TEMP/ui-tests.log"
           exit "$status"

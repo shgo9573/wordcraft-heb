@@ -243,8 +243,7 @@ fn content(app: &mut WordApp, ui: &mut egui::Ui, t: &Tokens) {
         })
         .unwrap_or_default();
     let row = |ui: &mut egui::Ui, app: &mut WordApp, add: &dyn Fn(&mut egui::Ui, &mut WordApp)| {
-        let layout = crate::rtl::left_to_right(ui, Align::Center);
-        ui.allocate_ui_with_layout(Vec2::new(ui.available_width(), ROW_H), layout, |ui| {
+        ui.allocate_ui_with_layout(Vec2::new(ui.available_width(), ROW_H), Layout::left_to_right(Align::Center), |ui| {
             ui.set_min_height(ROW_H);
             add(ui, app);
         });
