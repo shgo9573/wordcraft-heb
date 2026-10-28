@@ -159,6 +159,11 @@ impl WordApp {
         {
             // Every window's borrowed faces: the fonts are the app's.
             let mut faces = self.canvas.ime_faces.clone();
+            // Interface text in a script the interface faces leave out (Hebrew, Arabic, Thai …)
+            // borrows a document face, as the caption does: the Hebrew menus, dialogs and the
+            // language picker would otherwise draw as boxes. Looked at again only when the fonts
+            // are installed, that is when the language changes.
+            faces.extend(theme::faces_for_interface_text(lang.catalog_texts().chain(std::iter::once(lang.name()))));
             for w in self.other_windows() {
                 for face in &w.canvas.ime_faces {
                     if !faces.iter().any(|f| f.id() == face.id()) {

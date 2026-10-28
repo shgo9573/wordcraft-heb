@@ -16,6 +16,13 @@ macro_rules! needs_catalogs {
     };
 }
 
+/// Does this build embed this fork's Hebrew catalog? A catalog directory laid out from
+/// storytold/craft-i18n alone (`craft-i18n.rev`) has no `he` yet, so Hebrew is listed but not
+/// offered there; the daily build lays `i18n-he/` over it (`i18n-he/tools/assemble.py`).
+fn offers_hebrew() -> bool {
+    CRAFT_I18N.iter().any(|(code, ..)| *code == "he")
+}
+
 /// The translations in `code`'s embedded WordCraft catalog, plural forms apart: the fonts must
 /// cover WordCraft's own wording. (The shared catalog holds every app's; the CJK checks read it too.)
 fn translations(code: &str) -> Vec<String> {
@@ -142,7 +149,7 @@ fn the_language_setting_is_a_ui_command_and_persists() {
     let r = app.run("ui.language", serde_json::json!({"value": "ZH-HANT"})).unwrap();
     assert_eq!(app.ui.language, "zh-hant");
     assert_eq!(r["effective"], "zh-hant");
-    assert!(r["available"].as_array().is_some_and(|a| a.len() == LANGUAGES.len()));
+    assert!(r["available"].as_array().is_some_and(|a| a.len() == LANGUAGES.len() - usize::from(!offers_hebrew())));
     assert!(app.run("ui.language", serde_json::json!({"value": "xx"})).is_err());
     assert_eq!(app.ui.language, "zh-hant", "an unknown code keeps the setting");
     let saved = serde_json::to_string(&app.ui).unwrap();
@@ -1134,7 +1141,8 @@ fn the_languages_offered_are_the_embedded_ones_of_the_list() {
         assert_eq!(tr(Lang::EN, "File"), "File");
         return;
     }
-    let listed: Vec<&str> = LANGUAGES.iter().map(|l| l.code).collect();
+    // This fork's Hebrew is offered only when its overlay is embedded (see `offers_hebrew`).
+    let listed: Vec<&str> = LANGUAGES.iter().map(|l| l.code).filter(|c| *c != "he" || offers_hebrew()).collect();
     assert_eq!(all, listed, "every language WordCraft lists has its catalog in craft-i18n");
     assert!(Lang::from_code("pseudo").is_none(), "the pseudo locale is never a setting");
 }

@@ -1,0 +1,540 @@
+# עברית (he) interface catalog for every Crafting App.
+# Columns, separated by a TAB:  context <TAB> English source text <TAB> translation
+#   context  usually empty. `@plural`, `@id` and `@msg` mean something to the apps; any other
+#            word is a label that tells apart two meanings of the same English.
+#   escapes  \n  \t  \\  inside a column. `{name}` placeholders must appear in both columns (in any
+#            order), and a trailing "…" in one needs one in the other.
+#   @plural  English `one|other`; the translation lists this language's plural forms, `|`-separated.
+#   Lines starting with # and blank lines are ignored. A missing entry shows in English.
+#
+# Clean room: every entry was written from the plain meaning of the English text in ordinary
+# computing vocabulary. No other product's localisation, string table or translated UI was
+# consulted or copied; add entries the same way.
+
+	(Custom)	(מותאם אישית)
+	(none)	(ללא)
+	Absolute	מוחלט
+	Accessibility	נגישות
+	Actions	פעולות
+	Active	פעיל
+	Add	הוספה
+	Add a comment	הוספת הערה
+	Add to Dictionary	הוספה למילון
+	Adjust	כיוונון
+	Advanced	מתקדם
+	Align	יישור
+	Align Left	יישור לשמאל
+	Align Right	יישור לימין
+	Align Text	יישור טקסט
+	Alignment	יישור
+	Alignment:	יישור:
+	All	הכל
+	All files	כל הקבצים
+	All pages	כל העמודים
+	Alt	Alt
+	Always	תמיד
+	Amount	כמות
+	Angle	זווית
+	Any	כלשהו
+	Appearance	מראה
+	Application	יישום
+	Apply to:	החל על:
+	Arrange	סידור
+	Ascending	סדר עולה
+	Assign	הקצאה
+	Auto	אוטומטי
+	Automatic	אוטומטי
+	Automatically	באופן אוטומטי
+	Available	זמין
+	Background	רקע
+	Backspace	Backspace
+	Baseline	קו בסיס
+	Basic	בסיסי
+	Black	שחור
+	Blue	כחול
+	Bold	מודגש
+	Borders	גבולות
+	Both	שניהם
+	Bottom	תחתון
+	Bottom Left	למטה משמאל
+	Bottom Right	למטה מימין
+	Bottom:	תחתון:
+	Browse…	עיון…
+	Bullet	תבליט
+	Cancel	ביטול
+	Caption	כיתוב
+	Cascade	מפל
+	Category:	קטגוריה:
+	Centered	ממורכז
+	Centimeters	סנטימטרים
+	Change	שינוי
+	Change All	שנה הכל
+	Change Case	שינוי רישיות
+	Character	תו
+	Characters	תווים
+	Check for Updates	בדיקת עדכונים
+	City	עיר
+	Clipboard	לוח
+	Close	סגירה
+	Cmd	Cmd
+	Collate	סידור עותקים
+	Color	צבע
+	Color:	צבע:
+	Colors	צבעים
+	Colour	צבע
+	Column width	רוחב עמודה
+	Columns	עמודות
+	Columns:	עמודות:
+	Command	פקודה
+	Commands:	פקודות:
+	Comment	הערה
+	Comments	הערות
+	Compare	השוואה
+	Compatibility	תאימות
+	Compression	דחיסה
+	Contains	מכיל
+	Continue	המשך
+	Contrast	ניגודיות
+	Convert	המרה
+	Convert to Shape	המרה לצורה
+	Copy	העתקה
+	Copyright	זכויות יוצרים
+	Corner	פינה
+	Corners	פינות
+	Correction	תיקון
+	Country	מדינה
+	Create	יצירה
+	Ctrl	Ctrl
+	Current	נוכחי
+	Current page	עמוד נוכחי
+	Custom	מותאם אישית
+	Customize…	התאמה אישית…
+	Cut	גזירה
+	Dark	כהה
+	Darken	הכהיה
+	Dashed	מקווקו
+	Data	נתונים
+	Date	תאריך
+	Date and Time	תאריך ושעה
+	Date format	תבנית תאריך
+	Dates	תאריכים
+	Default	ברירת מחדל
+	Delete	מחיקה
+	Deleted	נמחק
+	Depth	עומק
+	Descending	סדר יורד
+	Description	תיאור
+	Description:	תיאור:
+	Destination	יעד
+	Details	פרטים
+	Diagonal	אלכסוני
+	Difference	הבדל
+	Digits	ספרות
+	Direction	כיוון
+	Direction:	כיוון:
+	Discard	השלכה
+	Display	תצוגה
+	Display name	שם תצוגה
+	Distance	מרחק
+	Distribute	פיזור
+	Divide	חלוקה
+	Document	מסמך
+	Document Title	כותרת המסמך
+	Documents	מסמכים
+	Don't Save	אל תשמור
+	Done	סיום
+	Dot	נקודה
+	Dots	נקודות
+	Dotted	מנוקד
+	Double-click	לחיצה כפולה
+	Down	מטה
+	Download	הורדה
+	Draw	ציור
+	Duplicate	שכפול
+	Dutch	הולנדית
+	Dynamic	דינמי
+	Edge	קצה
+	Edit	עריכה
+	Edit…	עריכה…
+	Effect	אפקט
+	Effects	אפקטים
+	Ellipse	אליפסה
+	Ellipsis	שלוש נקודות
+	Em Dash	מקף ארוך
+	Em Space	רווח em
+	Embed	הטמעה
+	Enable	הפעלה
+	Enter	Enter
+	Erase	מחיקה
+	Error	שגיאה
+	Exact	מדויק
+	Exclusion	החרגה
+	Exit	יציאה
+	Export	ייצוא
+	Export PDF	ייצוא PDF
+	Export to	ייצוא אל
+	Expression	ביטוי
+	Extract	חילוץ
+	Field	שדה
+	Fields	שדות
+	File	קובץ
+	Files	קבצים
+	Fill	מילוי
+	Fill:	מילוי:
+	Filter	סינון
+	Find	חיפוש
+	Find Next	חיפוש הבא
+	Find and Replace	חיפוש והחלפה
+	Find:	חיפוש:
+	Find…	חיפוש…
+	Finish	סיום
+	First	ראשון
+	Fixed	קבוע
+	Flip	היפוך
+	Flip Horizontal	היפוך אופקי
+	Flip Vertical	היפוך אנכי
+	Focus	מיקוד
+	Folder	תיקייה
+	Font	גופן
+	Font Size	גודל גופן
+	Font size	גודל גופן
+	Format	עיצוב
+	Format:	עיצוב:
+	Fractions	שברים
+	Frame	מסגרת
+	Free	חופשי
+	French	צרפתית
+	From	מאת
+	Full	מלא
+	Full Screen	מסך מלא
+	Functions	פונקציות
+	General	כללי
+	Generate	יצירה
+	German	גרמנית
+	Good	טוב
+	Graphic	גרפיקה
+	Graphics	גרפיקה
+	Gray	אפור
+	Grayscale	גווני אפור
+	Green	ירוק
+	Grid	רשת
+	Group	קבוצה
+	Groups	קבוצות
+	Guides	קווי עזר
+	Headings	כותרות
+	Heart	לב
+	Height	גובה
+	Height:	גובה:
+	Help	עזרה
+	Hidden	מוסתר
+	Hidden text	טקסט מוסתר
+	Hide	הסתר
+	High	גבוה
+	Highlights	הדגשות
+	Hindi	הינדי
+	History	היסטוריה
+	Hollow	חלול
+	Home	בית
+	Horizontal	אופקי
+	Hue	גוון
+	Hyphenation	מיקוף
+	Icon	סמל
+	Ignore	התעלם
+	Ignore All	התעלם מהכל
+	Image	תמונה
+	Images	תמונות
+	Import	ייבוא
+	Import…	ייבוא…
+	Inches	אינצ׳ים
+	Index	מפתח
+	Info	מידע
+	Insert	הוספה
+	Inside	בפנים
+	Interface Theme	ערכת נושא לממשק
+	Interface language	שפת ממשק
+	Intersect	חיתוך
+	Invert	היפוך
+	Italian	איטלקית
+	Italic	נטוי
+	Japanese	יפנית
+	Join	צירוף
+	just now	ממש עכשיו
+	Justify	יישור לשני הצדדים
+	Kerning	מרווח בין אותיות
+	Keywords	מילות מפתח
+	Kind	סוג
+	Korean	קוריאנית
+	Label	תווית
+	Landscape	לרוחב
+	Language	שפה
+	Language:	שפה:
+	Large	גדול
+	Lasso	לאסו
+	Last	אחרון
+	Later	מאוחר יותר
+	Layer	שכבה
+	Layers	שכבות
+	Layout	פריסה
+	Leading	מוביל
+	Left	שמאל
+	Left:	שמאל:
+	Legal	משפטי
+	Length	אורך
+	Length:	אורך:
+	Less	פחות
+	Level	רמה
+	Levels	רמות
+	Library	ספרייה
+	Light	בהיר
+	Lighten	הבהרה
+	Lightness	בהירות
+	Line	שורה
+	Line spacing	ריווח שורות
+	Linear	לינארי
+	Lines	שורות
+	Link	קישור
+	Location:	מיקום:
+	Lock	נעילה
+	Locked	נעול
+	Low	נמוך
+	Magenta	מג׳נטה
+	Margins	שוליים
+	Mask	מסכה
+	Maximize	הגדלה
+	Measure	מדידה
+	Medium	בינוני
+	Merge Cells	מיזוג תאים
+	Metadata	מטא-נתונים
+	Method	שיטה
+	Middle	אמצע
+	Millimeters	מילימטרים
+	Minimize	מזעור
+	Minimum	מינימום
+	Mirror	שיקוף
+	Missing	חסר
+	Mode	מצב
+	Mode:	מצב:
+	Modern	מודרני
+	Modified	שונה
+	Modify	שינוי
+	More	עוד
+	Move	העברה
+	Name	שם
+	Name:	שם:
+	Navigation	ניווט
+	Never	אף פעם
+	New	חדש
+	New Document	מסמך חדש
+	New Window	חלון חדש
+	New…	חדש…
+	Next	הבא
+	No	לא
+	No document	אין מסמך
+	No document open	לא נפתח מסמך
+	None	ללא
+	Normal	רגיל
+	Not available	לא זמין
+	OK	אישור
+	Object	אובייקט
+	Open	פתיחה
+	Options	אפשרויות
+	Options…	אפשרויות…
+	Orange	כתום
+	Orientation	כיוון
+	Original	מקורי
+	Output	פלט
+	Outside	בחוץ
+	Page	עמוד
+	Pages	עמודים
+	Paper	נייר
+	Paragraph	פסקה
+	Paste	הדבקה
+	Path	נתיב
+	Pattern	תבנית
+	Pause	השהיה
+	Pencil	עיפרון
+	Percent	אחוז
+	Photo	תמונה
+	Picas	פיקה
+	Pink	ורוד
+	Pixel	פיקסל
+	Pixels	פיקסלים
+	Point	נקודה
+	Points	נקודות
+	Polygon	מצולע
+	Portrait	לאורך
+	Portuguese	פורטוגזית
+	Position	מיקום
+	Preferences	העדפות
+	Preserve	שמירה
+	Preset	הגדרה קבועה מראש
+	Preview	תצוגה מקדימה
+	Previous	הקודם
+	Print	הדפסה
+	Printer	מדפסת
+	Printing	הדפסה
+	Profile	פרופיל
+	Properties	מאפיינים
+	Protect	הגנה
+	Punctuation	פיסוק
+	Purple	סגול
+	Quality	איכות
+	Radius	רדיוס
+	Range	טווח
+	Ready	מוכן
+	Recent Colors	צבעים אחרונים
+	Recover	שחזור
+	Rectangle	מלבן
+	Red	אדום
+	Redo	ביצוע מחדש
+	Refresh	רענון
+	Regular	רגיל
+	Relative	יחסי
+	Remove	הסרה
+	Remove Background	הסרת רקע
+	Rename	שינוי שם
+	Repeat	חזרה
+	Replace	החלפה
+	Replace:	החלפה:
+	Reply	השב
+	Report	דוח
+	Reset	איפוס
+	Resolution	רזולוציה
+	Restore	שחזור
+	Result	תוצאה
+	Reverse	היפוך
+	Review	סקירה
+	Right	ימין
+	Right:	ימין:
+	Rotate	סיבוב
+	Rotation	סיבוב
+	Rows	שורות
+	Ruler	סרגל
+	Rulers	סרגלים
+	Russian	רוסית
+	Save	שמירה
+	Save As	שמירה בשם
+	Saved	נשמר
+	Screen	מסך
+	Search	חיפוש
+	Security	אבטחה
+	Select	בחירה
+	Select All	בחר הכל
+	Select Objects	בחירת אובייקטים
+	Selection	בחירה
+	Services	שירותים
+	Set as Default	הגדר כברירת מחדל
+	Settings	הגדרות
+	Shadow	צל
+	Shape	צורה
+	Share	שיתוף
+	Shift	Shift
+	Shortcut	קיצור
+	Shortcuts	קיצורים
+	Show All	הצג הכל
+	Size	גודל
+	Size:	גודל:
+	Sort	מיון
+	Sort by	מיין לפי
+	Source	מקור
+	Spaces	רווחים
+	Spacing	ריווח
+	Spacing:	ריווח:
+	Spanish	ספרדית
+	Speed	מהירות
+	Spelling	איות
+	Split	פיצול
+	Square	ריבוע
+	Stacked	מוערם
+	Standard	תקני
+	Star	כוכב
+	Start at:	התחל ב-:
+	Status	מצב
+	Strength	עוצמה
+	Stretch	מתיחה
+	Stroke	קו
+	Subject	נושא
+	Subscript	כתב תחתי
+	Subset	תת-קבוצה
+	Summary	תקציר
+	Superscript	כתב עילי
+	Swatches	דוגמיות צבע
+	Symbol	סימן
+	Symbols	סימנים
+	System	מערכת
+	Table	טבלה
+	Tables	טבלאות
+	Target	יעד
+	Templates	תבניות
+	Text	טקסט
+	Text:	טקסט:
+	Texture	מרקם
+	Theme	ערכת נושא
+	Thickness	עובי
+	Tile	אריח
+	Time	שעה
+	Title	כותרת
+	To	אל
+	Tool	כלי
+	Top	עליון
+	Top Left	למעלה משמאל
+	Top Right	למעלה מימין
+	Top:	עליון:
+	Total	סך הכל
+	Transparency	שקיפות
+	Transparent	שקוף
+	Triangle	משולש
+	Type	סוג
+	Type:	סוג:
+	Typing	הקלדה
+	UPPERCASE	אותיות גדולות
+	Undo	ביטול פעולה
+	Ungroup	ביטול קיבוץ
+	Union	איחוד
+	Units	יחידות
+	Unknown	לא ידוע
+	Unlock	ביטול נעילה
+	Unsaved changes	שינויים שלא נשמרו
+	Untitled	ללא שם
+	Up	למעלה
+	Update	עדכון
+	Updates	עדכונים
+	User	משתמש
+	Username	שם משתמש
+	Value	ערך
+	Value:	ערך:
+	Version	גירסה
+	Vertical	אנכי
+	Vertical Alignment	יישור אנכי
+	Vertically	בצורה אנכית
+	Video	וידאו
+	View	תצוגה
+	Violet	סגלגל
+	Visibility	נראות
+	Voice	קול
+	Warnings	אזהרות
+	Watermark	סימן מים
+	Wave	גל
+	Web	אינטרנט
+	Website	אתר אינטרנט
+	White	לבן
+	Width	רוחב
+	Width and Height	רוחב וגובה
+	Width:	רוחב:
+	Window	חלון
+	Windows	Windows
+	Words	מילים
+	Workspace	סביבת עבודה
+	Yellow	צהוב
+	Yes	כן
+	Your changes will be lost if you don't save them.	השינויים שלך יאבדו אם לא תשמור אותם.
+	Zoom	תקריב
+	Zoom In	הגדלת התקריב
+	Zoom Out	הקטנת התקריב
+	lowercase	אותיות קטנות
+	yesterday	אתמול
+@id	language.name	עברית
+@plural	{n} Layer|{n} Layers	{n} שכבה|{n} שכבות|{n} שכבות|{n} שכבות
+@plural	{n} commit|{n} commits	{n} קומיט|{n} קומיטים|{n} קומיטים|{n} קומיטים
+@plural	{n} item|{n} items	{n} פריט|{n} פריטים|{n} פריטים|{n} פריטים
+@plural	{n} step|{n} steps	{n} שלב|{n} שלבים|{n} שלבים|{n} שלבים

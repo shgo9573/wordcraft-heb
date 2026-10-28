@@ -1,1 +1,3 @@
 craft-i18n.rev text eol=lf
+# The Hebrew catalogs are TAB-separated: LF everywhere, so a Windows checkout writes the same bytes.
+i18n-he/** text eol=lf

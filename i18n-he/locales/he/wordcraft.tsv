@@ -1,0 +1,899 @@
+# עברית (he) interface catalog for WordCraft.
+# Columns, separated by a TAB:  context <TAB> English source text <TAB> translation
+#   context  usually empty. `@plural`, `@id` and `@msg` mean something to the apps; any other
+#            word is a label that tells apart two meanings of the same English.
+#   escapes  \n  \t  \\  inside a column. `{name}` placeholders must appear in both columns (in any
+#            order), and a trailing "…" in one needs one in the other.
+#   @plural  English `one|other`; the translation lists this language's plural forms, `|`-separated.
+#   Lines starting with # and blank lines are ignored. A missing entry shows in English.
+#
+# Clean room: every entry was written from the plain meaning of the English text in ordinary
+# computing vocabulary. No other product's localisation, string table or translated UI was
+# consulted or copied; add entries the same way.
+
+	(All)	(הכל)
+	(no style)	(ללא סגנון)
+	(normal text)	(טקסט רגיל)
+	(not matched)	(לא מותאם)
+	1/4 Em Space	רווח 1/4 em
+	3-D	תלת-ממד
+	<< Less	<< פחות
+	<< Remove	<< הסר
+	A, B, C, …	A, B, C, …
+	AaBbYyZz	AaBbYyZz
+	About	אודות
+	Above Chart	מעל התרשים
+	Accent	הדגשה
+	Accent {n}	הדגשה {n}
+	Accept	קבל
+	Accessed on	נגישה בתאריך
+	Account	חשבון
+	Add >>	הוסף >>
+	Add Condition	הוספת תנאי
+	Add Field	הוספת שדה
+	Add Font…	הוספת גופן…
+	Add Pen	הוספת עט
+	Add Row	הוספת שורה
+	Add Series	הוספת סדרה
+	Add Shape	הוספת צורה
+	Add Text	הוספת טקסט
+	Add a Table	הוספת טבלה
+	Add\nNote	הוספת\nהערה
+	Add\nPen	הוספת\nעט
+	Add\nShape	הוספת\nצורה
+	Added 1 font	נוסף גופן אחד
+	Added Fonts	גופנים שנוספו
+	Address	כתובת
+	Address Block	בלוק כתובת
+	Address:	כתובת:
+	Advanced Find	חיפוש מתקדם
+	After:	אחרי:
+	Agents	סוכנים
+	Align Center	יישור למרכז
+	Aligned at:	מיושר במיקום:
+	All Borders	כל הגבולות
+	All Caps	אותיות גדולות
+	All Commands	כל הפקודות
+	All Fonts	כל הגופנים
+	All Levels	כל הרמות
+	All Markup	כל הסימון
+	All caps	אותיות גדולות
+	Alphabetical	לפי ABC
+	Alt Text	טקסט חלופי
+	Alt Text Pane	חלונית טקסט חלופי
+	Alt text	טקסט חלופי
+	Alt:	Alt:
+	Alt\nText	טקסט\nחלופי
+	And	וגם
+	Another file	קובץ אחר
+	Any Character	תו כלשהו
+	Any Digit	ספרה כלשהי
+	Any Letter	אות כלשהי
+	Any field	שדה כלשהו
+	Apply	החל
+	Apply Style	החלת סגנון
+	Apply Styles	החלת סגנונות
+	Arabic	ערבית
+	Arch Down	קשת כלפי מטה
+	Arch Up	קשת כלפי מעלה
+	Arrange\nAll	סידור\nהכל
+	Article I.	מאמר I.
+	As you type	בעת ההקלדה
+	At least	לפחות
+	At least {n}	לפחות {n}
+	Atelier	אטלייה
+	Atmosphere	אטמוספרה
+	Attach…	צירוף…
+	Author	מחבר
+	AutoCorrect	תיקון אוטומטי
+	AutoFit	התאמה אוטומטית
+	AutoSave	שמירה אוטומטית
+	AutoText	טקסט אוטומטי
+	Balloons	בלונים
+	Banded Rows	שורות פסים
+	Base text:	טקסט בסיס:
+	Basic Cycle	מחזור בסיסי
+	Basic List	רשימה בסיסית
+	Basic Matrix	מטריצה בסיסית
+	Basic Process	תהליך בסיסי
+	Basic Pyramid	פירמידה בסיסית
+	Basic Radial	רדיאלי בסיסי
+	Basic Venn	דיאגרמת ונן בסיסית
+	Before:	לפני:
+	Behind Text	מאחורי הטקסט
+	Below text	מתחת לטקסט
+	Between	ביניהם
+	Bibliography	ביבליוגרפיה
+	Blank	ריק
+	Blank Page	עמוד ריק
+	Blue:	כחול:
+	Body Text	טקסט גוף
+	Book	ספר
+	Book title	שם הספר
+	Bookmark	סימן מקום
+	Border lines	קווי גבול
+	Both Sides	שני הצדדים
+	Bottom Border	גבול תחתון
+	Bottom Margin	שוליים תחתונים
+	Box	מסגרת
+	Bracket	סוגר
+	Breaks	מעברי עמוד
+	Bring Forward	העבר קדימה
+	Built-In	מובנה
+	Bullets	תבליטים
+	By author	לפי מחבר
+	Calendar	לוח שנה
+	Canvas Member	פריט קנבס
+	Caption text	טקסט כיתוב
+	Caption:	כיתוב:
+	Captions	כיתובים
+	Case changes	שינויי רישיות
+	Categories	קטגוריות
+	Categories:	קטגוריות:
+	Category {n}	קטגוריה {n}
+	Cell	תא
+	Cell Margins	שולי תא
+	Cell\nMargins	שולי\nתא
+	Center	מרכוז
+	Center Glow	זוהר מהמרכז
+	Change Colors	שינוי צבעים
+	Change Layout	שינוי פריסה
+	Change Shape	שינוי צורה
+	Changes	שינויים
+	Chapter 1	פרק 1
+	Chart	תרשים
+	Chart Design	עיצוב תרשים
+	Chart Layouts	פריסות תרשים
+	Chart Title	כותרת תרשים
+	Chevron Down	חץ למטה
+	Chevron Up	חץ למעלה
+	Citations	ציטוטים
+	Clear	נקה
+	Clear All	נקה הכל
+	Clustered Bar	עמודות מקובצות
+	Col #:	מס׳ עמודה:
+	Collapse	כווץ
+	Color model:	מודל צבע:
+	Color only	צבע בלבד
+	Colorful	צבעוני
+	Column	עמודה
+	Column Break	מעבר עמודה
+	Column {n}	עמודה {n}
+	Column:	עמודה:
+	Combine	שלב
+	Commands	פקודות
+	Commas	פסיקים
+	Comments Pane	חלונית הערות
+	Communication	תקשורת
+	Compact	קומפקטי
+	Company	חברה
+	Compare to	השווה אל
+	Conference	ועידה
+	Context	הקשר
+	Continuous	רציף
+	Controls	פקדים
+	Conversions	המרות
+	Convert Notes	המרת הערות
+	Copies	עותקים
+	Copy Styles	העתקת סגנונות
+	Copy to	העתק אל
+	Corrections	תיקונים
+	Count by:	ספירה לפי:
+	Cover Page	שער
+	Craft	Craft
+	Create Link	יצירת קישור
+	Create Source	יצירת מקור
+	Croatian	קרואטית
+	Crop	חיתוך
+	Custom mark:	סימן מותאם אישית:
+	Custom range	טווח מותאם אישית
+	Custom size	גודל מותאם אישית
+	Customize	התאמה אישית
+	Cycle	מחזור
+	Czech	צ׳כית
+	DOI	DOI
+	Danish	דנית
+	Dark Mode	מצב כהה
+	Darkroom	חדר חושך
+	Data Labels	תוויות נתונים
+	Date & Time	תאריך ושעה
+	Date formats:	תבניות תאריך:
+	Day	יום
+	Decimal	עשרוני
+	Deep	עמוק
+	Deflate	כיווץ
+	Delete Cells	מחיקת תאים
+	Delete Label	מחיקת תווית
+	Delete Rows	מחיקת שורות
+	Delete Style	מחיקת סגנון
+	Delete Table	מחיקת טבלה
+	Deletions:	מחיקות:
+	Demote	הורד רמה
+	Design	עיצוב
+	Design Mode	מצב עיצוב
+	Developer	מפתחים
+	Dictate	הכתבה
+	Dictionaries	מילונים
+	Directory	ספרייה
+	Display text	טקסט תצוגה
+	Distributed	מפוזר
+	Document End	סוף המסמך
+	Document Grid	רשת מסמך
+	Document Text	טקסט מסמך
+	Document name	שם מסמך
+	Document1	Document1
+	Dot dash	מקווקו-נקודה
+	Dot-dash	מקווקו-נקודה
+	Dot-dot-dash	נקודה-נקודה-מקווקו
+	Double	כפול
+	Doughnut	טבעת
+	Draft	טיוטה
+	Draw Ink	ציור בדיו
+	Draw Table	ציור טבלה
+	Draw\nTable	ציור\nטבלה
+	Drawing Tools	כלי ציור
+	Drop Cap	אות ראשונה מוגדלת
+	Drop cap	אות ראשונה מוגדלת
+	Dropped	בתוך הטקסט
+	Edit Comment	עריכת הערה
+	Edit Data	עריכת נתונים
+	Edit Document	עריכת מסמך
+	Edit Equation	עריכת משוואה
+	Edit Field…	עריכת שדה…
+	Edit Footer	עריכת כותרת תחתונה
+	Edit Header	עריכת כותרת עליונה
+	Edit Items	עריכת פריטים
+	Edit Source	עריכת מקור
+	Edit\nData	עריכת\nנתונים
+	Edited	נערך
+	Editing	עריכה
+	Edition	מהדורה
+	Editor	עורך
+	Enclosure	מסגרת
+	End of Word	סוף מילה
+	Endnotes	הערות סיום
+	Engrave	חקוק
+	Entry marked.	הערך סומן.
+	Envelope #10	מעטפה #10
+	Envelopes	מעטפות
+	Equal to	שווה ל-
+	Equals:	שווה ל:
+	Equation	משוואה
+	Equation Info	פרטי משוואה
+	Erase Ink	מחיקת דיו
+	Errors ({n})	שגיאות ({n})
+	Estonian	אסטונית
+	Even Page	עמוד זוגי
+	Everyone	כולם
+	Exactly	בדיוק
+	Exactly {n}	בדיוק {n}
+	Exceptions…	חריגים…
+	Expand	הרחב
+	Field Codes	קודי שדות
+	Field code:	קוד שדה:
+	Field codes:	קודי שדות:
+	Field name	שם שדה
+	Field name:	שם שדה:
+	Field names:	שמות שדות:
+	Field:	שדה:
+	Field…	שדה…
+	Figure	איור
+	File name:	שם קובץ:
+	Fill color:	צבע מילוי:
+	Film	Film
+	Find Previous	חיפוש אחורה
+	Find in list:	חיפוש ברשימה:
+	Find what:	חפש את:
+	Finished	הסתיים
+	Finnish	פינית
+	First Column	עמודה ראשונה
+	First Name	שם פרטי
+	First Record	רשומה ראשונה
+	First line	שורה ראשונה
+	First line:	שורה ראשונה:
+	Fit	התאם
+	Font Color	צבע גופן
+	Font Dialog	תיבת דו-שיח גופן
+	Font color	צבע גופן
+	Font color:	צבע גופן:
+	Font:	גופן:
+	Font: {font}	גופן: {font}
+	Fonts	גופנים
+	Font…	גופן…
+	Footer	כותרת תחתונה
+	Footnotes	הערות שוליים
+	Format Shape	עיצוב צורה
+	Format Shape…	עיצוב צורה…
+	Formatted	מעוצב
+	Formatting	עיצוב
+	Formula	נוסחה
+	Formula:	נוסחה:
+	Forward	קדימה
+	Fraction	שבר
+	From Center	מהמרכז
+	From text:	מרחק מהטקסט:
+	From:	מאת:
+	Full\nScreen	מסך\nמלא
+	Function	פונקציה
+	Gallery	גלריה
+	Glow	זוהר
+	Glow Colors	צבעי זוהר
+	Go Back	חזור
+	Go To	עבור אל
+	Go To (⌘⌥G)	עבור אל (⌘⌥G)
+	Go To…	עבור אל…
+	Go to	עבור אל
+	Go to Record	עבור אל רשומה
+	Go to what:	עבור אל:
+	Good evening	ערב טוב
+	Good morning	בוקר טוב
+	Grab bag	שק הפתעות
+	Gradient	מילוי מדורג
+	Gradient fill	מילוי מדורג
+	Greater than	גדול מ-
+	Greek	יוונית
+	Green:	ירוק:
+	Greeting Line	שורת ברכה
+	Gridlines	קווי רשת
+	H:	H:
+	HTML Format	תבנית HTML
+	Header	כותרת עליונה
+	Header Row	שורת כותרת
+	Header row	שורת כותרת
+	Heading 1	כותרת 1
+	Heading 2	כותרת 2
+	Heading 3	כותרת 3
+	Heading {n}	כותרת {n}
+	Hebrew	עברית
+	Hex:	Hex:
+	Hide Codes	הסתר קודים
+	Hide Ink	הסתר דיו
+	Hide\nInk	הסתר\nדיו
+	Hierarchy	היררכיה
+	Highlight	הדגשה
+	Highlighter	מדגש
+	Home folder	תיקיית הבית
+	Hue:	גוון:
+	Hyphenate at:	מקף במיקום:
+	I, II, III, …	I, II, III, …
+	Icon Color	צבע סמל
+	Icons	סמלים
+	If…Then…Else	אם…אז…אחרת
+	If…Then…Else…	אם…אז…אחרת…
+	Illustrations	איורים
+	Immersive	סביבת קריאה
+	In margin	בשוליים
+	In the margin	בשוליים
+	Indent	כניסה
+	Indentation	כניסות
+	Indented	מוזח
+	Indents	כניסות
+	Indonesian	אינדונזית
+	Inflate	ניפוח
+	Initials:	ראשי תיבות:
+	Ink	דיו
+	Ink Replay	הפעלה חוזרת של דיו
+	Ink to Shape	דיו לצורה
+	Ink to\nMath	דיו\nלמשוואה
+	Ink to\nShape	דיו\nלצורה
+	Ink\nReplay	הפעלה חוזרת\nשל דיו
+	Inline	בשורה
+	Input Format	תבנית קלט
+	Insert Above	הוסף מעל
+	Insert Below	הוסף מתחת
+	Insert Chart	הוספת תרשים
+	Insert Index	הוספת מפתח
+	Insert Left	הוסף משמאל
+	Insert Right	הוסף מימין
+	Insert Shapes	הוספת צורות
+	Insert Spike	הוספת אוסף
+	Insert Symbol	הוספת סימן
+	Insert Table	הוספת טבלה
+	Insert Table…	הוספת טבלה…
+	Insert\nAbove	הוסף\nמעל
+	Insertions:	הוספות:
+	Inside:	בפנים:
+	Institution	מוסד
+	Integral	אינטגרל
+	Interface	ממשק
+	Intersection	חיתוך
+	Ionosphere	יונוספרה
+	Is blank	ריק
+	Is not blank	אינו ריק
+	Issue	גיליון
+	Journal	כתב עת
+	Justification	יישור
+	Justified	מיושר לשני הצדדים
+	Label:	תווית:
+	Labels	תוויות
+	Largest Only	הגדול בלבד
+	Lasso Select	בחירת לאסו
+	Last Column	עמודה אחרונה
+	Last Name	שם משפחה
+	Last Record	רשומה אחרונה
+	Layouts	פריסות
+	Leader	תו מוביל
+	Left Border	גבול שמאלי
+	Left Margin	שוליים שמאליים
+	Left Only	שמאל בלבד
+	Left border	גבול שמאלי
+	Left indent	כניסה משמאל
+	Left-to-right	משמאל לימין
+	Legend	מקרא
+	Less than	קטן מ-
+	Letter	מכתב
+	Letters	אותיות
+	Level {n}	רמה {n}
+	Levels:	רמות:
+	Line Start	תחילת שורה
+	Line between	קו ביניהם
+	Line breaking	שבירת שורות
+	Line delta	דלתא שורות
+	Line spacing:	ריווח שורות:
+	Linear Down	לינארי למטה
+	Linear Left	לינארי שמאלה
+	Linear Right	לינארי ימינה
+	Linear Up	לינארי למעלה
+	Lines added	שורות שנוספו
+	Lines deleted	שורות שנמחקו
+	Lines only	שורות בלבד
+	Link to:	קישור אל:
+	Links	קישורים
+	Link…	קישור…
+	List	רשימה
+	List entries	פריטי רשימה
+	Lit from Top	מואר מלמעלה
+	Location	מיקום
+	Lock Fields	נעל שדות
+	Lum:	בהירות:
+	Macros	מאקרו
+	Mail Merge	מיזוג דואר
+	Mailings	דיוור
+	Main entry:	ערך ראשי:
+	Manage Styles	ניהול סגנונות
+	Manual…	ידני…
+	Many pages	עמודים רבים
+	Mark	סמן
+	Mark All	סמן הכל
+	Mark Citation	סימון ציטוט
+	Mark Entry	סימון ערך
+	Mark Entry…	סימון ערך…
+	Mark\nEntry	סימון\nערך
+	Match Fields	התאמת שדות
+	Match case	התאמת רישיות
+	Match prefix	התאמת קידומת
+	Match suffix	התאמת סיומת
+	Matrix	מטריצה
+	Maximum	מקסימום
+	Merge	מיזוג
+	Merged PRs	בקשות מיזוג שמוזגו
+	Mesosphere	מזוספרה
+	Mirrored	משוכפל
+	Moderate	מתון
+	Modify Style	שינוי סגנון
+	Modify…	שינוי…
+	Mon	ב׳
+	Month	חודש
+	More >>	עוד >>
+	More Colors…	צבעים נוספים…
+	More Columns…	עמודות נוספות…
+	More Symbols…	סימנים נוספים…
+	More tabs	כרטיסיות נוספות
+	Move Down	העבר למטה
+	Move Up	העבר למעלה
+	Moved from	הועבר מ-
+	Moved from:	הועבר מ-:
+	Moved to	הועבר אל
+	Moved to:	הועבר אל:
+	Moves	העברות
+	My list has	הרשימה שלי כוללת
+	Narrow	צר
+	Nature	טבע
+	New Comment	הערה חדשה
+	New Entry	ערך חדש
+	New Label	תווית חדשה
+	New Label…	תווית חדשה…
+	New Paragraph	פסקה חדשה
+	New Style…	סגנון חדש…
+	New Tab	כרטיסייה חדשה
+	New shortcut:	קיצור חדש:
+	New word	מילה חדשה
+	New\nComment	הערה\nחדשה
+	New\nWindow	חלון\nחדש
+	Next Comment	הערה הבאה
+	Next Field	השדה הבא
+	Next Footnote	הערת השוליים הבאה
+	Next Record	הרשומה הבאה
+	Next Section	המקטע הבא
+	Next Sentence	המשפט הבא
+	Next sentence	המשפט הבא
+	No Border	ללא גבול
+	No Color	ללא צבע
+	No Fill	ללא מילוי
+	No Glow	ללא זוהר
+	No Gradient	ללא מילוי מדורג
+	No Markup	ללא סימון
+	No Outline	ללא קו מתאר
+	No Reflection	ללא השתקפות
+	No Shadow	ללא צל
+	No Soft Edges	ללא קצוות רכים
+	No Transform	ללא אפקט
+	No fill	ללא מילוי
+	No grid	ללא רשת
+	No header row	ללא שורת כותרת
+	No limit	ללא הגבלה
+	Normal Style	סגנון רגיל
+	Normal Text	טקסט רגיל
+	Normal speed	מהירות רגילה
+	North	צפון
+	Not	לא
+	Not equal to	אינו שווה ל-
+	Not saved	לא נשמר
+	Not saved yet	טרם נשמר
+	Not set	לא מוגדר
+	Not {name}	לא {name}
+	Nothing	כלום
+	Nudge	הזזה קלה
+	Number	מספר
+	Number format	תבנית מספר
+	Numbering	מספור
+	Numbering:	מספור:
+	Numbering…	מספור…
+	Numerals	ספרות
+	Numerals:	ספרות:
+	Odd Page	עמוד אי-זוגי
+	Office	Office
+	Offset (pt):	היסט (נק׳):
+	Offset: Left	היסט: שמאל
+	Offset: Right	היסט: ימין
+	Offset: Top	היסט: למעלה
+	One	אחת
+	One Page	עמוד אחד
+	One-sided	חד-צדדי
+	Operator	אופרטור
+	Or	או
+	Organizer	מארגן
+	Organizer…	מארגן…
+	Original size	גודל מקורי
+	Other	אחר
+	Other:	אחר:
+	Outline	קו מתאר
+	Outline Level	רמת מתאר
+	Outline State	מצב מתאר
+	Outline Tools	כלי מתאר
+	Outline level	רמת מתאר
+	Outlining	מתאר
+	Outside:	בחוץ:
+	Oval	סגלגל
+	Overtype	דריסה
+	Page Border	גבול עמוד
+	Page Borders	גבולות עמוד
+	Page Break	מעבר עמוד
+	Page Breaks	מעברי עמוד
+	Page Color	צבע עמוד
+	Page Down	Page Down
+	Page Movement	תנועה בין עמודים
+	Page Number	מספר עמוד
+	Page Setup	הגדרת עמוד
+	Page Up	Page Up
+	Page Width	רוחב עמוד
+	Page X of Y	עמוד X מתוך Y
+	Page display	תצוגת עמוד
+	Page title	כותרת עמוד
+	Page width	רוחב עמוד
+	Page {page}	עמוד {page}
+	Page\nBorders	גבולות\nעמוד
+	Page\nColor	צבע\nעמוד
+	Page\nNumber	מספר\nעמוד
+	Paper size:	גודל נייר:
+	Paragraph Up	פסקה למעלה
+	Paragraphs	פסקאות
+	Paragraph…	פסקה…
+	Password	סיסמה
+	Password:	סיסמה:
+	Paste (⌘V)	הדבק (⌘V)
+	Paste All	הדבק הכל
+	Paste Special	הדבק תוכן מיוחד
+	Paste as:	הדבק כ-:
+	Paused	מושהה
+	Pen	עט
+	Pens	עטים
+	People	אנשים
+	Periodical	כתב עת
+	Personal	אישי
+	Personalize	התאמה אישית
+	Picture	תמונה
+	Pictures	תמונות
+	Pie	עוגה
+	Play	הפעלה
+	Play/Pause	הפעלה/השהיה
+	Polish	פולנית
+	Postal Code	מיקוד
+	Presets	הגדרות קבועות מראש
+	Print Layout	תצוגת פריסת הדפסה
+	Print Markup	הדפסת סימון
+	Print to PDF	הדפסה ל-PDF
+	Print\nLayout	פריסת\nהדפסה
+	Process	תהליך
+	Professional	מקצועי
+	Promote	העלה רמה
+	Proofing	הגהה
+	Publisher	מוציא לאור
+	Quick Parts	קטעים מהירים
+	Quick Tables	טבלאות מהירות
+	Radical	שורש
+	Read Aloud	הקראה בקול
+	Read Mode	מצב קריאה
+	Read\nAloud	הקראה\nבקול
+	Read\nMode	מצב\nקריאה
+	Reading	קריאה
+	Reading Mode	מצב קריאה
+	Reading Speed	מהירות קריאה
+	Recent	אחרונים
+	Record Macro	הקלטת מאקרו
+	Red:	אדום:
+	References	הפניות
+	Reflection	השתקפות
+	Region:	אזור:
+	Registered	סימן רשום
+	Reject	דחה
+	Reject Change	דחיית שינוי
+	Relationship	קשר
+	Remove Footer	הסרת כותרת תחתונה
+	Remove Header	הסרת כותרת עליונה
+	Remove Pen	הסרת עט
+	Remove field	הסרת שדה
+	Remove row	הסרת שורה
+	Remove series	הסרת סדרה
+	Rename Style	שינוי שם סגנון
+	Reopen	פתח מחדש
+	Replace All	החלף הכל
+	Replace with:	החלף ב-:
+	Replay	הפעלה חוזרת
+	Research	מחקר
+	Researcher	עוזר מחקר
+	Reset All…	איפוס הכל…
+	Reset Crop	איפוס חיתוך
+	Reset Graphic	איפוס גרפיקה
+	Reset Picture	איפוס תמונה
+	Resolve	פתור
+	Resolved	נפתר
+	Restart at 1	התחל מחדש מ-1
+	Results	תוצאות
+	Reviewing	סקירה
+	Rewind	הרצה אחורה
+	Ribbon	רצועת הכלים
+	Ribbon tabs	כרטיסיות רצועת הכלים
+	Right Border	גבול ימני
+	Right Margin	שוליים ימניים
+	Right Only	ימין בלבד
+	Right border	גבול ימני
+	Right indent	כניסה מימין
+	Right-to-left	מימין לשמאל
+	Row	שורה
+	Row:	שורה:
+	Ruby text:	טקסט רובי:
+	Rules	קווים
+	Run-in	רציף
+	Résumé	קורות חיים
+	Sat:	רוויה:
+	Scale	קנה מידה
+	Scale Drawing	שינוי קנה מידה של ציור
+	Scatter	פיזור (XY)
+	Script	כתב
+	Scripts	כתבים
+	Search icons	חיפוש סמלים
+	Section 1.01	מקטע 1.01
+	Section Break	מעבר מקטע
+	Section Mark	סימן מקטע
+	Sections	מקטעים
+	See	ראה
+	Select Cell	בחירת תא
+	Select Column	בחירת עמודה
+	Select Line	בחירת שורה
+	Select Range	בחירת טווח
+	Select Row	בחירת שורה
+	Select Table	בחירת טבלה
+	Select Text	בחירת טקסט
+	Select Word	בחירת מילה
+	Selected text	טקסט נבחר
+	Send Backward	שלח אחורה
+	Sentence	משפט
+	Separator:	מפריד:
+	Series name	שם הסדרה
+	Series {n}	סדרה {n}
+	Set Caret	מיקום הסמן
+	Set Date	קביעת תאריך
+	Set Equation	קביעת משוואה
+	Setting:	הגדרה:
+	Shading	הצללה
+	Shape Fill	מילוי צורה
+	Shape Format	עיצוב צורה
+	Shape Outline	קו מתאר צורה
+	Shape Styles	סגנונות צורה
+	Shift+Tab	Shift+Tab
+	Shortcut key:	מקש קיצור:
+	Show	הצג
+	Show Comments	הצג הערות
+	Show Level	הצג רמה
+	Show Level 1	הצג רמה 1
+	Show Level 2	הצג רמה 2
+	Show Level 3	הצג רמה 3
+	Show Level 4	הצג רמה 4
+	Show Level 5	הצג רמה 5
+	Show Level 6	הצג רמה 6
+	Show Level 7	הצג רמה 7
+	Show Level 8	הצג רמה 8
+	Show Level 9	הצג רמה 9
+	Show Markup	הצג סימון
+	Show Notes	הצג הערות
+	Show rulers	הצג סרגלים
+	Show/Hide ¶	הצג/הסתר ¶
+	Shrink text	כווץ טקסט
+	Side to Side	זה לצד זה
+	Side\nto Side	זה\nלצד זה
+	Single	בודד
+	Single label	תווית בודדת
+	Site name	שם האתר
+	Size (pt):	גודל (נק׳):
+	Sketchbook	ספר סקיצות
+	Slant Down	הטיה למטה
+	Slant Up	הטיה למעלה
+	Small Caps	אותיות קטנות-גדולות
+	Small caps	אותיות קטנות-גדולות
+	SmartArt	SmartArt
+	Soft Edges	קצוות רכים
+	Soft Glow	זוהר רך
+	Solid Accent	הדגשה מלאה
+	Solid fill	מילוי אחיד
+	Sort by:	מיין לפי:
+	Sort order:	סדר מיון:
+	Source type:	סוג מקור:
+	South	דרום
+	Space	רווח
+	Space after	ריווח אחרי
+	Space before	ריווח לפני
+	Spacing (pt):	ריווח (נק׳):
+	Special	מיוחד
+	Speech	דיבור
+	Spike	אוסף
+	Split Cells	פיצול תאים
+	Split Table	פיצול טבלה
+	Stacked Bar	עמודות מוערמות
+	Start-up	הפעלה
+	State	מדינה
+	Stop	עצור
+	Stop Reading	הפסק הקראה
+	Stopped	הופסק
+	Strikethrough	קו חוצה
+	Structures	מבנים
+	Studio cover	שער הסטודיו
+	Style	סגנון
+	Style Set	ערכת סגנונות
+	Style name:	שם סגנון:
+	Style:	סגנון:
+	Styles	סגנונות
+	Styles Pane	חלונית סגנונות
+	Styles:	סגנונות:
+	Subentry:	ערך משנה:
+	Subset:	תת-קבוצה:
+	Suggested	מוצעים
+	Sum	סכום
+	Swedish	שוודית
+	Switch Modes	החלף מצב
+	Switch\nModes	החלף\nמצב
+	Synonyms	מילים נרדפות
+	Tab	Tab
+	Tab Character	תו Tab
+	Tab character	תו Tab
+	Tab leader:	תו מוביל של Tab:
+	Table Design	עיצוב טבלה
+	Table Layout	פריסת טבלה
+	Table Styles	סגנונות טבלה
+	Table size	גודל טבלה
+	Tabs	עצירות Tab
+	Tabs…	עצירות Tab…
+	Tabular List	רשימה טבלאית
+	Tag	תג
+	Technology	טכנולוגיה
+	Text Box	תיבת טקסט
+	Text Effects	אפקטי טקסט
+	Text Fill	מילוי טקסט
+	Text Outline	קו מתאר טקסט
+	Text Pane	חלונית טקסט
+	Text Wrapping	גלישת טקסט
+	Text boxes	תיבות טקסט
+	Text size	גודל טקסט
+	Text\nBox	תיבת\nטקסט
+	Theme Colors	צבעי ערכת נושא
+	Theme Fonts	גופני ערכת נושא
+	Theme List	רשימת ערכות נושא
+	Themes	ערכות נושא
+	Then by	ואז לפי
+	Then insert:	לאחר מכן הוסף:
+	Thesaurus	מילון מילים נרדפות
+	Thick	עבה
+	This document	מסמך זה
+	This page	עמוד זה
+	This section	מקטע זה
+	Three	שלוש
+	Through	דרך
+	Tight	צפוף
+	Tips ({n})	עצות ({n})
+	Title Bar	שורת הכותרת
+	Title:	כותרת:
+	To:	אל:
+	Today	היום
+	Tools	כלים
+	Top Border	גבול עליון
+	Top Left Cell	תא עליון שמאלי
+	Top Margin	שוליים עליונים
+	Top of Page	ראש העמוד
+	Total Row	שורת סיכום
+	Track Changes	עקוב אחר שינויים
+	Tracking	מרווחי אותיות
+	Trademark	סימן מסחרי
+	Transport	תחבורה
+	Triangle Down	משולש למטה
+	Triangle Up	משולש למעלה
+	Triple	משולש
+	Trust Center	מרכז יחסי אמון
+	Tue	ג׳
+	Turkish	טורקית
+	Two	שתיים
+	Type Text	הקלד טקסט
+	URL	URL
+	Ukrainian	אוקראינית
+	Underline	קו תחתון
+	Undo 1 Action	בטל פעולה אחת
+	Undo Actions	בטל פעולות
+	Undo History	היסטוריית ביטולים
+	Undo {action}	בטל {action}
+	Unlink Fields	נתק שדות
+	Unlock Fields	בטל נעילת שדות
+	Up one level	רמה אחת למעלה
+	Update Field	עדכן שדה
+	Update Index	עדכן מפתח
+	Update Table	עדכן טבלה
+	Use wildcards	השתמש בתווי כללים
+	User Name	שם משתמש
+	User name:	שם משתמש:
+	View State	מצב תצוגה
+	Views	תצוגות
+	Volume	כרך
+	Weather	מזג אוויר
+	Web Layout	תצוגת אינטרנט
+	Web\nLayout	פריסת\nאינטרנט
+	Wed	ד׳
+	Weight	עובי
+	West	מערב
+	White Space	רווח לבן
+	White space	רווח לבן
+	Whole Table	טבלה שלמה
+	Whole page	עמוד שלם
+	Whole words	מילים שלמות
+	Wide	רחב
+	With:	עם:
+	Word Count	ספירת מילים
+	Word Left	מילה שמאלה
+	Word Right	מילה ימינה
+	Word document	מסמך Word
+	Word level	רמת מילה
+	WordArt	WordArt
+	WordCraft	WordCraft
+	Words only	מילים בלבד
+	Wrap Text	גלישת טקסט
+	Wrap\nText	גלישת\nטקסט
+	Write a reply	כתוב תגובה
+	Year	שנה
+	Zotero	Zotero
+	Zotero: done	Zotero: הושלם
+	a, b, c, …	a, b, c, …
+	cm	ס״מ
+	i, ii, iii, …	i, ii, iii, …
+	pi	pi
+	pt	נק׳
+	{n} lines	שורות: {n}
+	{n} pt	{n} נק׳
+	{size} pt	{size} נק׳
+	{words} words	מילים: {words}

@@ -8,3 +8,6 @@ plan/
 /.claude/
 /target-*/
 /craft-fonts/
+# A craft-i18n checkout laid out with the Hebrew catalogs (i18n-he/README.md).
+/.he-catalogs/
+/craft-i18n/
