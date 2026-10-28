@@ -14,7 +14,7 @@ on:
       - ".github/workflows/hebrew-check.yml"
 
 permissions:
-  contents: read
+  contents: write # the rustfmt step commits the formatting it fixes on a pull request
   pull-requests: write # the check posts its compiler output on the pull request
 
 concurrency:
@@ -32,7 +32,11 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     steps:
+      # On a pull request, check out the branch itself (not the merge commit GitHub builds): the
+      # rustfmt step commits to it, and a detached HEAD cannot be pushed.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
       - name: Check every catalog row (craft-i18n's rules, plus this fork's)
         run: |
           set -euo pipefail
@@ -53,6 +57,29 @@ jobs:
             libxi-dev libgtk-3-dev libfontconfig1-dev libfreetype-dev \
             fonts-noto-core # a Hebrew face for the interface: the suite's own fonts have none
       - uses: dtolnay/rust-toolchain@stable
+      # This fork's own Rust was written without a local toolchain, and rustfmt decides where a
+      # short block goes (`rustfmt.toml`: max_width 150, small heuristics Max). On a pull request
+      # the formatting is applied and committed to the branch; on `main` it is only checked.
+      - name: rustfmt
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fmt --all
+          if git diff --quiet; then
+            echo "already formatted"
+            exit 0
+          fi
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            git diff --stat
+            echo "::error::cargo fmt --all changes files: run it and commit the result"
+            exit 1
+          fi
+          git config user.name "wordcraft-heb"
+          git config user.email "wordcraft-heb@users.noreply.github.com"
+          git add -A
+          git commit -m "rustfmt"
+          git push origin "HEAD:${{ github.head_ref }}"
+          echo "::notice::rustfmt formatted the tree and pushed the result to this branch"
       - uses: Swatinem/rust-cache@v2
         with:
           key: hebrew-check
