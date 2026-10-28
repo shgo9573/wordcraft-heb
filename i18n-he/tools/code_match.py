@@ -13,6 +13,9 @@ from __future__ import annotations
 import re
 
 # What `cargo fmt` never breaks apart: a raw string, a string, a word, or one other character.
+# How much of an inserted block says it is there: its first tokens.
+INSERT_MARKER = 12
+
 CODE_TOKEN = re.compile(r'r#*"(?:[^"]|"(?!#))*"#*|"(?:[^"\\\n]|\\.)*"|\w+|\S')
 
 
@@ -71,13 +74,16 @@ def applied(source: str, hunk: dict) -> bool:
     nothing to look for, when the code it removes is gone.
     """
     if "insert" in hunk:
-        inserted = tokens(hunk["insert"])
+        # The block's first tokens, right after the anchor: a later hunk may edit a word inside the
+        # block (or a person may), and that must not make it insert twice. Enough of them to tell a
+        # lone `}` from a block that happens to start with one.
+        first = tokens(hunk["insert"])[:INSERT_MARKER]
         where = candidates(source, hunk["after"], anchor=True)
         if not where:
             # The line it goes after is gone (a later hunk, or upstream): the hunk counts as
-            # applied when what it inserts is somewhere in the file.
+            # applied when the block it inserts is somewhere in the file.
             return has_code(source, hunk["insert"])
-        return any(tokens(source[end:])[: len(inserted)] == inserted for _, end in where)
+        return any(tokens(source[end:])[: len(first)] == first for _, end in where)
     if not hunk["new"]:
         return not has_code(source, hunk["old"])
     return has_code(source, hunk["new"])
