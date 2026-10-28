@@ -382,22 +382,25 @@ fn a_hebrew_alignment_row_starts_with_align_right() {
         rows.insert(lang, found);
     }
     let (Some(en), Some(he)) = (rows.get("en"), rows.get("he")) else { panic!("both ribbons drew buttons: {rows:?}") };
+    // The boxes are keyed by the command a button runs (`small` records the `ButtonAction`'s id).
+    let (align_left, center, align_right, justify) = ("para.alignLeft", "para.alignCenter", "para.alignRight", "para.justify");
+    let (text_ltr, text_rtl) = ("para.ltr", "para.rtl");
     for (name, boxes) in [("en", en), ("he", he)] {
-        for id in ["alignLeft", "alignCenter", "alignRight", "justify", "textLtr", "textRtl"] {
+        for id in [align_left, center, align_right, justify, text_ltr, text_rtl] {
             assert!(boxes.contains_key(id), "the {name} Home tab shows {id}: {:?}", boxes.keys());
         }
     }
     // English: left, center, right, justify — then left-to-right, right-to-left.
-    assert!(en["alignLeft"].min.x < en["alignCenter"].min.x);
-    assert!(en["alignCenter"].min.x < en["alignRight"].min.x);
-    assert!(en["alignRight"].min.x < en["justify"].min.x);
-    assert!(en["textLtr"].min.x < en["textRtl"].min.x);
+    assert!(en[align_left].min.x < en[center].min.x);
+    assert!(en[center].min.x < en[align_right].min.x);
+    assert!(en[align_right].min.x < en[justify].min.x);
+    assert!(en[text_ltr].min.x < en[text_rtl].min.x);
     // Hebrew: the row runs right to left and keeps the paragraph's order, so Align Right is the
     // rightmost of the four and the directions start with right-to-left.
-    assert!(he["alignRight"].min.x > he["alignCenter"].min.x, "Align Right is right of Center: {:?} {:?}", he["alignRight"], he["alignCenter"]);
-    assert!(he["alignCenter"].min.x > he["alignLeft"].min.x, "Center is right of Align Left: {:?} {:?}", he["alignCenter"], he["alignLeft"]);
-    assert!(he["alignLeft"].min.x > he["justify"].min.x, "Align Left is right of Justify: {:?} {:?}", he["alignLeft"], he["justify"]);
-    assert!(he["textRtl"].min.x > he["textLtr"].min.x, "the directions start with right-to-left: {:?} {:?}", he["textRtl"], he["textLtr"]);
+    assert!(he[align_right].min.x > he[center].min.x, "Align Right is right of Center: {:?} {:?}", he[align_right], he[center]);
+    assert!(he[center].min.x > he[align_left].min.x, "Center is right of Align Left: {:?} {:?}", he[center], he[align_left]);
+    assert!(he[align_left].min.x > he[justify].min.x, "Align Left is right of Justify: {:?} {:?}", he[align_left], he[justify]);
+    assert!(he[text_rtl].min.x > he[text_ltr].min.x, "the directions start with right-to-left: {:?} {:?}", he[text_rtl], he[text_ltr]);
 }
 
 /// No group's content runs into its label: View › Show stacked four check boxes in a column
