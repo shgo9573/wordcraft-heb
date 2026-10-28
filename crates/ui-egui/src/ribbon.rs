@@ -174,7 +174,13 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                         ui.painter().rect_filled(r, 4.0, if resp.hovered() { t.accent_text } else { t.accent });
                         // Icon first, then the word: from the right in a Hebrew interface.
                         let rtl = crate::rtl::is_rtl(ui);
-                        let icon_x = if !share_text { r.center().x } else if rtl { r.max.x - 14.0 } else { r.min.x + 14.0 };
+                        let icon_x = if !share_text {
+                            r.center().x
+                        } else if rtl {
+                            r.max.x - 14.0
+                        } else {
+                            r.min.x + 14.0
+                        };
                         icons::paint(
                             ui.painter(),
                             Rect::from_center_size(pos2(icon_x, r.center().y), vec2(14.0, 14.0)),

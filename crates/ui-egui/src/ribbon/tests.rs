@@ -345,8 +345,12 @@ fn a_hebrew_ribbon_starts_at_the_right() {
         boxes.insert(lang, found);
     }
     let (Some(en), Some(he)) = (boxes.get("en"), boxes.get("he")) else { panic!("both ribbons drew groups: {boxes:?}") };
-    let (Some(en_clipboard), Some(en_font)) = (en.get("Clipboard"), en.get("Font")) else { panic!("the English Home tab shows Clipboard and Font: {en:?}") };
-    let (Some(he_clipboard), Some(he_font)) = (he.get("Clipboard"), he.get("Font")) else { panic!("the Hebrew Home tab shows Clipboard and Font: {he:?}") };
+    let (Some(en_clipboard), Some(en_font)) = (en.get("Clipboard"), en.get("Font")) else {
+        panic!("the English Home tab shows Clipboard and Font: {en:?}")
+    };
+    let (Some(he_clipboard), Some(he_font)) = (he.get("Clipboard"), he.get("Font")) else {
+        panic!("the Hebrew Home tab shows Clipboard and Font: {he:?}")
+    };
     assert!(en_clipboard.min.x < en_font.min.x, "English runs left to right: {en_clipboard:?} {en_font:?}");
     assert!(he_clipboard.max.x > width - 40.0, "the Hebrew row starts at the right edge: {he_clipboard:?}");
     assert!(he_font.max.x <= he_clipboard.min.x + 0.5, "Font is drawn to the left of Clipboard: {he_clipboard:?} {he_font:?}");

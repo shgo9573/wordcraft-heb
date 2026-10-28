@@ -1,7 +1,7 @@
-#[cfg(test)]
-use super::{GROUP_RECTS, TALL_GROUPS};
 use super::buttons::{BIG_ICON_Y, BIG_LABEL_Y, CONTENT_H, DROPDOWN, LABEL_H, bg, label_line};
 use super::{Align2, Rect, Response, Sense, Stroke, Tokens, Ui, WordApp, icons, pos2, regular, vec2};
+#[cfg(test)]
+use super::{GROUP_RECTS, TALL_GROUPS};
 
 /// A ribbon group: content, a centred label below and a divider on the trailing side — the right
 /// one in an English interface, the left one in a Hebrew one.
@@ -55,14 +55,7 @@ pub fn group_titled(ui: &mut Ui, id_title: &str, title: &str, launcher: Option<&
         // The title sits under the controls, whose rect is the group's: the row's cursor never
         // moves along the row, so its right edge is the same before and after the group.
         let r = inner.response.rect;
-        title_row(
-            ui,
-            Rect::from_min_max(pos2(r.min.x, top + CONTENT_H), pos2(r.max.x, top + CONTENT_H + LABEL_H)),
-            id_title,
-            title,
-            launcher,
-            app,
-        );
+        title_row(ui, Rect::from_min_max(pos2(r.min.x, top + CONTENT_H), pos2(r.max.x, top + CONTENT_H + LABEL_H)), id_title, title, launcher, app);
     }
     // The group's box, for the test that checks which edge a Hebrew row starts at.
     #[cfg(test)]
