@@ -319,6 +319,39 @@ fn chart_design_tab_appears_when_chart_selected_and_buttons_open_dialogs() {
     assert!(!contextual_tabs(&app.session).contains(&"Chart Design"));
 }
 
+/// A Hebrew ribbon starts its row at the window's right edge and runs left, the mirror of the
+/// English one: Home › Clipboard is the rightmost group, and Font is drawn to its left.
+#[test]
+fn a_hebrew_ribbon_starts_at_the_right() {
+    let mut app = WordApp::new(Session::new(wordcraft_engine::sample::sample_document()), crate::Services::default());
+    app.run("ui.tab", json!({"tab": "Home"})).unwrap();
+    let width = 2560.0;
+    let mut h = egui_kittest::Harness::builder().with_size(vec2(width, 900.0)).build_ui_state(
+        |ui, app: &mut WordApp| {
+            let ctx = ui.ctx().clone();
+            app.logic(&ctx);
+            app.ui(ui);
+        },
+        app,
+    );
+    let mut boxes = std::collections::HashMap::new();
+    for lang in ["en", "he"] {
+        h.state_mut().run("ui.language", json!({"value": lang})).unwrap();
+        h.run_steps(4);
+        crate::widgets::GROUP_RECTS.with(|g| g.borrow_mut().clear());
+        h.run_steps(1);
+        // The last frame's boxes: a step may draw more than one.
+        let found: std::collections::HashMap<String, egui::Rect> = crate::widgets::GROUP_RECTS.with(|g| g.borrow().iter().cloned().collect());
+        boxes.insert(lang, found);
+    }
+    let (Some(en), Some(he)) = (boxes.get("en"), boxes.get("he")) else { panic!("both ribbons drew groups: {boxes:?}") };
+    let (Some(en_clipboard), Some(en_font)) = (en.get("Clipboard"), en.get("Font")) else { panic!("the English Home tab shows Clipboard and Font: {en:?}") };
+    let (Some(he_clipboard), Some(he_font)) = (he.get("Clipboard"), he.get("Font")) else { panic!("the Hebrew Home tab shows Clipboard and Font: {he:?}") };
+    assert!(en_clipboard.min.x < en_font.min.x, "English runs left to right: {en_clipboard:?} {en_font:?}");
+    assert!(he_clipboard.max.x > width - 40.0, "the Hebrew row starts at the right edge: {he_clipboard:?}");
+    assert!(he_font.max.x <= he_clipboard.min.x + 0.5, "Font is drawn to the left of Clipboard: {he_clipboard:?} {he_font:?}");
+}
+
 /// No group's content runs into its label: View › Show stacked four check boxes in a column
 /// made for three, so "Hide White Space" was drawn under "Show". Every tab, every language.
 #[test]

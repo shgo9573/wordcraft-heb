@@ -29,10 +29,12 @@ import sys
 from pathlib import Path
 
 # The files the Hebrew overlay edits, by their place in the tree. A file that upstream does not
-# have (it was renamed or removed) is reported, so the table stops quietly rotting. The ribbon
-# (`ribbon.rs`, `widgets/groups.rs`, `mini_toolbar.rs`, `ribbon/design.rs`, `widgets/combo.rs`) is
-# not here: it is left exactly as upstream has it, because a mirrored ribbon piled its groups on
-# top of each other (see `crates/ui-egui/src/rtl.rs`).
+# have (it was renamed or removed) is reported, so the table stops quietly rotting. The ribbon is
+# here too (`ribbon.rs`, `ribbon/common.rs`, `widgets/groups.rs`, `widgets/buttons.rs`,
+# `widgets/icon_buttons.rs`, `mini_toolbar.rs`): a Hebrew row runs right to left, and a group is
+# measured by the row's right edge instead of its left one (see `crates/ui-egui/src/rtl.rs`). Up
+# upstream those files are unchanged, so a change there collides and is reported, and the change is
+# re-applied rather than lost.
 FILES = [
     "apps/wordcraft/src/main.rs",
     "crates/control-key/src/lib.rs",
@@ -40,14 +42,24 @@ FILES = [
     "crates/proof/src/lang.rs",
     "crates/proof/src/lib.rs",
     "crates/ui-egui/src/app.rs",
+    "crates/ui-egui/src/app/commands.rs",
     "crates/ui-egui/src/app/fonts.rs",
     "crates/ui-egui/src/chrome.rs",
     "crates/ui-egui/src/dialogs/chrome.rs",
     "crates/ui-egui/src/i18n.rs",
     "crates/ui-egui/src/i18n/tests.rs",
     "crates/ui-egui/src/lib.rs",
+    "crates/ui-egui/src/mini_toolbar.rs",
     "crates/ui-egui/src/options.rs",
+    "crates/ui-egui/src/ribbon.rs",
+    "crates/ui-egui/src/ribbon/common.rs",
     "crates/ui-egui/src/ribbon/language.rs",
+    "crates/ui-egui/src/ribbon/tests.rs",
+    "crates/ui-egui/src/ribbon_fit.rs",
+    "crates/ui-egui/src/widgets.rs",
+    "crates/ui-egui/src/widgets/buttons.rs",
+    "crates/ui-egui/src/widgets/groups.rs",
+    "crates/ui-egui/src/widgets/icon_buttons.rs",
     "crates/ui-egui/src/window_ui.rs",
 ]
 

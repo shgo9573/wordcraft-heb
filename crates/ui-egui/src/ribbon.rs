@@ -160,7 +160,9 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                     })
                     .collect();
                 let plan = plan_strip(&specs, button_levels, ui.available_width(), MORE_TABS_W + 2.0);
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                // Share, Editing and Comments trail the tabs: the right end of an English strip,
+                // the left end of a Hebrew one, as in Word.
+                crate::rtl::with_layout(ui, egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     // No document open (#1129): nothing to share, edit or comment on — but only
                     // these buttons. Disabling the whole line took the tab strip with it: the
                     // tabs took clicks that did nothing, so the empty window had no way back to
@@ -170,7 +172,9 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                             if plan.buttons < 2 { (((share_w + 36.0).max(74.0), 24.0), true) } else { ((30.0, 24.0), false) };
                         let (r, resp) = ui.allocate_exact_size(vec2(share_size.0, share_size.1), Sense::click());
                         ui.painter().rect_filled(r, 4.0, if resp.hovered() { t.accent_text } else { t.accent });
-                        let icon_x = if share_text { r.min.x + 14.0 } else { r.center().x };
+                        // Icon first, then the word: from the right in a Hebrew interface.
+                        let rtl = crate::rtl::is_rtl(ui);
+                        let icon_x = if !share_text { r.center().x } else if rtl { r.max.x - 14.0 } else { r.min.x + 14.0 };
                         icons::paint(
                             ui.painter(),
                             Rect::from_center_size(pos2(icon_x, r.center().y), vec2(14.0, 14.0)),
@@ -179,7 +183,8 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                             t.on_accent,
                         );
                         if share_text {
-                            ui.painter().text(pos2(r.min.x + 26.0, r.center().y), Align2::LEFT_CENTER, share, medium(12.0), t.on_accent);
+                            let (x, align) = if rtl { (r.max.x - 26.0, Align2::RIGHT_CENTER) } else { (r.min.x + 26.0, Align2::LEFT_CENTER) };
+                            ui.painter().text(pos2(x, r.center().y), align, share, medium(12.0), t.on_accent);
                         }
                         resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, share));
                         if resp.on_hover_text(tl!("Export a copy to share (PDF, Word document)")).clicked() {
@@ -213,7 +218,8 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                         }
                     });
                     ui.add_space(8.0);
-                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                    // File, Home, Insert … from the right in a Hebrew strip.
+                    crate::rtl::with_layout(ui, egui::Layout::left_to_right(egui::Align::Center), |ui| {
                         // The tabs that don't fit go into a » menu at the end of the strip (#897, #2026).
                         for (i, ((tab, custom), _)) in tabs.iter().zip(&plan.fits).enumerate().filter(|(_, (_, fits))| **fits) {
                             let (tab, custom) = (tab.as_str(), *custom);
@@ -284,10 +290,11 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                             }
                             // The active tab is in the menu: the button says so.
                             let holds_active = left_out.iter().any(|(tab, _)| *tab == app.ui.tab);
+                            let more_glyph = if crate::rtl::is_rtl(ui) { "«" } else { "»" };
                             ui.painter().text(
                                 r.center(),
                                 Align2::CENTER_CENTER,
-                                "»",
+                                more_glyph,
                                 medium(12.5),
                                 if holds_active { t.accent_text } else { t.text },
                             );
@@ -336,7 +343,9 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                 area = area.horizontal_scroll_offset(x);
             }
             let scroll = area.show(ui, |ui| {
-                ui.horizontal_top(|ui| {
+                // A Hebrew interface turns the row around: the first group starts at the right
+                // edge and the rest run leftwards (`crate::rtl`, `widgets::group_titled`).
+                crate::rtl::horizontal_top(ui, |ui| {
                     ui.spacing_mut().item_spacing = vec2(2.0, 2.0);
                     match entry {
                         // Every tab hidden: nothing to show.
@@ -378,8 +387,13 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
             crate::ribbon_fit::end(ui.ctx());
             // The bar is hidden, so a row wider than the window would be clipped with no sign. Edge chevrons show
             // where more is and scroll it on click. Every command also stays reachable through Search Commands.
+            //
+            // No chevrons in a Hebrew interface: that row starts at the right edge and runs left, so
+            // what doesn't fit is off the left, while a scroll area's offset counts from the left of
+            // its content — a press would move the row the wrong way. `ribbon_fit` folds groups until
+            // the row fits, and Help ▸ Search Commands reaches every command.
             let r = scroll.inner_rect;
-            let overflow = scroll.content_size.x - r.width();
+            let overflow = if crate::rtl::is_rtl(ui) { 0.0 } else { scroll.content_size.x - r.width() };
             let offset = scroll.state.clamped_offset().x;
             let step = 160.0;
             let mut next = None;
