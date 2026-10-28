@@ -87,6 +87,15 @@ pub fn horizontal_wrapped<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> Inn
     }
 }
 
+/// A box for what cannot be mirrored: [`egui::Grid`] measures every cell from the row's left
+/// edge, and a right-to-left row's left edge is at `-∞` (that row runs left without a bound), so
+/// every cell it measures there comes out `NaN` wide and the frame stops. The box starts where
+/// the cursor is and is laid out left to right, as the grid expects; left to right, this is the
+/// scope the grid was drawn in anyway.
+pub fn grid_box<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
+    ui.with_layout(Layout::top_down(Align::Min), add)
+}
+
 /// [`Ui::with_layout`], mirrored when the interface is right to left: a horizontal layout
 /// (`Layout::left_to_right`, `Layout::right_to_left`) swaps its direction, so callers say where
 /// a row's content belongs in an English interface and get the mirror image in a Hebrew one.

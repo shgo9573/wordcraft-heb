@@ -53,6 +53,7 @@ FILES = [
     "crates/ui-egui/src/options.rs",
     "crates/ui-egui/src/ribbon.rs",
     "crates/ui-egui/src/ribbon/common.rs",
+    "crates/ui-egui/src/ribbon/layout.rs",
     "crates/ui-egui/src/ribbon/language.rs",
     "crates/ui-egui/src/ribbon/tests.rs",
     "crates/ui-egui/src/ribbon_fit.rs",

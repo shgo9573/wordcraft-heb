@@ -361,21 +361,6 @@ fn a_hebrew_ribbon_starts_at_the_right() {
 #[test]
 fn ribbon_groups_fit_above_their_labels() {
     let app = WordApp::new(Session::new(wordcraft_engine::sample::sample_document()), crate::Services::default());
-    // A frame that panics is named: which language and tab it was drawing, what the panic said and
-    // where it came from. The ribbon's own message names none of them.
-    let drawing = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
-    let previous = std::sync::Arc::new(std::sync::Mutex::new(Some(std::panic::take_hook())));
-    {
-        let (drawing, previous) = (drawing.clone(), previous.clone());
-        std::panic::set_hook(Box::new(move |info| {
-            let context = drawing.lock().map(|c| c.clone()).unwrap_or_default();
-            eprintln!("PANIC while drawing {context}: {}", panic_message(info.payload()));
-            eprintln!("{}", std::backtrace::Backtrace::force_capture());
-            if let Some(previous) = previous.lock().unwrap().as_ref() {
-                previous(info);
-            }
-        }));
-    }
     // Wide enough that no tab hides groups behind its scroll arrows.
     let mut h = egui_kittest::Harness::builder().with_size(vec2(2560.0, 900.0)).build_ui_state(
         |ui, app: &mut WordApp| {
@@ -386,7 +371,42 @@ fn ribbon_groups_fit_above_their_labels() {
         app,
     );
     let mut tall = Vec::new();
-    let mut failed = Vec::new();
+    // A frame that panics names itself: the language and tab it was drawing, what the panic said
+    // and where in this crate it came from. A report of a failed run keeps the first line of a
+    // failure and little else, so all of it goes on that one line.
+    let drawing = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
+    let previous = std::sync::Arc::new(std::sync::Mutex::new(Some(std::panic::take_hook())));
+    {
+        let (drawing, previous) = (drawing.clone(), previous.clone());
+        std::panic::set_hook(Box::new(move |info| {
+            let context = drawing.lock().map(|c| c.clone()).unwrap_or_default();
+            eprintln!("PANIC while drawing {context}: {} — {}", panic_message(info.payload()), drawn_by(8));
+            if let Some(previous) = previous.lock().unwrap().as_ref() {
+                previous(info);
+            }
+        }));
+    }
+    /// What a caught panic said, as text.
+    fn panic_message(panic: &(dyn std::any::Any + Send)) -> String {
+        if let Some(m) = panic.downcast_ref::<&str>() {
+            (*m).to_string()
+        } else if let Some(m) = panic.downcast_ref::<String>() {
+            m.clone()
+        } else {
+            "a panic without a message".to_string()
+        }
+    }
+    /// The frames `limit` of the stack that belong to this crate, innermost first, as one line.
+    fn drawn_by(limit: usize) -> String {
+        let trace = std::backtrace::Backtrace::force_capture().to_string();
+        let frames: Vec<&str> = trace
+            .lines()
+            .map(str::trim)
+            .filter(|line| line.contains("wordcraft") || line.contains("ui_egui") || line.contains("ribbon"))
+            .take(limit)
+            .collect();
+        if frames.is_empty() { "no frames of ours on the stack".to_string() } else { frames.join(" <- ") }
+    }
     for lang in crate::i18n::Lang::all() {
         h.state_mut().run("ui.language", json!({"value": lang.code()})).unwrap();
         for tab in TABS.iter().filter(|t| **t != "File") {
@@ -395,7 +415,7 @@ fn ribbon_groups_fit_above_their_labels() {
                 context.push_str(&format!("{} › {tab}", lang.code()));
             }
             h.state_mut().run("ui.tab", json!({"tab": tab})).unwrap();
-            // A frame that panics is recorded and the rest are still drawn: the window into the
+            // A frame that panics is recorded and the rest are still drawn: the window onto the
             // fault is worth more than the first tab that hits it.
             let frame = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 h.run_steps(2);
@@ -405,30 +425,17 @@ fn ribbon_groups_fit_above_their_labels() {
             }));
             match frame {
                 Ok(found) => tall.extend(found.into_iter().map(|g| format!("{} {tab} › {g}", lang.code()))),
-                Err(panic) => failed.push(format!("{} {tab} › {}", lang.code(), panic_message(&*panic))),
+                Err(panic) => tall.push(format!("{} {tab} › did not draw: {}", lang.code(), panic_message(&*panic))),
             }
-            crate::widgets::TALL_GROUPS.with(|g| g.borrow_mut().clear());
         }
-    }
-    // A panic hook outlives the test that set it, so put the one the harness brought back.
-    if let Some(previous) = previous.lock().unwrap().take() {
-        std::panic::set_hook(previous);
     }
     tall.sort();
     tall.dedup();
-    failed.sort();
-    assert!(tall.is_empty() && failed.is_empty(), "groups taller than the ribbon: {tall:#?}\nframes that did not draw: {failed:#?}");
-}
-
-/// What a caught panic said, as text.
-fn panic_message(panic: &(dyn std::any::Any + Send)) -> String {
-    if let Some(m) = panic.downcast_ref::<&str>() {
-        (*m).to_string()
-    } else if let Some(m) = panic.downcast_ref::<String>() {
-        m.clone()
-    } else {
-        "a panic without a message".to_string()
+    // The hook outlives the test that set it: put back the one the harness brought.
+    if let Some(previous) = previous.lock().unwrap().take() {
+        std::panic::set_hook(previous);
     }
+    assert!(tall.is_empty(), "groups taller than the ribbon: {tall:#?}");
 }
 
 /// #897: the tabs that didn't fit were drawn under Comments / Editing / Share, so at 1280 pt
