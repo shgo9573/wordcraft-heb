@@ -20,13 +20,13 @@ const MAX_LETTERS: usize = 40;
 const MAX_STEMS: usize = 400_000;
 
 /// Suggestions for `word` in Hebrew, best first, at most `max`.
-pub(crate) fn suggest(word: &str, max: usize) -> Vec<String> {
+pub fn suggest(word: &str, max: usize) -> Vec<String> {
     let d = super::dictionary();
     suggest_with(&d, word, max)
 }
 
 /// [`suggest`] against a given dictionary (tests, and a dictionary the user picked).
-pub(crate) fn suggest_with(d: &AffixDict, word: &str, max: usize) -> Vec<String> {
+pub fn suggest_with(d: &AffixDict, word: &str, max: usize) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     let w = super::strip_points(word);
     let w = w.trim_matches(|c: char| !c.is_alphanumeric() && c != '\'' && c != '"');

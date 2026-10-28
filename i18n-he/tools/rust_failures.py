@@ -27,6 +27,9 @@ NOISE = re.compile(r"^\s*(Compiling|Checking|Finished|Downloaded|Downloading|Blo
 # A test failure (`---- name stdout ----`, `thread 'x' panicked at …`) or a doctest.
 TEST_FAILURE = re.compile(r"^(---- .* ----|thread '.*' panicked|assertion .* failed|test result: FAILED)")
 
+# `cargo --color always` (or a `tee` that keeps escapes) wraps text in SGR codes: drop them.
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
 MAX_ANNOTATIONS = 10
 MAX_REPORT_ERRORS = 40
 CONTEXT = 4
@@ -88,7 +91,7 @@ def main() -> int:
     args = parser.parse_args()
 
     text = sys.stdin.read() if args.log == "-" else Path(args.log).read_text(encoding="utf-8", errors="replace")
-    lines = text.splitlines()
+    lines = ANSI.sub("", text).splitlines()
     errors, lines = parse(lines)
     if args.markdown:
         sys.stdout.write(markdown(errors, lines, args.title))

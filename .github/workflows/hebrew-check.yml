@@ -23,7 +23,7 @@ concurrency:
 
 env:
   CRAFT_FONTS_REF: b076417b5880bd4154bd22f00695b1d28c6bea83
-  CARGO_TERM_COLOR: always
+  CARGO_TERM_COLOR: never
   CARGO_INCREMENTAL: "0"
 
 jobs:
@@ -76,7 +76,7 @@ jobs:
       - name: cargo check over the workspace
         run: |
           set +e
-          cargo check --workspace --all-targets --message-format=short 2>&1 | tee "$RUNNER_TEMP/rust.log"
+          cargo check --workspace --all-targets --message-format=short --keep-going 2>&1 | tee "$RUNNER_TEMP/rust.log"
           status=${PIPESTATUS[0]}
           python3 i18n-he/tools/rust_failures.py --annotate "$RUNNER_TEMP/rust.log"
           exit "$status"
