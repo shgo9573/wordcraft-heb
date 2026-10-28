@@ -93,6 +93,8 @@ jobs:
       # runner; they have nothing to do with Hebrew.
       - name: The interface crate's own tests (the right-to-left layout among them)
         if: ${{ !cancelled() }}
+        env:
+          RUST_BACKTRACE: "1" # a failing layout says which frame asked for the size
         run: |
           set +e
           cargo test -p wordcraft-ui-egui --lib -- --skip zotero:: 2>&1 | tee "$RUNNER_TEMP/ui-tests.log"

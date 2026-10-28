@@ -33,6 +33,8 @@ ANSI = re.compile(r"\x1b\[[0-9;]*m")
 MAX_ANNOTATIONS = 10
 MAX_REPORT_ERRORS = 40
 CONTEXT = 4
+# Lines kept after a `thread '…' panicked at` line, for the backtrace a panic prints.
+BACKTRACE_LINES = 30
 
 
 def parse(lines: list[str]) -> tuple[list[dict], list[str]]:
@@ -63,7 +65,10 @@ def test_failures(lines: list[str]) -> list[str]:
     out: list[str] = []
     shown: set[tuple[int, int]] = set()
     for index in named:
-        start, end = max(0, index - CONTEXT), min(len(lines), index + CONTEXT + 1)
+        # A panic prints its message and then (with RUST_BACKTRACE) the frames: keep enough of
+        # them to see which layout asked for the size.
+        after = BACKTRACE_LINES if lines[index].lstrip().startswith("thread '") else CONTEXT
+        start, end = max(0, index - CONTEXT), min(len(lines), index + after + 1)
         if any(start < shown_end and shown_start < end for shown_start, shown_end in shown):
             continue
         shown.add((start, end))
