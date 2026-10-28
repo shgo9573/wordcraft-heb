@@ -58,15 +58,15 @@ pub fn group_titled(ui: &mut Ui, id_title: &str, title: &str, launcher: Option<&
         let r = inner.response.rect;
         title_row(ui, Rect::from_min_max(pos2(r.min.x, top + CONTENT_H), pos2(r.max.x, top + CONTENT_H + LABEL_H)), id_title, title, launcher, app);
     }
+    ui.add_space(5.0);
+    let x = edge(ui);
     // The group's box, for the test that checks which edge a Hebrew row starts at.
     #[cfg(test)]
     GROUP_RECTS.with(|g| {
-        let width = (start_x - edge(ui)).abs();
+        let width = (start_x - x).abs();
         let min = if rtl { start_x - width } else { start_x };
         g.borrow_mut().push((id_title.to_string(), Rect::from_min_max(pos2(min, top), pos2(min + width, top + CONTENT_H + LABEL_H))));
     });
-    ui.add_space(5.0);
-    let x = edge(ui);
     ui.painter().line_segment([pos2(x, top + 4.0), pos2(x, top + CONTENT_H + LABEL_H - 4.0)], Stroke::new(1.0, t.border));
     ui.add_space(6.0);
     crate::ribbon_fit::record(ui.ctx(), id_title, level, (start_x - edge(ui)).abs());

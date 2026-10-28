@@ -106,11 +106,7 @@ pub fn with_layout<R>(ui: &mut Ui, layout: Layout, add: impl FnOnce(&mut Ui) -> 
 /// A control stack inside a mirrored row needs this: to the left of a right-to-left row's cursor
 /// there is no bound, so a left-aligned column there would place its buttons off the window.
 pub fn vertical_top<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
-    if is_rtl(ui) {
-        ui.with_layout(Layout::top_down(Align::Max), add)
-    } else {
-        ui.vertical(add)
-    }
+    if is_rtl(ui) { ui.with_layout(Layout::top_down(Align::Max), add) } else { ui.vertical(add) }
 }
 
 /// [`Layout::left_to_right`], right to left when the interface is: for a layout handed to

@@ -194,7 +194,9 @@ def apply_hunks(source: str, hunks: list[dict], name: str) -> tuple[str, list[st
     notes: list[str] = []
     for hunk in hunks:
         if "old" in hunk:
-            if hunk["new"] in source:
+            # A hunk that only deletes has an empty `new`, and an empty string is in every source:
+            # ask whether the text it removes is gone instead.
+            if hunk["new"] and hunk["new"] in source:
                 continue
             if hunk["old"] not in source:
                 raise SystemExit(f"error: {name} no longer has the text a Hebrew change replaces:\n{hunk['old']}")
@@ -273,7 +275,8 @@ def main() -> int:
             source = path.read_text(encoding="utf-8") if path.exists() else ""
             for hunk in patch:
                 applied, wanted = hunk.get("insert", hunk.get("new", "")), hunk.get("old", hunk.get("after", ""))
-                if applied not in source:
+                # A deleting hunk leaves nothing to look for: it is applied when its text is gone.
+                if (applied not in source) if applied else (wanted in source):
                     missing.append(f"{path.relative_to(root)}: no `{wanted.strip().splitlines()[0][:70]}`")
         missing += copy_new_files(root, code, check=True, missing=[])
         for line in missing:
