@@ -29,6 +29,9 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from code_match import has_code, same_code  # noqa: E402  (the sibling tool's matcher)
+
 # The files the Hebrew overlay edits, by their place in the tree. A file that upstream does not
 # have (it was renamed or removed) is reported, so the table stops quietly rotting. The ribbon is
 # here too (`ribbon.rs`, `ribbon/common.rs`, `widgets/groups.rs`, `widgets/buttons.rs`,
@@ -107,33 +110,26 @@ def hunks_for(before: str, after: str, path: str) -> list[dict]:
     return hunks
 
 
-def squeezed(text: str) -> str:
-    """`text` with every run of whitespace made one space.
-
-    The CI formats the tree (`cargo fmt --all`) and commits the result, so the code a hunk records
-    is the same code with other line breaks and indentation afterwards. The overlay is about the
-    code, not about where rustfmt wrapped it: both checks compare it this way.
-    """
-    # `cargo fmt` also moves a call's start to its own line (`ui` then `.add_sized(`), which leaves
-    # a space where there was none: the space around punctuation goes too.
-    return re.sub(r"\s*([.(),;:{}\[\]])\s*", r"\1", " ".join(text.split()))
-
-
 def missing_from_tree(root: Path, table: dict[str, list[dict]]) -> list[str]:
     """The recorded changes that the tree does not (or does still) show, and stale copies."""
     problems: list[str] = []
     for path, hunks in table.items():
-        source = squeezed((root / path).read_text(encoding="utf-8"))
+        source = (root / path).read_text(encoding="utf-8")
         for hunk in hunks:
+            if "old" in hunk and not hunk["new"]:
+                # A hunk that only deletes is applied when the text it removes is gone.
+                if has_code(source, hunk["old"]):
+                    problems.append(f"{path}: still has the line the overlay removes: `{hunk['old'].strip().splitlines()[0][:60]}`")
+                continue
             if "old" in hunk:
                 # The new text first: a change whose replacement happens to contain what it
                 # replaced (`run_steps(2)` in a block that is still `run_steps(2)` inside a
                 # `catch_unwind`) is applied, not half applied.
-                if squeezed(hunk["new"]) in source:
+                if has_code(source, hunk["new"]):
                     continue
-                still = "still has the text the overlay replaces" if squeezed(hunk["old"]) in source else "has neither the overlay's text nor the text it replaces"
+                still = "still has the text the overlay replaces" if has_code(source, hunk["old"]) else "has neither the overlay's text nor the text it replaces"
                 problems.append(f"{path}: {still}: `{hunk['old'].strip().splitlines()[0][:60]}`")
-            elif squeezed(hunk["insert"]) not in source:
+            elif not has_code(source, hunk["insert"]):
                 problems.append(f"{path}: misses the overlay's `{hunk['insert'].strip().splitlines()[0][:60]}`")
     code = root / "i18n-he/code"
     for copy in sorted(code.rglob("*.rs")):
@@ -141,7 +137,7 @@ def missing_from_tree(root: Path, table: dict[str, list[dict]]) -> list[str]:
         target = root / relative
         if not target.exists():
             problems.append(f"{relative}: missing (copy it from {copy.relative_to(root)})")
-        elif squeezed(target.read_text(encoding="utf-8")) != squeezed(copy.read_text(encoding="utf-8")):
+        elif not same_code(target.read_text(encoding="utf-8"), copy.read_text(encoding="utf-8")):
             problems.append(f"{relative}: drifted from {copy.relative_to(root)}")
     return problems
 
