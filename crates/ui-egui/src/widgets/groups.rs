@@ -1,9 +1,10 @@
-#[cfg(test)]
-use super::TALL_GROUPS;
 use super::buttons::{BIG_ICON_Y, BIG_LABEL_Y, CONTENT_H, DROPDOWN, LABEL_H, bg, label_line};
 use super::{Align2, Rect, Response, Sense, Stroke, Tokens, Ui, WordApp, icons, pos2, regular, vec2};
+#[cfg(test)]
+use super::{GROUP_RECTS, TALL_GROUPS};
 
-/// A ribbon group: content, a centred label below and a divider on the right.
+/// A ribbon group: content, a centred label below and a divider on the trailing side — the right
+/// one in an English interface, the left one in a Hebrew one.
 pub fn group(ui: &mut Ui, title: &str, launcher: Option<&str>, app: &mut WordApp, add: impl FnOnce(&mut Ui, &mut WordApp)) {
     // The English title keys the launcher's id; the drawn title is translated.
     group_titled(ui, title, tl!(title), launcher, app, add);
@@ -12,7 +13,15 @@ pub fn group(ui: &mut Ui, title: &str, launcher: Option<&str>, app: &mut WordApp
 /// A ribbon group whose title is shown as is (a custom group's name, Customize Ribbon).
 pub fn group_titled(ui: &mut Ui, id_title: &str, title: &str, launcher: Option<&str>, app: &mut WordApp, add: impl FnOnce(&mut Ui, &mut WordApp)) {
     let t = Tokens::get(ui.ctx());
-    let start = ui.cursor().min;
+    // A Hebrew interface turns the row around: a group starts at the row's right edge and the next
+    // one is drawn to its left.
+    let rtl = crate::rtl::is_rtl(ui);
+    let start = ui.cursor();
+    let top = start.min.y;
+    // The edge the group begins at, and leaves the cursor at: the row's left edge, or its right
+    // edge in a Hebrew row.
+    let edge = |ui: &Ui| if rtl { ui.cursor().max.x } else { ui.cursor().min.x };
+    let start_x = edge(ui);
     // #662: the window may be too narrow for the tab; the plan says how this group fits.
     let position = crate::ribbon_fit::position(ui.ctx());
     let level = crate::ribbon_fit::level(ui.ctx(), id_title);
@@ -22,10 +31,17 @@ pub fn group_titled(ui: &mut Ui, id_title: &str, title: &str, launcher: Option<&
         // Not folded: a drop-down left open while it was folded doesn't come back by itself.
         ui.data_mut(|d| d.remove::<bool>(collapsed_open_id(ui, id_title, position)));
         let label_w = ui.ctx().fonts_mut(|f| f.layout_no_wrap(title.to_string(), regular(11.0), t.group_label).size().x);
-        let inner = ui.vertical(|ui| {
+        // A Hebrew row draws its groups right to left; left to right it is as it always was. The
+        // room a group's controls are given is read off this row (inside a right-to-left row the
+        // space to the left is unbounded), so the two directions give exactly the same box.
+        let row_w = ui.available_width();
+        debug_assert!(row_w.is_finite(), "group {id_title}: the ribbon row's width is {row_w}");
+        let column = if rtl { egui::Layout::top_down(egui::Align::Max) } else { egui::Layout::top_down(egui::Align::Min) };
+        let controls = if rtl { egui::Layout::right_to_left(egui::Align::Min) } else { egui::Layout::left_to_right(egui::Align::Min) };
+        let inner = ui.with_layout(column, |ui| {
             ui.set_min_width(label_w + if launcher.is_some() { 22.0 } else { 10.0 });
             crate::ribbon_fit::set_compact(ui.ctx(), level == crate::ribbon_fit::COMPACT);
-            let content = ui.allocate_ui_with_layout(vec2(ui.available_width(), CONTENT_H), egui::Layout::left_to_right(egui::Align::Min), |ui| {
+            let content = ui.allocate_ui_with_layout(vec2(row_w, CONTENT_H), controls, |ui| {
                 ui.spacing_mut().item_spacing = vec2(1.0, 1.0);
                 add(ui, app);
             });
@@ -37,21 +53,23 @@ pub fn group_titled(ui: &mut Ui, id_title: &str, title: &str, launcher: Option<&
             #[cfg(not(test))]
             let _ = content;
         });
+        // The title sits under the controls, whose rect is the group's: the row's cursor never
+        // moves along the row, so its right edge is the same before and after the group.
         let r = inner.response.rect;
-        title_row(
-            ui,
-            Rect::from_min_max(pos2(start.x, start.y + CONTENT_H), pos2(r.max.x, start.y + CONTENT_H + LABEL_H)),
-            id_title,
-            title,
-            launcher,
-            app,
-        );
+        title_row(ui, Rect::from_min_max(pos2(r.min.x, top + CONTENT_H), pos2(r.max.x, top + CONTENT_H + LABEL_H)), id_title, title, launcher, app);
     }
     ui.add_space(5.0);
-    let x = ui.cursor().min.x;
-    ui.painter().line_segment([pos2(x, start.y + 4.0), pos2(x, start.y + CONTENT_H + LABEL_H - 4.0)], Stroke::new(1.0, t.border));
+    let x = edge(ui);
+    // The group's box, for the test that checks which edge a Hebrew row starts at.
+    #[cfg(test)]
+    GROUP_RECTS.with(|g| {
+        let width = (start_x - x).abs();
+        let min = if rtl { start_x - width } else { start_x };
+        g.borrow_mut().push((id_title.to_string(), Rect::from_min_max(pos2(min, top), pos2(min + width, top + CONTENT_H + LABEL_H))));
+    });
+    ui.painter().line_segment([pos2(x, top + 4.0), pos2(x, top + CONTENT_H + LABEL_H - 4.0)], Stroke::new(1.0, t.border));
     ui.add_space(6.0);
-    crate::ribbon_fit::record(ui.ctx(), id_title, level, ui.cursor().min.x - start.x);
+    crate::ribbon_fit::record(ui.ctx(), id_title, level, (start_x - edge(ui)).abs());
 }
 
 /// A group's title row (`r`): the centred title and, with a `launcher`, its dialog launcher.
@@ -60,7 +78,10 @@ fn title_row(ui: &mut Ui, r: Rect, id_title: &str, title: &str, launcher: Option
     let title_y = r.center().y;
     ui.painter().text(pos2(r.center().x, title_y), Align2::CENTER_CENTER, title, regular(11.0), t.group_label);
     if let Some(cmd) = launcher {
-        let lr = Rect::from_center_size(pos2(r.max.x - 6.0, title_y), vec2(11.0, 11.0));
+        // The launcher sits at the title row's trailing corner: the right one, or the left one in
+        // a Hebrew interface.
+        let x = if crate::rtl::is_rtl(ui) { r.min.x + 6.0 } else { r.max.x - 6.0 };
+        let lr = Rect::from_center_size(pos2(x, title_y), vec2(11.0, 11.0));
         let resp = ui.interact(lr, ui.scope_id().with(("launch", id_title)), Sense::click());
         if resp.hovered() {
             ui.painter().rect_filled(lr.expand(2.0), 2.0, t.hover);
@@ -128,8 +149,10 @@ fn collapsed_group(
         // full screen.
         app.escape_free = false;
         egui::Popup::menu(&resp).open_bool(&mut shown).close_behavior(egui::PopupCloseBehavior::IgnoreClicks).show(|ui| {
-            ui.vertical(|ui| {
-                ui.horizontal_top(|ui| {
+            // The whole group lies under its button, and in a Hebrew interface that means to the
+            // left of the right edge.
+            crate::rtl::vertical_top(ui, |ui| {
+                crate::rtl::horizontal_top(ui, |ui| {
                     ui.set_min_height(CONTENT_H);
                     ui.spacing_mut().item_spacing = vec2(1.0, 1.0);
                     add(ui, app);

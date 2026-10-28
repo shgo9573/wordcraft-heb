@@ -81,9 +81,12 @@ pub fn label_line(ui: &Ui, cx: f32, y: f32, text: &str, font: egui::FontId, colo
     let extra = if marker { DROPDOWN + 3.0 } else { 0.0 };
     let size = galley.size();
     let x = cx - (size.x + extra) / 2.0;
-    ui.painter().galley(pos2(x, y), galley, color);
+    // A Hebrew interface reads right to left, so the drop-down marker comes before the text.
+    let rtl = crate::rtl::is_rtl(ui);
+    ui.painter().galley(pos2(if marker && rtl { x + extra } else { x }, y), galley, color);
     if marker {
-        let c = pos2(x + size.x + 3.0 + DROPDOWN / 2.0, y + size.y / 2.0);
+        let marker_x = if rtl { x } else { x + size.x + 3.0 };
+        let c = pos2(marker_x + DROPDOWN / 2.0, y + size.y / 2.0);
         icons::paint(ui.painter(), Rect::from_center_size(c, vec2(DROPDOWN, DROPDOWN)), "dropdown", color, color);
     }
 }
@@ -147,11 +150,14 @@ pub fn small(ui: &mut Ui, app: &mut WordApp, icon: &str, label: Option<&str>, ti
     keytip_badge(ui, r, id, tip);
     let on = enabled(app, id);
     bg(ui, r, &resp, checked, &t);
-    let ic = Rect::from_center_size(pos2(r.min.x + 12.0, r.center().y), vec2(17.0, 17.0));
+    // A Hebrew interface puts the icon at the button's right and its label to the left of it.
+    let rtl = crate::rtl::is_rtl(ui);
+    let ic = Rect::from_center_size(pos2(if rtl { r.max.x - 12.0 } else { r.min.x + 12.0 }, r.center().y), vec2(17.0, 17.0));
     let (c, a) = if on { (t.icon, t.accent) } else { (t.text_disabled, t.text_disabled) };
     icons::paint(ui.painter(), ic, icon, c, a);
     if let Some(l) = label {
-        ui.painter().text(pos2(r.min.x + 24.0, r.center().y), Align2::LEFT_CENTER, l, regular(11.5), if on { t.text } else { t.text_disabled });
+        let (x, align) = if rtl { (r.max.x - 24.0, Align2::RIGHT_CENTER) } else { (r.min.x + 24.0, Align2::LEFT_CENTER) };
+        ui.painter().text(pos2(x, r.center().y), align, l, regular(11.5), if on { t.text } else { t.text_disabled });
     }
     let resp = tooltip(app, resp, tip, id);
     command_menu(&resp, app, id);

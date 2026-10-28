@@ -1,7 +1,8 @@
 //! Ribbon groups that shrink to fit the window (#662), the way Word's ribbon does: when a tab is
 //! wider than the window, groups give up their small buttons' labels and the Styles gallery shows
 //! fewer tiles (compact), then fold into a single drop-down button that opens the whole group
-//! (collapsed), starting from the right.
+//! (collapsed), starting from the far end of the row: the right in an English interface, the left
+//! in a Hebrew one, where the row itself is drawn right to left.
 //!
 //! Each frame [`begin`] plans every group's level from the widths the groups measured on earlier
 //! frames ([`record`]) and the width there is; [`super::widgets::group_titled`] reads its level
@@ -33,9 +34,10 @@ pub struct GroupWidths {
     pub widths: [Option<f32>; 3],
 }
 
-/// Each group's level (by position) so that the row fits `avail`: groups shrink from the right,
-/// first all to compact, then to collapsed, stopping as soon as the row fits. Then whatever room is
-/// left is given back, from the left.
+/// Each group's level (by position) so that the row fits `avail`: groups shrink from the far end of
+/// the row (the last drawn — the right in an English row, the left in a Hebrew one), first all to
+/// compact, then to collapsed, stopping as soon as the row fits. Then whatever room is left is given
+/// back, from the near end.
 pub fn plan(groups: &[GroupWidths], avail: f32) -> Vec<u8> {
     let full = |g: &GroupWidths| g.widths[0].unwrap_or(0.0);
     let width = |g: &GroupWidths, level: u8| -> f32 {

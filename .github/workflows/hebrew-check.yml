@@ -126,11 +126,11 @@ jobs:
           exit "$status"
       # One gap, unrelated to Hebrew and documented rather than hidden: the Zotero tests open a
       # socket to a fake server of their own and time out on a shared runner.
-      # `ribbon_groups_fit_above_their_labels` runs here now. It used to hit egui's
-      # `Negative desired size: [NaN 20.0]` in Hebrew, the same fault that piled a Hebrew ribbon's
-      # groups on top of each other: the ribbon was opened right to left, and its own measuring
-      # (`cursor.min.x - start.x`, a row that grows right) can't take that. The ribbon lays its
-      # groups out as upstream does now (see `crates/ui-egui/src/rtl.rs`), so the test guards it.
+      # `ribbon_groups_fit_above_their_labels` runs here, over every language: the Hebrew ribbon
+      # lays its groups out right to left (see `crates/ui-egui/src/rtl.rs`), and a group is measured
+      # by the edge the row starts at, so an unbounded or NaN size there fails this test rather than
+      # a build nobody is watching. (Before that the ribbon stayed left to right: opening it right
+      # to left piled the groups on top of each other at the left edge.)
       - name: The interface crate's own tests (the right-to-left layout among them)
         if: ${{ !cancelled() }}
         env:

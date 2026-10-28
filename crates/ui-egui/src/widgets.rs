@@ -45,4 +45,11 @@ thread_local! {
 }
 
 #[cfg(test)]
+thread_local! {
+    /// Where each group of the ribbon was drawn, by its title and its place on the tab: a Hebrew
+    /// interface must start the row at the right edge (see [`groups::group_titled`]).
+    pub(crate) static GROUP_RECTS: std::cell::RefCell<Vec<(String, egui::Rect)>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+#[cfg(test)]
 mod tests;

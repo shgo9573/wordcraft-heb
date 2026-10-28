@@ -63,19 +63,19 @@ fn icon_text_button_with(ui: &mut Ui, icon: &str, text: &str, font: egui::FontId
     let st = drawn_state(ui, &resp, true);
     let r = r.expand(st.expansion);
     ui.painter().rect(r, ui.visuals().widgets.inactive.corner_radius, st.fill, st.stroke, egui::StrokeKind::Inside);
-    icons::paint(
-        ui.painter(),
-        Rect::from_center_size(pos2(r.min.x + pad.x + icon_w / 2.0, r.center().y), vec2(icon_w, icon_w)),
-        icon,
-        t.icon,
-        t.accent,
-    );
-    let text_x = r.min.x + pad.x + icon_w + if show_text { 4.0 } else { 0.0 };
+    // A Hebrew interface reads from the right: the icon leads there, the text and the marker
+    // follow it leftwards.
+    let rtl = crate::rtl::is_rtl(ui);
+    let icon_x = if rtl { r.max.x - pad.x - icon_w / 2.0 } else { r.min.x + pad.x + icon_w / 2.0 };
+    icons::paint(ui.painter(), Rect::from_center_size(pos2(icon_x, r.center().y), vec2(icon_w, icon_w)), icon, t.icon, t.accent);
+    let gap = if show_text { 4.0 } else { 0.0 };
+    let text_x = if rtl { r.max.x - pad.x - icon_w - gap - text_w } else { r.min.x + pad.x + icon_w + gap };
     if show_text {
         ui.painter().galley(pos2(text_x, r.center().y - galley.size().y / 2.0), galley, st.text);
     }
     if marker {
-        let c = pos2(text_x + text_w + 4.0 + DROPDOWN / 2.0, r.center().y);
+        let x = if rtl { text_x - 4.0 - DROPDOWN / 2.0 } else { text_x + text_w + 4.0 + DROPDOWN / 2.0 };
+        let c = pos2(x, r.center().y);
         icons::paint(ui.painter(), Rect::from_center_size(c, vec2(DROPDOWN, DROPDOWN)), "dropdown", st.text, st.text);
     }
     resp
@@ -97,10 +97,15 @@ pub fn icon_menu_item(ui: &mut Ui, icon: &str, text: &str, shortcut: &str, min_w
     ui.painter().rect_filled(r, ui.visuals().widgets.inactive.corner_radius, st.fill);
     let (line, accent) = if ui.is_enabled() { (t.icon, t.accent) } else { (t.text_disabled, t.text_disabled) };
     let text_c = if ui.is_enabled() { st.text } else { t.text_disabled };
-    icons::paint(ui.painter(), Rect::from_center_size(pos2(r.min.x + pad.x + icon_w / 2.0, r.center().y), vec2(icon_w, icon_w)), icon, line, accent);
-    ui.painter().galley(pos2(r.min.x + pad.x + icon_w + 6.0, r.center().y - galley.size().y / 2.0), galley, text_c);
+    // A Hebrew menu reads from the right: the icon at the item's right, the shortcut at its left.
+    let rtl = crate::rtl::is_rtl(ui);
+    let icon_x = if rtl { r.max.x - pad.x - icon_w / 2.0 } else { r.min.x + pad.x + icon_w / 2.0 };
+    icons::paint(ui.painter(), Rect::from_center_size(pos2(icon_x, r.center().y), vec2(icon_w, icon_w)), icon, line, accent);
+    let text_x = if rtl { r.max.x - pad.x - icon_w - 6.0 - galley.size().x } else { r.min.x + pad.x + icon_w + 6.0 };
+    ui.painter().galley(pos2(text_x, r.center().y - galley.size().y / 2.0), galley, text_c);
     if let Some(g) = sc {
-        ui.painter().galley(pos2(r.max.x - pad.x - g.size().x, r.center().y - g.size().y / 2.0), g, t.text_disabled);
+        let x = if rtl { r.min.x + pad.x } else { r.max.x - pad.x - g.size().x };
+        ui.painter().galley(pos2(x, r.center().y - g.size().y / 2.0), g, t.text_disabled);
     }
     resp
 }
