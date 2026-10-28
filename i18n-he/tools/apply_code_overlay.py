@@ -187,7 +187,9 @@ def apply_fonts(source: str) -> tuple[str, list[str]]:
 def squeezed(text: str) -> str:
     """`text` with every run of whitespace made one space: `--check` asks whether the code is
     there, and the CI's `cargo fmt --all` moves line breaks without changing it."""
-    return " ".join(text.split())
+    # `cargo fmt` also moves a call's start to its own line (`ui` then `.add_sized(`), which leaves
+    # a space where there was none: the space around punctuation goes too.
+    return re.sub(r"\s*([.(),;:{}\[\]])\s*", r"\1", " ".join(text.split()))
 
 
 def apply_hunks(source: str, hunks: list[dict], name: str) -> tuple[str, list[str]]:

@@ -25,6 +25,7 @@ import argparse
 import difflib
 import json
 import subprocess
+import re
 import sys
 from pathlib import Path
 
@@ -113,7 +114,9 @@ def squeezed(text: str) -> str:
     is the same code with other line breaks and indentation afterwards. The overlay is about the
     code, not about where rustfmt wrapped it: both checks compare it this way.
     """
-    return " ".join(text.split())
+    # `cargo fmt` also moves a call's start to its own line (`ui` then `.add_sized(`), which leaves
+    # a space where there was none: the space around punctuation goes too.
+    return re.sub(r"\s*([.(),;:{}\[\]])\s*", r"\1", " ".join(text.split()))
 
 
 def missing_from_tree(root: Path, table: dict[str, list[dict]]) -> list[str]:
