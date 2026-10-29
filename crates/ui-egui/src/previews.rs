@@ -175,7 +175,15 @@ impl Previews {
             self.families = Some((lang, f));
             self.east_asian = None;
         }
-        self.families.as_ref().map(|(_, f)| f.clone()).unwrap_or_default()
+        let mut f: Vec<String> = self.families.as_ref().map(|(_, f)| f.clone()).unwrap_or_default();
+        // A Hebrew interface puts the fonts that draw Hebrew first, so the list opens on fonts that
+        // can show the document. Which those are is a scan of every installed font's character
+        // map: it runs once, in the background, and this asks for its answer every frame until the
+        // answer is there — the list is alphabetical until then, and reorders itself after.
+        if crate::i18n::current().is_rtl() && let Some(hebrew) = hebrew_families() {
+            hebrew_first(&mut f, &hebrew);
+        }
+        f
     }
 
     /// The Font dialog's Asian text font list: the installed Chinese, Japanese and Korean fonts,
@@ -399,6 +407,62 @@ pub fn ink_mask(img: &mut egui::ColorImage) {
     }
 }
 
+/// A Hebrew word a font-list entry shows after the family's name, drawn in that face (see
+/// [`entry_text`]): the list is then a row of Hebrew letterforms, not just names.
+const HEBREW_SAMPLE: &str = "שלום";
+
+/// [`Previews::families`]' order in a Hebrew interface: the families that draw [`HEBREW_SAMPLE`]
+/// first, then the others, each group in the alphabetical order the list already has.
+fn hebrew_first(families: &mut [String], hebrew: &std::collections::HashSet<String>) {
+    families.sort_by_key(|name| !hebrew.contains(&name.to_lowercase()));
+}
+
+/// The families whose faces draw Hebrew — the first ones in a Hebrew interface's font list.
+///
+/// The answer is a scan over every installed family (each one's character map, read from its file),
+/// so it is made once, on a background thread the first call starts: `None` while the scan runs,
+/// and `None` for good on wasm, which has neither the thread nor an installed list. Nothing waits
+/// for it; the list keeps its alphabetical order until the scan is done.
+fn hebrew_families() -> Option<std::sync::Arc<std::collections::HashSet<String>>> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        None
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use std::collections::HashSet;
+        use std::sync::{Arc, Mutex, Once, OnceLock};
+
+        static SCAN: OnceLock<Mutex<Option<Arc<HashSet<String>>>>> = OnceLock::new();
+        static START: Once = Once::new();
+        let answer = SCAN.get_or_init(|| Mutex::new(None));
+        START.call_once(|| {
+            // A failed spawn leaves the list alphabetical.
+            let _ = std::thread::Builder::new().name("hebrew-fonts".into()).spawn(move || {
+                let db = wordcraft_fonts::FontDb::global();
+                let draws_hebrew = |family: &str| db.preview_face(family).is_some_and(|face| HEBREW_SAMPLE.chars().all(|c| face.covers(c)));
+                let hebrew: HashSet<String> = db.families().into_iter().filter(|f| draws_hebrew(f)).map(|f| f.to_lowercase()).collect();
+                *answer.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Arc::new(hebrew));
+            });
+        });
+        answer.lock().unwrap_or_else(std::sync::PoisonError::into_inner).clone()
+    }
+}
+
+/// The text one font-list entry is drawn with: the family's name, and after it — in a Hebrew
+/// interface, in a face that draws it — the Hebrew word, so the entry shows the letterforms the
+/// font gives Hebrew and not just its Latin name.
+///
+/// The word is spelled backwards here: [`wordcraft_render::render_text_line`] draws the glyphs in
+/// the order it is handed them, right-to-left runs included, so read from the right it says
+/// „שלום”. (A face without the letters gets the name alone, in the fallback face.)
+fn entry_text(face: &wordcraft_fonts::FontFace, name: &str, rtl: bool) -> String {
+    if !rtl || !HEBREW_SAMPLE.chars().all(|c| face.covers(c)) {
+        return name.to_string();
+    }
+    format!("{name}  {}", HEBREW_SAMPLE.chars().rev().collect::<String>())
+}
+
 /// A font list entry: `name` in its own face, 240×20 pt. The face is read for the preview alone
 /// and dropped (#848): browsing the list used to load every family shown for good, so each trip
 /// through the Font box grew memory by tens of megabytes. A name the font has no glyphs for (a
@@ -409,7 +473,8 @@ pub fn font_entry_image(name: &str, ppp: f32) -> egui::ColorImage {
         .preview_face(name)
         .filter(|f| name.chars().filter(|c| !c.is_whitespace()).all(|c| f.covers(c)))
         .unwrap_or_else(|| db.face(wordcraft_fonts::FALLBACK_FAMILY, "Regular"));
-    let img = wordcraft_render::render_text_line(&face, name, 13.0, 244.0, 22.0, 2.0, ppp);
+    let text = entry_text(&face, name, crate::i18n::current().is_rtl());
+    let img = wordcraft_render::render_text_line(&face, &text, 13.0, 244.0, 22.0, 2.0, ppp);
     egui::ColorImage::from_rgba_unmultiplied([img.width as usize, img.height as usize], &img.to_straight())
 }
 
