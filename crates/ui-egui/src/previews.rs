@@ -180,7 +180,9 @@ impl Previews {
         // can show the document. Which those are is a scan of every installed font's character
         // map: it runs once, in the background, and this asks for its answer every frame until the
         // answer is there — the list is alphabetical until then, and reorders itself after.
-        if crate::i18n::current().is_rtl() && let Some(hebrew) = hebrew_families() {
+        if crate::i18n::current().is_rtl()
+            && let Some(hebrew) = hebrew_families()
+        {
             hebrew_first(&mut f, &hebrew);
         }
         f
