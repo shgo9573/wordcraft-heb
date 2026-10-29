@@ -381,3 +381,29 @@ fn font_menu_entries_take_the_theme_text_colour() {
         assert_eq!(images, 1, "{theme:?}: the entry draws its rendered name");
     }
 }
+
+/// A Hebrew interface's font list opens on the fonts that draw Hebrew: the two groups keep the
+/// alphabetical order the list has.
+#[test]
+fn a_hebrew_interface_lists_the_fonts_that_draw_hebrew_first() {
+    let mut families: Vec<String> = ["Arial", "David", "FrankRuehl", "Narkisim"].iter().map(|f| f.to_string()).collect();
+    let hebrew: std::collections::HashSet<String> = ["david", "narkisim"].iter().map(|f| f.to_string()).collect();
+    hebrew_first(&mut families, &hebrew);
+    assert_eq!(families, ["David", "Narkisim", "Arial", "FrankRuehl"], "the Hebrew fonts first, each group as the list had it");
+}
+
+/// The Hebrew word after a name comes from the face itself, so the list shows its Hebrew letters,
+/// and only a Hebrew interface adds it. `render_text_line` draws the glyphs in the order it is
+/// given, so the entry spells the word backwards.
+#[test]
+fn a_font_entry_shows_a_hebrew_word_only_in_hebrew() {
+    let db = wordcraft_fonts::FontDb::global();
+    let latin = db.face("Source Sans 3", "Regular");
+    assert_eq!(entry_text(&latin, "Source Sans 3", true), "Source Sans 3", "a face without Hebrew keeps its name alone");
+    assert_eq!(entry_text(&latin, "Source Sans 3", false), "Source Sans 3");
+    // A face that does draw Hebrew; a machine with no such font installed skips this half.
+    if let Some(face) = db.fallback_for('ש', u32::MAX) {
+        assert_eq!(entry_text(&face, "David", true), format!("David  {}", HEBREW_SAMPLE.chars().rev().collect::<String>()));
+        assert_eq!(entry_text(&face, "David", false), "David", "an English interface shows the name alone");
+    }
+}

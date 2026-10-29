@@ -55,6 +55,8 @@ FILES = [
     "crates/ui-egui/src/lib.rs",
     "crates/ui-egui/src/mini_toolbar.rs",
     "crates/ui-egui/src/options.rs",
+    "crates/ui-egui/src/previews.rs",
+    "crates/ui-egui/src/previews/tests.rs",
     "crates/ui-egui/src/ribbon.rs",
     "crates/ui-egui/src/ribbon/common.rs",
     "crates/ui-egui/src/ribbon/design.rs",
