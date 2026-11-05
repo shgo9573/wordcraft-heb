@@ -40,7 +40,7 @@ use wordcraft_proof::Options;
 use wordcraft_proof::affix::AffixDict;
 use wordcraft_proof::hunspell;
 
-pub use suggest::suggest;
+pub use suggest::{suggest, suggest_with};
 
 /// The Hebrew dictionary and whether it came from [`install_dictionary`] rather than a file on
 /// disk.
@@ -321,9 +321,9 @@ mod tests {
         assert!(has_dictionary());
         assert!(is_correct("שלום"));
         let text = "שלום שאלום";
-        let issues = issues(text, 0..text.len(), &Options::default(), true);
-        let spelling: Vec<&wordcraft_proof::Issue> = issues.iter().filter(|i| i.kind == wordcraft_proof::IssueKind::Spelling).collect();
-        assert_eq!(spelling.len(), 1, "{issues:?}");
+        let found = issues(text, 0..text.len(), &Options::default(), true);
+        let spelling: Vec<&wordcraft_proof::Issue> = found.iter().filter(|i| i.kind == wordcraft_proof::IssueKind::Spelling).collect();
+        assert_eq!(spelling.len(), 1, "{found:?}");
         assert_eq!(&text[spelling[0].start..spelling[0].end], "שאלום");
         assert_eq!(spelling[0].message, "ייתכן שגיאת כתיב");
         assert_eq!(spelling[0].lang, hebrew_lang());
@@ -414,7 +414,7 @@ pub fn issues(text: &str, range: Range<usize>, opts: &Options, grammar: bool) ->
     let mut out: Vec<wordcraft_proof::Issue> = Vec::new();
     for (a, b) in wordcraft_proof::words(run) {
         let Some(word) = run.get(a..b) else { continue };
-        if !is_correct_with_options(&d, word, opts) {
+        if !check(&d, word, opts) {
             let (start, end) = (range.start + a, range.start + b);
             out.push(wordcraft_proof::Issue {
                 start,
