@@ -6928,6 +6928,7 @@ dependencies = [
  "wordcraft-geom",
  "wordcraft-layout",
  "wordcraft-pdf",
+ "wordcraft-proof-he",
  "wordcraft-render",
  "zeroize",
  "zip 3.0.0",
@@ -7000,6 +7001,7 @@ dependencies = [
  "wordcraft-fonts",
  "wordcraft-geom",
  "wordcraft-metafile",
+ "wordcraft-proof-he",
 ]
 
 [[package]]
@@ -7044,6 +7046,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "wordcraft-proof-he"
+version = "0.15.1"
+dependencies = [
+ "craft-proof",
+ "log",
+]
+
+[[package]]
 name = "wordcraft-render"
 version = "0.15.1"
 dependencies = [
@@ -7084,6 +7094,7 @@ dependencies = [
  "wordcraft-fonts",
  "wordcraft-geom",
  "wordcraft-layout",
+ "wordcraft-proof-he",
  "wordcraft-render",
  "wordcraft-zotero",
  "zbus",
