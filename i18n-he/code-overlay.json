@@ -203,10 +203,6 @@
   {
    "new": "    let text = entry_text(&face, name, crate::i18n::current().rtl());\n    let img = wordcraft_render::render_text_line(&face, &text, 13.0, 244.0, FONT_PREVIEW_RENDER_H, 2.0, ppp);\n",
    "old": "    let img = wordcraft_render::render_text_line(&face, name, 13.0, 244.0, FONT_PREVIEW_RENDER_H, 2.0, ppp);\n"
-  },
-  {
-   "new": "",
-   "old": "    if w == 0 || h <= rows {\n        return img.clone();\n    }\n    let background = img.pixels.first().copied().unwrap_or_default();\n    let inked =\n        |y: usize| img.pixels.get(y.saturating_mul(w)..y.saturating_add(1).saturating_mul(w)).is_some_and(|row| row.iter().any(|p| *p != background));\n    let top = (0..h).find(|y| inked(*y)).unwrap_or(0);\n    let bottom = (0..h).rev().find(|y| inked(*y)).unwrap_or(top);\n    let middle = top.saturating_add(bottom).saturating_add(1) / 2;\n    let start = middle.saturating_sub(rows / 2).min(h.saturating_sub(rows));\n    let pixels = img.pixels.get(start.saturating_mul(w)..start.saturating_add(rows).saturating_mul(w)).unwrap_or_default().to_vec();\n    egui::ColorImage::new([w, rows], pixels)\n"
   }
  ],
  "crates/ui-egui/src/previews/tests.rs": [
