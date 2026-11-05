@@ -1,8 +1,7 @@
 //! Ribbon groups that shrink to fit the window (#662), the way Word's ribbon does: when a tab is
 //! wider than the window, groups give up their small buttons' labels and the Styles gallery shows
 //! fewer tiles (compact), then fold into a single drop-down button that opens the whole group
-//! (collapsed), starting from the far end of the row: the right in an English interface, the left
-//! in a Hebrew one, where the row itself is drawn right to left.
+//! (collapsed), starting from the right.
 //!
 //! Each frame [`begin`] plans every group's level from the widths the groups measured on earlier
 //! frames ([`record`]) and the width there is; [`super::widgets::group_titled`] reads its level
@@ -34,10 +33,9 @@ pub struct GroupWidths {
     pub widths: [Option<f32>; 3],
 }
 
-/// Each group's level (by position) so that the row fits `avail`: groups shrink from the far end of
-/// the row (the last drawn — the right in an English row, the left in a Hebrew one), first all to
-/// compact, then to collapsed, stopping as soon as the row fits. Then whatever room is left is given
-/// back, from the near end.
+/// Each group's level (by position) so that the row fits `avail`: groups shrink from the right,
+/// first all to compact, then to collapsed, stopping as soon as the row fits. Then whatever room is
+/// left is given back, from the left.
 pub fn plan(groups: &[GroupWidths], avail: f32) -> Vec<u8> {
     let full = |g: &GroupWidths| g.widths[0].unwrap_or(0.0);
     let width = |g: &GroupWidths, level: u8| -> f32 {
@@ -382,13 +380,23 @@ mod ui_tests {
         h.state_mut().run("select.all", json!({})).unwrap();
         h.get_by_role_and_label(Role::Button, "Font").click();
         h.run_steps(3);
-        let size = |h: &mut egui_kittest::Harness<'static, WordApp>| {
-            h.state_mut().session.run("format.state", &json!({})).ok().and_then(|v| v.get("size").and_then(serde_json::Value::as_f64))
+        let sizes = |h: &egui_kittest::Harness<'static, WordApp>| {
+            let s = &h.state().session;
+            s.doc
+                .para_paths(wordcraft_doc::StoryRef::Body)
+                .iter()
+                .filter_map(|path| s.doc.para(wordcraft_doc::StoryRef::Body, path))
+                .flat_map(|p| p.run_ranges().map(|(_, c)| s.doc.styles.resolve_char(p.props.style.as_deref(), c).size))
+                .collect::<Vec<_>>()
         };
-        let before = size(&mut h);
+        let before = sizes(&h);
+        assert!(before.windows(2).any(|sizes| sizes[0] != sizes[1]), "the fixture has mixed sizes");
         click_shown(&h, "Increase Font Size");
         h.run_steps(3);
-        assert_ne!(size(&mut h), before, "Increase Font Size ran");
+        let after = sizes(&h);
+        assert_eq!(after.len(), before.len());
+        assert!(after.windows(2).any(|sizes| sizes[0] != sizes[1]), "mixed sizes stay mixed");
+        assert!(after.iter().zip(&before).all(|(after, before)| after > before), "Increase Font Size grew each run without flattening mixed sizes");
         assert!(shown(&h, "Change Case"), "the drop-down stays open after a click inside");
         click_shown(&h, "Change Case");
         h.run_steps(3);

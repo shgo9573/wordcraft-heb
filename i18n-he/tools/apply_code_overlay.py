@@ -4,18 +4,19 @@
 The Hebrew catalog itself is data (`i18n-he/locales/he/`), but offering it needs four small code
 changes: the `he` row in `LANGUAGES`, a public `Lang::catalog_texts`, the interface font fallback
 for scripts Inter lacks (`theme::interface_char_covered`, `theme::faces_for_interface_text`) and
-its call in `install_ui_fonts`. They are committed in this fork; upstream's daily merge rewrites
+its call in `install_ui_fonts`. (Upstream mirrors a right-to-left interface itself, so Hebrew needs
+no layout code of its own; only the rows a mirror does not fix are in the table.) They are committed in this fork; upstream's daily merge rewrites
 the same files, so after a conflict the workflow takes upstream's version and re-applies them with
 this script. Running it on a tree that already has them changes nothing.
 
     python3 i18n-he/tools/apply_code_overlay.py            # apply
     python3 i18n-he/tools/apply_code_overlay.py --check    # only report what is missing
 
-The right-to-left interface and Hebrew proofing are larger: `code-overlay.json` lists, per upstream
-file, the exact upstream text a change replaces (or the line it goes after) and the text it becomes,
-and `code/` holds the files this fork adds whole (`crates/ui-egui/src/rtl.rs`,
-`crates/proof/src/he/`). `--check` also reports when a copy in `code/` has drifted from the file it
-mirrors.
+The rest of the fork's code is larger: `code-overlay.json` lists, per upstream file, the exact
+upstream text a change replaces (or the line it goes after) and the text it becomes, and `code/`
+holds the files this fork adds whole — Hebrew proofing, `crates/proof-he/`, which upstream's
+`craft-proof` has no language for. `--check` also reports when a copy in `code/` has drifted from
+the file it mirrors.
 
 Exit 1 when a change could not be applied: upstream has moved the code the change hangs on, and a
 person has to look.
@@ -32,11 +33,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from code_match import applied, candidates, has_code  # noqa: E402  (the sibling matcher)
 
-HE_ROW = '''    // Hebrew, right to left; `he`, `he-IL` and `he_IL.UTF-8` resolve here. Its catalog is
-    // this fork's (`i18n-he/`, laid over craft-i18n by `i18n-he/tools/assemble.py`), not
+HE_ROW = '''    // Hebrew, right to left; `he`, `he-IL` and `he_IL.UTF-8` resolve here. Its catalog is this
+    // fork's (`i18n-he/`, laid over craft-i18n by `i18n-he/tools/assemble.py`), not
     // storytold/craft-i18n's: it is embedded whenever that overlay is in `CRAFT_I18N_DIR`. The
-    // interface mirrors right to left ([`Lang::is_rtl`], `crate::rtl`), and WordCraft proofs
-    // Hebrew (`ProofLang::He`), so new documents are written in Hebrew.
+    // interface mirrors right to left ([`RTL_LANGUAGES`], `crate::rtl`), and WordCraft proofs
+    // Hebrew (`wordcraft_proof_he`), so new documents are written in Hebrew.
     LangInfo { code: "he", prefer_hans: false, editing_lang: Some("he-IL") },
 '''
 
@@ -260,7 +261,8 @@ def apply_generic(root: Path, path: Path, hunks: list[dict]) -> tuple[str, list[
 def copy_new_files(root: Path, code: Path, check: bool, missing: list[str]) -> list[str]:
     """The files this fork adds whole: `code/crates/...` mirrors the tree's `crates/...`."""
     notes: list[str] = []
-    for source in sorted(code.rglob("*.rs")):
+    added = sorted(p for p in code.rglob("*") if p.suffix == ".rs" or p.name == "Cargo.toml")
+    for source in added:
         relative = source.relative_to(code)
         target = root / relative
         if check:
@@ -301,7 +303,7 @@ def main() -> int:
         # The workflow takes upstream's version of a conflicting one of these and runs the overlay
         # again, so the list has to come from the overlay itself, not a copy of it.
         paths = {path.relative_to(root) for path in list(targets) + list(generics)}
-        paths |= {path.relative_to(code) for path in code.rglob("*.rs")}
+        paths |= {path.relative_to(code) for path in code.rglob("*") if path.suffix == ".rs" or path.name == "Cargo.toml"}
         for path in sorted(paths):
             print(path)
         return 0

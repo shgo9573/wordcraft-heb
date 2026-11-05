@@ -154,21 +154,17 @@ impl WordApp {
     /// Install the interface fonts when the language, the CJK fallback, or a caption fallback
     /// face has changed since the last install.
     pub(super) fn install_ui_fonts(&mut self, ctx: &egui::Context, lang: i18n::Lang) {
-        // A right-to-left interface (Hebrew) mirrors egui's own chrome: menus and submenus open to
-        // the left, combo boxes and collapsing headers put their marker first, scroll bars sit on
-        // the left and a window's close button moves to the left edge. The app's own rows and
-        // groups flip through `crate::rtl`. Set every frame (a change only rewrites the styles),
-        // since an interface language can change without a font change.
-        let rtl = lang.is_rtl();
-        if ctx.global_style().right_to_left != rtl {
-            ctx.all_styles_mut(|s| s.set_right_to_left(rtl));
-        }
         let system_cjk = self.fonts_system_cjk || self.want_system_cjk || lang.uses_cjk();
+        // An Arabic interface, or a screen that shows Arabic names (language picker / packs) in
+        // another interface language, asks for an installed Arabic font when none is embedded.
+        let system_arabic = lang.rtl() || self.want_system_arabic;
         if !self.styled
             || lang.code() != self.fonts_lang
             || lang.prefers_hans() != self.fonts_hans
             || lang.prefers_korean() != self.fonts_korean
+            || lang.prefers_hant() != self.fonts_hant
             || system_cjk != self.fonts_system_cjk
+            || system_arabic != self.fonts_system_arabic
         {
             // Every window's borrowed faces: the fonts are the app's.
             let mut faces = self.canvas.ime_faces.clone();
@@ -189,10 +185,20 @@ impl WordApp {
                     }
                 }
             }
-            theme::install_fonts_language_extra(ctx, lang.prefers_hans(), lang.prefers_korean(), system_cjk, &faces);
+            theme::install_fonts_language_arabic(
+                ctx,
+                lang.prefers_hans(),
+                lang.prefers_korean(),
+                lang.prefers_hant(),
+                system_cjk,
+                system_arabic,
+                &faces,
+            );
             self.fonts_hans = lang.prefers_hans();
             self.fonts_korean = lang.prefers_korean();
+            self.fonts_hant = lang.prefers_hant();
             self.fonts_system_cjk = system_cjk;
+            self.fonts_system_arabic = system_arabic;
             self.fonts_lang = lang.code();
             // Mod with -, = and 0 are Word shortcuts (optional hyphen, subscript, paragraph spacing);
             // egui's keyboard zoom would also scale the whole window on them. Zoom is View › Zoom.

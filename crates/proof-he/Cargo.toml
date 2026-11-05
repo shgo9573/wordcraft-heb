@@ -1,0 +1,15 @@
+[package]
+name = "wordcraft-proof-he"
+description = "Hebrew proofing for this fork: spelling, suggestions and grammar (see the crate docs)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+# Everything else's proofing: this crate reads the installed Hunspell dictionaries and the user
+# dictionary through it, and the layout crate runs it beside it for Hebrew runs.
+wordcraft-proof = { workspace = true }
+log = { workspace = true }

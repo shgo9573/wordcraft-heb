@@ -1,195 +1,392 @@
-//! Right-to-left interface layout: a Hebrew (or Arabic) interface mirrors what egui draws itself,
-//! and the parts of the app that place their own widgets — the ribbon above all.
+//! Mirrored window layout for a right-to-left interface language (Arabic).
 //!
-//! egui's own chrome — menus and submenus, combo boxes, collapsing headers, scroll bars, window
-//! title buttons — mirrors from `Style::right_to_left`, which
-//! [`WordApp::install_ui_fonts`](crate::WordApp) sets from the interface language. Its `horizontal*`
-//! helpers follow the *row* they are drawn in, so a row this module turns around carries its
-//! buttons, its stacks and its menus around with it.
+//! egui has no global direction, but `ui.horizontal` runs right to left wherever the enclosing
+//! layout prefers it (`Layout::prefer_right_to_left`): a right-to-left row, or a column whose
+//! items are aligned to the right. So direction is inherited from a root: each panel, window and
+//! menu body is wrapped in [`root`], columns are opened with [`vertical`] (egui's `ui.vertical`
+//! always resets to left-aligned), and "far side" clusters use [`far_side`]. Widgets that paint
+//! their own parts ask [`flows`] where their leading edge is.
 //!
-//! The ribbon places its own widgets, so it asks here: its row runs right to left (the first group
-//! starts at the right edge, `widgets::group_titled` measures each group by the row's right edge
-//! and draws its controls right to left, `ribbon_fit` shrinks the leftmost groups first), and the
-//! tab strip keeps File at the right with Share, Editing and Comments at the left.
-//!
-//! Two things stay as they are in a Hebrew interface, and for a reason:
-//!
-//! * The document itself is right to left as text (bidi), but its pages, rulers and scroll bars are
-//!   laid out by the engine, not here.
-//! * The ribbon's edge chevrons are not drawn, because a scroll area counts its offset from the
-//!   left of its content while a mirrored row grows leftwards, so a chevron press would scroll the
-//!   wrong way; `ribbon_fit` folds groups until the row fits instead.
-//!
-//! Every function takes the same arguments as the `Ui` method of its name, so a surface turns
-//! around by renaming the call. Left to right, they are the method itself: an English interface
-//! lays out exactly as it did.
+//! An area that egui lays out left to right on its own (a `Grid`, a far-side cluster) stays left
+//! to right inside, because everything here follows the enclosing layout rather than the language.
+//! The document itself is never mirrored: its direction belongs to the document.
 
-use egui::{Align, InnerResponse, Layout, Ui};
+use egui::{Align, Align2, InnerResponse, Layout, Rect, Ui, UiBuilder, pos2};
 
-/// Is the interface laid out right to left? Set from the interface language
-/// ([`Lang::is_rtl`](crate::i18n::Lang::is_rtl)) in `install_ui_fonts`.
-pub fn is_rtl(ui: &Ui) -> bool {
-    ui.style().right_to_left
+use craft_ui::direction::{self, Direction};
+
+fn dir(rtl: bool) -> Direction {
+    if rtl { Direction::Rtl } else { Direction::Ltr }
 }
 
-/// A size a child can be laid out in: a right-to-left row can be offered an unbounded one (the
-/// space to its left has no end at the edge of the window), and a row laid out `∞` wide from the
-/// right edge starts at `-∞`, whose rect is `NaN` and stops the frame. The screen is the bound:
-/// a row never needs to be wider than that to place its widgets.
-fn bounded(ui: &Ui, size: egui::Vec2) -> egui::Vec2 {
-    let screen = ui.ctx().content_rect().size();
-    let finite = |v: f32, fallback: f32| if v.is_finite() && v >= 0.0 { v } else { fallback };
-    egui::vec2(finite(size.x, screen.x), finite(size.y, screen.y))
-}
-
-/// [`Ui::horizontal`], right to left when the interface is.
-pub fn horizontal<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
-    if is_rtl(ui) {
-        // The size `Ui::horizontal` reserves: the room left in the row, one control line tall.
-        let size = egui::vec2(ui.available_size_before_wrap().x, ui.spacing().interact_size.y);
-        ui.allocate_ui_with_layout(bounded(ui, size), Layout::right_to_left(Align::Center), add)
-    } else {
-        ui.horizontal(add)
+/// Install the interface direction on `ctx` when the language's has changed: the shared
+/// `craft_ui::direction` state, and egui's own chrome (check boxes and radio buttons with the mark
+/// at the reading start, submenus, scroll bars, title bars, the font combo) through
+/// `Style::right_to_left`.
+pub fn sync(ctx: &egui::Context) {
+    let want = dir(on());
+    if direction::HasDirection::direction(ctx) != want {
+        direction::apply(ctx, want);
     }
 }
 
-/// [`Ui::horizontal_centered`], right to left when the interface is.
-pub fn horizontal_centered<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
-    if is_rtl(ui) {
-        let size = bounded(ui, ui.available_size_before_wrap());
-        let layout = Layout::right_to_left(Align::Center).with_cross_align(Align::Center);
-        ui.allocate_ui_with_layout(size, layout, add)
-    } else {
-        ui.horizontal_centered(add)
-    }
+/// Is the interface language written right to left?
+pub fn on() -> bool {
+    crate::i18n::current().rtl()
 }
 
-/// [`Ui::horizontal_top`], right to left when the interface is: the ribbon's row of groups, and
-/// the row of controls in a folded group's drop-down.
+/// Is `ui` part of the mirrored interface: a right-to-left language, in an area that lays its
+/// content out from the right (so rows opened in it run right to left)? Never in a left-to-right
+/// language, whose far-side clusters also fill from the right but are not mirrored.
+pub fn flows(ui: &Ui) -> bool {
+    on() && ui.layout().prefer_right_to_left()
+}
+
+/// Run a container's body (a panel, window, popup or menu, which egui starts left-aligned) in the
+/// interface's direction. In a left-to-right language this is just `add`.
+pub fn root<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> R {
+    if !on() || flows(ui) {
+        return add(ui);
+    }
+    ui.scope_builder(UiBuilder::new().layout(Layout::top_down(Align::Max)), add).inner
+}
+
+/// `ui.vertical`, aligned to the side rows start from: a column inside a right-to-left area keeps
+/// its content on the right and its rows right to left.
+pub fn vertical<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
+    if flows(ui) { ui.scope_builder(UiBuilder::new().layout(Layout::top_down(Align::Max)), add) } else { ui.vertical(add) }
+}
+
+/// `ui.horizontal_top`, with its items running from the side reading starts from: a row opened
+/// in a right-to-left area is a right-to-left layout of its own, so its first column sits at the
+/// right edge.
 pub fn horizontal_top<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
-    if is_rtl(ui) {
-        let size = bounded(ui, ui.available_size_before_wrap());
-        let layout = Layout::right_to_left(Align::Center).with_cross_align(Align::Min);
-        ui.allocate_ui_with_layout(size, layout, add)
+    if flows(ui) { ui.scope_builder(UiBuilder::new().layout(Layout::right_to_left(Align::Min)), add) } else { ui.horizontal_top(add) }
+}
+
+/// A button's text whose `>>` or `<<` points the way things move across the window (Add >>, <<
+/// Remove): in a mirrored interface the two swap, because the list items move to is on the other side.
+pub fn arrows(text: &str) -> String {
+    if on() { text.replace(">>", "\u{1}").replace("<<", ">>").replace('\u{1}', "<<") } else { text.to_string() }
+}
+
+/// The layout for a row's items that belong at its far end (the side rows end on): filled from
+/// that end inwards.
+pub fn far_side(ui: &Ui, align: Align) -> Layout {
+    if flows(ui) { Layout::left_to_right(align) } else { Layout::right_to_left(align) }
+}
+
+/// A row layout in the direction of `ui`, for `allocate_ui_with_layout` and `with_layout`.
+pub fn row_layout(ui: &Ui, align: Align) -> Layout {
+    if flows(ui) { Layout::right_to_left(align) } else { Layout::left_to_right(align) }
+}
+
+/// The x coordinate `inset` points in from the leading edge of `rect` (left, or right when `rtl`).
+pub fn lead_x(rtl: bool, rect: Rect, inset: f32) -> f32 {
+    let d = dir(rtl);
+    direction::start_x(&d, rect) + direction::forward(&d) * inset
+}
+
+/// The x coordinate `inset` points in from the trailing edge of `rect`.
+pub fn trail_x(rtl: bool, rect: Rect, inset: f32) -> f32 {
+    lead_x(!rtl, rect, inset)
+}
+
+/// Text anchored at its leading edge and vertically centred: left-centre, or right-centre when `rtl`.
+pub fn lead_center(rtl: bool) -> Align2 {
+    direction::align2(&dir(rtl), Align2::LEFT_CENTER)
+}
+
+/// Text anchored at its leading edge and top.
+pub fn lead_top(rtl: bool) -> Align2 {
+    direction::align2(&dir(rtl), Align2::LEFT_TOP)
+}
+
+/// Where to put something `width` wide so that it starts `inset` in from the leading edge of
+/// `rect`: its left x.
+pub fn lead_left(rtl: bool, rect: Rect, inset: f32, width: f32) -> f32 {
+    if rtl { rect.max.x - inset - width } else { rect.min.x + inset }
+}
+
+/// The leading top corner of `rect`.
+pub fn lead_corner(rtl: bool, rect: Rect) -> egui::Pos2 {
+    pos2(lead_x(rtl, rect, 0.0), rect.min.y)
+}
+
+/// A side panel on the side reading starts from (left; right in a right-to-left interface).
+pub fn start_panel(id: &'static str) -> egui::Panel {
+    direction::start_panel(&dir(on()), id)
+}
+
+/// A side panel on the side reading ends on (right; left in a right-to-left interface).
+pub fn end_panel(id: &'static str) -> egui::Panel {
+    direction::end_panel(&dir(on()), id)
+}
+
+/// `egui::Popup::menu`, with its items aligned to the side reading starts from.
+pub fn menu(response: &egui::Response) -> egui::Popup<'_> {
+    let popup = egui::Popup::menu(response);
+    if on() { popup.layout(menu_layout()) } else { popup }
+}
+
+/// A right-to-left menu's layout: items against the right edge. Not justified, because egui
+/// starts a full-width button's text at its left.
+fn menu_layout() -> Layout {
+    Layout::top_down(Align::Max)
+}
+
+/// A menu item: `text`, with its keyboard shortcut at the far side. `min_width` keeps a menu's
+/// items one width.
+pub fn menu_item<'a>(ui: &Ui, text: &'a str, shortcut: &'a str, min_width: f32) -> egui::Button<'a> {
+    let button = if flows(ui) {
+        egui::Button::new(egui::RichText::new(shortcut).weak()).right_text(text)
     } else {
-        ui.horizontal_top(add)
-    }
-}
-
-/// [`Ui::horizontal_wrapped`], right to left when the interface is.
-pub fn horizontal_wrapped<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
-    if is_rtl(ui) {
-        let size = bounded(ui, egui::vec2(ui.available_size_before_wrap().x, ui.spacing().interact_size.y));
-        let layout = Layout::right_to_left(Align::Center).with_main_wrap(true);
-        ui.allocate_ui_with_layout(size, layout, add)
-    } else {
-        ui.horizontal_wrapped(add)
-    }
-}
-
-/// A box for what cannot be mirrored: [`egui::Grid`] measures every cell from the row's left
-/// edge, and a right-to-left row's left edge is at `-∞` (that row runs left without a bound), so
-/// every cell it measures there comes out `NaN` wide and the frame stops. The box starts where
-/// the cursor is and is laid out left to right, as the grid expects; left to right, this is the
-/// scope the grid was drawn in anyway.
-pub fn grid_box<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
-    ui.with_layout(Layout::top_down(Align::Min), add)
-}
-
-/// [`Ui::with_layout`], mirrored when the interface is right to left: a horizontal layout
-/// (`Layout::left_to_right`, `Layout::right_to_left`) swaps its direction, so callers say where
-/// a row's content belongs in an English interface and get the mirror image in a Hebrew one.
-pub fn with_layout<R>(ui: &mut Ui, layout: Layout, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
-    // Only the main direction turns around: wrapping, main and cross alignment stay the caller's.
-    let main_dir = match (is_rtl(ui), layout.main_dir()) {
-        (true, egui::Direction::LeftToRight) => egui::Direction::RightToLeft,
-        (true, egui::Direction::RightToLeft) => egui::Direction::LeftToRight,
-        _ => layout.main_dir(),
+        egui::Button::new(text).shortcut_text(shortcut)
     };
-    ui.with_layout(Layout { main_dir, ..layout }, add)
+    button.min_size(egui::vec2(min_width, 0.0))
 }
 
-/// A column that hugs the trailing edge of its row when the interface is right to left
-/// ([`Ui::vertical`], whose `Align::Min` is the left edge in either direction).
-///
-/// A control stack inside a mirrored row needs this: to the left of a right-to-left row's cursor
-/// there is no bound, so a left-aligned column there would place its buttons off the window.
-pub fn vertical_top<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
-    if is_rtl(ui) { ui.with_layout(Layout::top_down(Align::Max), add) } else { ui.vertical(add) }
+/// `Response::context_menu`, with its items aligned to the side reading starts from.
+pub fn context_menu(response: &egui::Response, add: impl FnOnce(&mut Ui)) {
+    let popup = egui::Popup::context_menu(response);
+    let popup = if on() { popup.layout(menu_layout()) } else { popup };
+    popup.show(add);
 }
 
-/// [`Layout::left_to_right`], right to left when the interface is: for a layout handed to
-/// `allocate_ui_with_layout` or a child `Ui` rather than made by [`with_layout`].
-///
-/// A row whose widths the code around it measures must be measured by the edge it starts at
-/// (`widgets::group_titled` measures a group to the row's right edge in a Hebrew row).
-pub fn left_to_right(ui: &Ui, valign: Align) -> Layout {
-    if is_rtl(ui) { Layout::right_to_left(valign) } else { Layout::left_to_right(valign) }
+/// Run `add` in a left-to-right island inside a right-to-left area, for content egui can only
+/// lay out from the left (a `Grid`, a horizontally scrolling strip). The island is set against the
+/// leading (right) edge using the width it had last frame. Outside a right-to-left area this is
+/// just `add`.
+pub fn island<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> R {
+    if !flows(ui) {
+        return add(ui);
+    }
+    // The island gets all the room there is, so its content takes its natural width; it starts
+    // where content of last frame's width would end at the leading edge. A change of width shows
+    // one frame late, so that frame asks for another.
+    let key = ui.next_auto_id().with("rtl_island_width");
+    let known = ui.data(|d| d.get_temp::<f32>(key));
+    let room = ui.available_rect_before_wrap();
+    let available = if room.width().is_finite() { room.width().max(0.0) } else { 0.0 };
+    let width = known.unwrap_or(available);
+    let left = room.max.x - width;
+    if !left.is_finite() {
+        return add(ui);
+    }
+    let max_rect = Rect::from_min_max(pos2(left, room.min.y), pos2(left + available.max(width), room.max.y));
+    let shown = ui.scope_builder(UiBuilder::new().max_rect(max_rect).layout(Layout::top_down(Align::Min)), add);
+    let now = shown.response.rect.width();
+    if now.is_finite() && known.is_none_or(|w| (w - now).abs() > 0.5) {
+        ui.data_mut(|d| d.insert_temp(key, now));
+        ui.ctx().request_repaint();
+    }
+    shown.inner
+}
+
+/// `grid.show(ui, add)`. egui's `Grid` cannot be laid out from the right (it places cells from a
+/// left edge that a right-to-left parent does not have, and says so with a debug assertion), so
+/// inside a right-to-left area it is drawn in an [`island`]. Its columns keep their order.
+pub fn grid<R>(ui: &mut Ui, grid: egui::Grid, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
+    island(ui, |ui| grid.show(ui, add))
+}
+
+/// A form of rows and cells. Where the interface is mirrored (`flows`), a row's cells run from the
+/// right edge, the first cell at the right, and every column is as wide as its widest cell, so the
+/// labels sit at the reading start with their fields after them, to their left. Elsewhere it is
+/// exactly an `egui::Grid` with the same id, columns and spacing. A `Grid` itself cannot be laid
+/// out from the right, which is why [`grid`] keeps its columns in order.
+pub struct Table {
+    id: &'static str,
+    columns: usize,
+    spacing: Option<egui::Vec2>,
+    striped: bool,
+    top: bool,
+    min_row_height: Option<f32>,
+}
+
+impl Table {
+    pub fn new(id: &'static str) -> Self {
+        Self { id, columns: 2, spacing: None, striped: false, top: false, min_row_height: None }
+    }
+
+    /// The number of columns; 0 leaves an `egui::Grid` without a fixed count.
+    pub fn columns(mut self, columns: usize) -> Self {
+        self.columns = columns;
+        self
+    }
+
+    /// Cells align to the top of their row (they are centred in it otherwise, as a mirrored form
+    /// wants for a label and its field; tall cells such as a column of widgets want the top).
+    pub fn top(mut self) -> Self {
+        self.top = true;
+        self
+    }
+
+    pub fn min_row_height(mut self, height: f32) -> Self {
+        self.min_row_height = Some(height);
+        self
+    }
+
+    pub fn spacing(mut self, spacing: egui::Vec2) -> Self {
+        self.spacing = Some(spacing);
+        self
+    }
+
+    /// Shade every other row (only where the table is an `egui::Grid`: a mirrored table has no stripes).
+    pub fn striped(mut self, striped: bool) -> Self {
+        self.striped = striped;
+        self
+    }
+
+    pub fn show<R>(self, ui: &mut Ui, add: impl FnOnce(&mut Rows) -> R) -> R {
+        if !flows(ui) {
+            let spec = egui::Grid::new(self.id);
+            let spec = if self.columns > 0 { spec.num_columns(self.columns) } else { spec };
+            let spec = if self.striped { spec.striped(true) } else { spec };
+            let spec = match self.min_row_height {
+                Some(height) => spec.min_row_height(height),
+                None => spec,
+            };
+            let spec = match self.spacing {
+                Some(spacing) => spec.spacing(spacing),
+                None => spec,
+            };
+            return grid(ui, spec, |ui| add(&mut Rows { ui, mirror: None })).inner;
+        }
+        let key = ui.scope_id().with(("rtl_table_widths", self.id));
+        let prev = ui.data(|d| d.get_temp::<Vec<f32>>(key)).unwrap_or_default();
+        let spacing = self.spacing.unwrap_or(ui.spacing().item_spacing);
+        let gap = spacing.x;
+        // Rows stack top to bottom from the reading edge, whatever way the area around runs (a ribbon
+        // group lays its content out in a row).
+        let shown = ui.scope_builder(UiBuilder::new().layout(Layout::top_down(Align::Max)), |ui| {
+            ui.spacing_mut().item_spacing.y = spacing.y;
+            let mirror = Mirror { prev: prev.clone(), cur: Vec::new(), gap, top: self.top, min_row: self.min_row_height };
+            let mut rows = Rows { ui, mirror: Some(mirror) };
+            let out = add(&mut rows);
+            (out, rows.mirror.map(|m| m.cur).unwrap_or_default())
+        });
+        let (out, cur) = shown.inner;
+        let same = prev.len() == cur.len() && prev.iter().zip(&cur).all(|(a, b)| (a - b).abs() <= 0.5);
+        if !same {
+            ui.data_mut(|d| d.insert_temp(key, cur));
+            ui.ctx().request_repaint();
+        }
+        out
+    }
+}
+
+struct Mirror {
+    /// The width each column had last frame.
+    prev: Vec<f32>,
+    /// The width each column has now (the widest of its cells).
+    cur: Vec<f32>,
+    gap: f32,
+    top: bool,
+    min_row: Option<f32>,
+}
+
+/// The rows of a [`Table`].
+pub struct Rows<'a> {
+    ui: &'a mut Ui,
+    mirror: Option<Mirror>,
+}
+
+impl Rows<'_> {
+    /// One row: add its cells in reading order with [`Cells::cell`].
+    pub fn row<R>(&mut self, add: impl FnOnce(&mut Cells) -> R) -> R {
+        match &mut self.mirror {
+            None => {
+                let out = add(&mut Cells { ui: self.ui, mirror: None, col: 0, pending: 0.0 });
+                self.ui.end_row();
+                out
+            }
+            Some(mirror) => {
+                let (top, min_row) = (mirror.top, mirror.min_row);
+                let body = |ui: &mut Ui| {
+                    ui.spacing_mut().item_spacing.x = 0.0;
+                    if let Some(height) = min_row {
+                        ui.set_min_height(height);
+                    }
+                    add(&mut Cells { ui, mirror: Some(mirror), col: 0, pending: 0.0 })
+                };
+                if top { self.ui.horizontal_top(body).inner } else { self.ui.horizontal(body).inner }
+            }
+        }
+    }
+}
+
+/// The cells of one row of a [`Table`].
+pub struct Cells<'a> {
+    ui: &'a mut Ui,
+    mirror: Option<&'a mut Mirror>,
+    col: usize,
+    /// The space still to leave before the next cell: what its column is wider than the last cell.
+    pending: f32,
+}
+
+impl Cells<'_> {
+    /// The next cell of the row (its widgets, in the order they read).
+    pub fn cell<R>(&mut self, add: impl FnOnce(&mut Ui) -> R) -> R {
+        let Some(mirror) = self.mirror.as_deref_mut() else {
+            return add(self.ui);
+        };
+        if self.pending > 0.0 {
+            self.ui.add_space(self.pending);
+        }
+        let shown = self.ui.scope(add);
+        let width = shown.response.rect.width();
+        let width = if width.is_finite() { width.max(0.0) } else { 0.0 };
+        if mirror.cur.len() <= self.col {
+            mirror.cur.resize(self.col + 1, 0.0);
+        }
+        if let Some(w) = mirror.cur.get_mut(self.col) {
+            *w = w.max(width);
+        }
+        let column = mirror.prev.get(self.col).copied().unwrap_or(0.0);
+        self.pending = (column - width).max(0.0) + mirror.gap;
+        self.col += 1;
+        shown.inner
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::i18n::{Lang, fixture_lang, set_current};
 
-    #[test]
-    fn an_english_interface_lays_out_exactly_as_before() {
+    /// Where a two-cell row puts its label and its field, as the centres of their rectangles.
+    fn row_centres() -> (f32, f32) {
         let ctx = egui::Context::default();
-        let mut rtl = None;
-        let mut seen = Vec::new();
-        let _ = ctx
-            .run_ui(Default::default(), |ui| {
-                horizontal(ui, |ui| {
-                    ui.label("a");
-                    ui.label("b");
-                    seen.push("a".to_string());
+        let mut centres = (0.0, 0.0);
+        // The second frame has the column widths the first measured.
+        for _ in 0..2 {
+            let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
+                root(ui, |ui| {
+                    Table::new("t").columns(2).show(ui, |t| {
+                        t.row(|r| {
+                            let label = r.cell(|ui| ui.label("Label:"));
+                            let field = r.cell(|ui| ui.add(egui::TextEdit::singleline(&mut String::new()).desired_width(80.0)));
+                            centres = (label.rect.center().x, field.rect.center().x);
+                        });
+                    });
                 });
-                rtl = Some(is_rtl(ui));
-            })
-            .drop_without_applying_deltas();
-        assert_eq!(rtl, Some(false));
-        assert_eq!(seen, ["a"]);
+            });
+            out.textures_delta.clear();
+        }
+        centres
     }
 
+    /// A form reads from the reading start: the label of a row first, its field after it, so in a
+    /// right-to-left interface the label is at the right and the field to its left.
     #[test]
-    fn a_hebrew_interface_puts_the_first_widget_at_the_right() {
-        let ctx = egui::Context::default();
-        ctx.all_styles_mut(|s| s.set_right_to_left(true));
-        let mut xs = (0.0f32, 0.0f32);
-        let _ = ctx
-            .run_ui(Default::default(), |ui| {
-                horizontal(ui, |ui| {
-                    let a = ui.label("a").rect.left();
-                    let b = ui.label("b").rect.left();
-                    xs = (a, b);
-                });
-            })
-            .drop_without_applying_deltas();
-        assert!(xs.0 > xs.1, "the first widget sits right of the second: {xs:?}");
-    }
-
-    #[test]
-    fn with_layout_mirrors_a_row_and_leaves_a_column_alone() {
-        let ctx = egui::Context::default();
-        let mut dirs = Vec::new();
-        let _ = ctx
-            .run_ui(Default::default(), |ui| {
-                let row = with_layout(ui, Layout::left_to_right(Align::Center), |ui| (ui.layout().main_dir(), ui.layout().cross_align()));
-                let column = with_layout(ui, Layout::top_down(Align::Min), |ui| (ui.layout().main_dir(), ui.layout().cross_align()));
-                dirs = vec![row.inner, column.inner];
-            })
-            .drop_without_applying_deltas();
-        assert_eq!(dirs[0], (egui::Direction::LeftToRight, Align::Center), "no style, no mirror");
-        assert_eq!(dirs[1], (egui::Direction::TopDown, Align::Min));
-        ctx.all_styles_mut(|s| s.set_right_to_left(true));
-        let mut mirrored = Vec::new();
-        let _ = ctx
-            .run_ui(Default::default(), |ui| {
-                let row = with_layout(ui, Layout::left_to_right(Align::Center), |ui| ui.layout().main_dir());
-                let other = with_layout(ui, Layout::right_to_left(Align::Max), |ui| ui.layout().main_dir());
-                let column = with_layout(ui, Layout::top_down(Align::Min), |ui| ui.layout().main_dir());
-                mirrored = vec![row.inner, other.inner, column.inner];
-            })
-            .drop_without_applying_deltas();
-        assert_eq!(mirrored, [egui::Direction::RightToLeft, egui::Direction::LeftToRight, egui::Direction::TopDown]);
+    fn a_form_row_puts_the_label_at_the_reading_start() {
+        set_current(Lang::EN);
+        let (label, field) = row_centres();
+        assert!(label < field, "left to right: label {label}, field {field}");
+        set_current(fixture_lang("ar", "\tHome\tالرئيسية\n"));
+        let (label, field) = row_centres();
+        set_current(Lang::EN);
+        assert!(label > field, "right to left: label {label}, field {field}");
     }
 }

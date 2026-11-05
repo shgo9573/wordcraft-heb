@@ -3,7 +3,9 @@ name: Hebrew build (daily upstream sync)
 # Keeps this fork from going stale: every day it takes storytold/wordcraft's newest `main`, merges
 # it, re-applies this fork's Hebrew overlay (the catalogs in `i18n-he/`, and the code changes in
 # `i18n-he/code-overlay.json` + `i18n-he/code/` that `i18n-he/tools/apply_code_overlay.py` makes:
-# the right-to-left interface and Hebrew proofing), pushes the result to `main`, and builds a
+# the Hebrew interface language, its faces, its font list, Hebrew proofing in `crates/proof-he/`,
+# and a few ribbon rows a mirror does not fix — the right-to-left interface itself is upstream's
+# own now, with Hebrew in its `RTL_LANGUAGES`), pushes the result to `main`, and builds a
 # **Windows x64** installer (`.msi`) and portable `.zip` with Hebrew embedded. A version upstream
 # has not shipped before gets published as a GitHub release of this fork (`v<version>-he.win.1`); a day
 # without a new version leaves the build on the run's artifacts.
@@ -34,7 +36,10 @@ on:
     paths:
       - "i18n-he/**"
       - "crates/ui-egui/src/**"
-      - "crates/proof/src/**"
+      - "crates/proof-he/**"
+      - "crates/engine/src/**"
+      - "crates/layout/src/**"
+      - "**/Cargo.toml"
       - ".github/workflows/sync-upstream.yml"
   pull_request:
     paths:
@@ -116,6 +121,16 @@ jobs:
             if ! git merge --no-ff --no-commit upstream/main; then
               overlay=$(python3 i18n-he/tools/apply_code_overlay.py --files | tr '\n' ' ')
               while read -r file; do
+                # A path upstream deleted has no version to take (`git checkout --theirs` fails on
+                # it): drop it here too — `crates/proof` became craft-libs' `craft-proof`, and this
+                # fork's Hebrew lives in `crates/proof-he`. A Hebrew change recorded against a file
+                # upstream removed is then reported by `record_code_overlay.py --check`, and a person
+                # moves it.
+                if ! git cat-file -e "upstream/main:$file" 2>/dev/null; then
+                  echo "::warning file=$file::upstream deleted this file: removing it"
+                  git rm -q -- "$file"
+                  continue
+                fi
                 case " $overlay " in
                   *" $file "*) git checkout --theirs -- "$file" && git add -- "$file" ;;
                   *) echo "::error file=$file::upstream's merge conflicts outside the Hebrew overlay"; exit 1 ;;
