@@ -84,7 +84,15 @@ jobs:
       - name: Check that the recorded overlay matches the code
         run: python3 i18n-he/tools/record_code_overlay.py --check
       - name: Assemble the catalogs a build would embed
-        run: python3 i18n-he/tools/assemble.py --craft-i18n "$RUNNER_TEMP/craft-i18n" --out "$RUNNER_TEMP/craft-i18n-he"
+        run: |
+          set -euo pipefail
+          python3 i18n-he/tools/assemble.py --craft-i18n "$RUNNER_TEMP/craft-i18n" --out "$RUNNER_TEMP/craft-i18n-he"
+          # craft-proof embeds its Language data from there, and the build below sets
+          # CRAFT_I18N_REQUIRED=1: without it the build stops at craft-proof rather than here.
+          test -d "$RUNNER_TEMP/craft-i18n-he/language-data" || {
+            echo "::error::$RUNNER_TEMP/craft-i18n-he/language-data is missing: craft-proof's Language data was not laid out"
+            exit 1
+          }
 
   # Only from the schedule and a manual run: a push already is the result of a merge.
   sync:

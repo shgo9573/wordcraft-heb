@@ -3,15 +3,22 @@
 
 An app embeds its interface translations from a craft-i18n checkout (`CRAFT_I18N_DIR`, see
 craft-i18n's `docs/integration.md`). Hebrew is not in storytold/craft-i18n yet: it lives in this
-fork, in `i18n-he/locales/he/`. This script copies the checkout's `locales/` into `--out` and
-overlays the Hebrew files on top, so the build embeds both:
+fork, in `i18n-he/locales/he/`. This script copies the checkout's `locales/` **and its
+`language-data/`** into `--out` and overlays the Hebrew files on top, so the build embeds both:
 
     python3 i18n-he/tools/assemble.py --craft-i18n ../craft-i18n --out target/craft-i18n-he
     export CRAFT_I18N_DIR=$PWD/target/craft-i18n-he CRAFT_I18N_REQUIRED=1
     cargo build --release
 
+`language-data/` is not a catalog and is copied as it is: craft-proof (craft-libs) embeds the
+spelling word lists and hyphenation patterns from `$CRAFT_I18N_DIR/language-data` at build time, and
+a `CRAFT_I18N_DIR` without it stops a `CRAFT_I18N_REQUIRED=1` build with "has no language-data/".
+Hebrew needs no Language data of its own — its dictionary is the system's `he_IL` (see
+`crates/proof-he`) — so the checkout's data is complete as it is.
+
 Without `--craft-i18n` (or with a directory that is not a checkout) it lays out the Hebrew
-catalogs alone: the interface is then English plus Hebrew, which is enough for development.
+catalogs alone: the interface is then English plus Hebrew, which is enough for development (and
+such a build embeds no Language data, which craft-proof warns about).
 """
 
 from __future__ import annotations
@@ -36,6 +43,20 @@ def copy_locales(locales: Path, out: Path) -> int:
     return copied
 
 
+def copy_language_data(data: Path, out: Path) -> int:
+    """Copy the checkout's `language-data/` (craft-proof's word lists and patterns); returns the
+    number of files copied, 0 when the checkout has none."""
+    if not data.is_dir():
+        return 0
+    copied = 0
+    for file in sorted(p for p in data.rglob("*") if p.is_file()):
+        target = out / "language-data" / file.relative_to(data)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(file, target)
+        copied += 1
+    return copied
+
+
 def main() -> int:
     root = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -53,10 +74,17 @@ def main() -> int:
     (args.out / "locales").mkdir(parents=True, exist_ok=True)
 
     base = 0
+    data = 0
     if args.craft_i18n:
         base = copy_locales(args.craft_i18n / "locales", args.out)
         if base == 0:
             print(f"warning: {args.craft_i18n} has no locales/, so only the overlay is embedded", file=sys.stderr)
+        # craft-proof embeds its Language data from here (`$CRAFT_I18N_DIR/language-data`), and a
+        # checkout without it stops a required build.
+        data = copy_language_data(args.craft_i18n / "language-data", args.out)
+        if data == 0:
+            message = f"warning: {args.craft_i18n} has no language-data/, so craft-proof embeds no Language data"
+            print(message, file=sys.stderr)
     else:
         print("note: no --craft-i18n, so only the overlay is embedded (English plus its locales)", file=sys.stderr)
     overlaid = copy_locales(args.overlay, args.out)
@@ -64,7 +92,7 @@ def main() -> int:
     if not (args.out / "locales" / "he" / "wordcraft.tsv").exists():
         print(f"the overlay has no he/wordcraft.tsv: {args.overlay}", file=sys.stderr)
         return 1
-    print(f"{args.out}: {base} craft-i18n locale(s) plus {overlaid} overlay locale(s)")
+    print(f"{args.out}: {base} craft-i18n locale(s) plus {overlaid} overlay locale(s), {data} language-data file(s)")
     return 0
 
 
