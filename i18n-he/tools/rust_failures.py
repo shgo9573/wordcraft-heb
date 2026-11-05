@@ -18,7 +18,7 @@ import re
 import sys
 from pathlib import Path
 
-# `crates/proof/src/he/mod.rs:12:5: error[E0425]: cannot find value `x` in this scope`
+# `crates/proof-he/src/lib.rs:12:5: error[E0425]: cannot find value `x` in this scope`
 DIAGNOSTIC = re.compile(r"^(?P<file>[^\s:][^:]*):(?P<line>\d+):(?P<col>\d+): (?P<level>error|warning)(\[(?P<code>[A-Z]\d+)\])?: (?P<message>.*)$")
 # A rustc error that has no location (`error: could not compile …`).
 BARE = re.compile(r"^(?P<level>error|warning)(\[(?P<code>[A-Z]\d+)\])?: (?P<message>.*)$")

@@ -1,4 +1,10 @@
 {
+ "Cargo.toml": [
+  {
+   "after": "craft-font-catalog = { git = \"https://github.com/storytold/craft-libs\", rev = \"762a06a4c6b48b522b7d4de84a87917ef90265e6\", version = \"=0.1.0\" }\n",
+   "insert": "# This fork's Hebrew proofing — spelling, suggestions and grammar — beside craft-proof, which has\n# every other language (its `ProofLang` has no Hebrew). See `crates/proof-he`.\nwordcraft-proof-he = { path = \"crates/proof-he\" }\n"
+  }
+ ],
  "apps/wordcraft/src/main.rs": [
   {
    "after": "        app.apply_prefs(ui);\n    }\n",
@@ -27,111 +33,57 @@
    "insert": "\n    /// A temp folder standing in for the folder a portable copy sits in.\n    fn temp_app_folder(tag: &str) -> PathBuf {\n        let dir = std::env::temp_dir().join(format!(\"wordcraft-portable-{tag}-{}\", std::process::id()));\n        let _ = std::fs::remove_dir_all(&dir);\n        std::fs::create_dir_all(&dir).unwrap();\n        dir\n    }\n\n    #[test]\n    fn a_portable_copy_keeps_its_profile_beside_the_exe() {\n        let dir = temp_app_folder(\"marked\");\n        let exe = dir.join(\"wordcraft.exe\");\n        std::fs::write(&exe, b\"\").unwrap();\n        // No marker: the usual profile folder, wherever the app happens to be.\n        assert_eq!(portable_dir(&exe), None);\n        assert!(!dir.join(PORTABLE_DATA).exists(), \"and nothing is created beside it\");\n        std::fs::write(dir.join(PORTABLE_MARKER), b\"portable\").unwrap();\n        let data = portable_dir(&exe).expect(\"the marker makes the folder portable\");\n        assert_eq!(data, dir.join(PORTABLE_DATA));\n        assert!(data.is_dir(), \"and the profile folder exists\");\n        assert!(!data.join(\".write-test\").exists(), \"the write test leaves nothing behind\");\n        let _ = std::fs::remove_dir_all(&dir);\n    }\n"
   }
  ],
- "crates/proof/src/hyphen.rs": [
+ "crates/engine/Cargo.toml": [
   {
-   "after": "        return core_breaks_pl(core);\n",
-   "insert": "    }\n    // Hebrew words take no break: the patterns here are English, and a Hebrew word written\n    // without niqqud breaks nowhere that a pattern could guess.\n    if lang == ProofLang::He && core.iter().any(|&c| crate::he::is_hebrew_letter(c)) {\n        return (vec![], Source::None);\n"
-  },
-  {
-   "after": "            }\n        }\n    }\n\n",
-   "insert": "    /// Hebrew words take no break: the patterns here are English, and a word written without\n    /// niqqud has no vowel a pattern could break it at. Latin words inside Hebrew text still do.\n    #[test]\n    fn hebrew_words_take_no_break() {\n        for w in [\"בית\", \"שלום\", \"מהספר\", \"ובבית־ספר\"] {\n            assert_eq!(word_breaks_in(w, ProofLang::He), (vec![], Source::None), \"{w}\");\n        }\n        assert_eq!(word_breaks_in(\"typography\", ProofLang::He), word_breaks_in(\"typography\", ProofLang::En));\n    }\n\n"
+   "after": "wordcraft-proof = { workspace = true }\n",
+   "insert": "wordcraft-proof-he = { workspace = true }\n"
   }
  ],
- "crates/proof/src/lang.rs": [
+ "crates/engine/src/cmd/review/proofing.rs": [
   {
-   "after": "    Cs,\n",
-   "insert": "    /// Hebrew (`he`, `he-IL`; also the old `iw` and ISO 639-2 `heb`): the installed Hunspell\n    /// `he_IL` dictionary (when there is one), Hebrew's particles as prefixes, niqqud ignored,\n    /// suggestions that know the final letters, and Hebrew grammar messages. Without the\n    /// dictionary the grammar checks still run and no word is marked as English.\n    He,\n"
-  },
-  {
-   "new": "    pub const PROOFED: [ProofLang; 16] = [\n",
-   "old": "    pub const PROOFED: [ProofLang; 15] = [\n"
-  },
-  {
-   "after": "        ProofLang::Cs,\n",
-   "insert": "        ProofLang::He,\n"
-  },
-  {
-   "after": "            ProofLang::Cs\n",
-   "insert": "        } else if primary.eq_ignore_ascii_case(\"he\") || primary.eq_ignore_ascii_case(\"heb\") || primary.eq_ignore_ascii_case(\"iw\") {\n            ProofLang::He\n"
-  },
-  {
-   "after": "            ProofLang::Cs => \"cs\",\n",
-   "insert": "            ProofLang::He => \"he\",\n"
-  },
-  {
-   "after": "        assert!(ProofLang::PROOFED.contains(&ProofLang::Ru));\n",
-   "insert": "        // Hebrew: `he`, its old code `iw`, and ISO 639-2 `heb`.\n        for t in [\"he\", \"he-IL\", \"HE_il\", \"he_IL.UTF-8\", \"heb\", \"IW\"] {\n            assert_eq!(ProofLang::from_tag(Some(t)), ProofLang::He, \"{t}\");\n        }\n        assert!(ProofLang::He.is_proofed() && ProofLang::He.code() == \"he\");\n"
+   "new": "    // A spelling issue that brought its own suggestions keeps them: Hebrew's come from this\n    // fork's proofer (`wordcraft-proof-he`), which upstream's `suggest_in` knows nothing about.\n    let sugg = if i.kind == wordcraft_proof::IssueKind::Spelling && i.suggestions.is_empty() {\n        wordcraft_proof::suggest_in(&word, 6, i.lang)\n    } else {\n        i.suggestions.clone()\n    };\n",
+   "old": "    let sugg = if i.kind == wordcraft_proof::IssueKind::Spelling { wordcraft_proof::suggest_in(&word, 6, i.lang) } else { i.suggestions.clone() };\n"
   }
  ],
- "crates/proof/src/lib.rs": [
+ "crates/engine/src/packs.rs": [
   {
-   "after": "//!   spelling, MIT); no spelling or grammar marks yet.\n",
-   "insert": "//! - **Hebrew** ([`ProofLang::He`], module [`he`]): the installed Hunspell `he_IL` dictionary (not\n//!   bundled), with Hebrew's particles as prefixes (`ובבית`, `מהספר`), niqqud ignored, suggestions\n//!   that know the five final letters (`שלומ` → `שלום`), and Hebrew grammar messages (a word\n//!   written twice, spacing around punctuation and around the maqaf). Without the dictionary\n//!   Hebrew has no spelling marks, but the grammar checks still run; Hebrew words aren't\n//!   hyphenated.\n"
+   "after": "pub fn missing_dictionary(tag: Option<&str>) -> Option<&'static str> {\n",
+   "insert": "    // Hebrew is this fork's own proofer (`wordcraft-proof-he`): a Hunspell `he_IL` in the\n    // dictionaries folder, not a language pack, so craft-proof knows of no dictionary for it.\n    if tag.is_some_and(wordcraft_proof_he::is_hebrew_tag) {\n        return (!wordcraft_proof_he::has_dictionary()).then_some(\"he_IL\");\n    }\n"
   },
   {
-   "after": "pub mod es;\n",
-   "insert": "pub mod he;\n"
+   "after": "            || !proofable(&tag)\n",
+   "insert": "            // Hebrew has this fork's own proofer and no pack to offer (`missing_dictionary`).\n            || wordcraft_proof_he::is_hebrew_tag(&tag)\n"
+  }
+ ],
+ "crates/layout/Cargo.toml": [
+  {
+   "after": "wordcraft-proof = { workspace = true }\n",
+   "insert": "wordcraft-proof-he = { workspace = true }\n"
+  }
+ ],
+ "crates/layout/src/para/proof.rs": [
+  {
+   "after": "        ProofRun { range, lang: wordcraft_proof::ProofLang::from_tag(rc.lang.as_deref()), skip: rc.no_proof || rc.hidden || rc.link.is_some() }\n    }\n",
+   "insert": "}\n\n/// Is this run's language Hebrew (`he`, `he-IL`, `he_IL.UTF-8`)? Upstream reads such a tag as a\n/// language pack; [`wordcraft_proof_he`] is what proves it here.\npub fn is_hebrew(lang: wordcraft_proof::ProofLang) -> bool {\n    lang.pack_locale().is_some() && wordcraft_proof_he::is_hebrew_tag(lang.tag().as_ref())\n"
   },
   {
-   "after": "        (ProofLang::Cs, cs::installed_path()),\n",
-   "insert": "        (ProofLang::He, he::installed_path()),\n"
+   "new": "    // Hebrew is this fork's own proofer: upstream's `ProofLang` has no Hebrew, and reads a Hebrew\n    // `w:lang` as a language pack with no dictionary (no marks at all). Its runs go to\n    // `wordcraft-proof-he` and the rest to upstream's checker, so none is checked twice.\n    let spans: Vec<(std::ops::Range<usize>, wordcraft_proof::ProofLang)> =\n        runs.iter().filter(|r| !is_hebrew(r.lang)).map(|r| (r.range.clone(), r.lang)).collect();\n",
+   "old": "    let spans: Vec<(std::ops::Range<usize>, wordcraft_proof::ProofLang)> = runs.iter().map(|r| (r.range.clone(), r.lang)).collect();\n"
   },
   {
-   "after": "        ProofLang::Id => \"id_ID\",\n",
-   "insert": "        ProofLang::He => \"he_IL\",\n"
-  },
+   "new": "    let mut issues = wordcraft_proof::check_text_with(&text, &spans, spelling, grammar, list_item);\n    let hebrew: Vec<std::ops::Range<usize>> = runs.iter().filter(|r| is_hebrew(r.lang) && !r.skip).map(|r| r.range.clone()).collect();\n    for range in hebrew {\n        issues.extend(wordcraft_proof_he::issues(&text, range, spelling, grammar));\n    }\n    issues.sort_by_key(|i| (i.start, i.end));\n",
+   "old": "    let issues = wordcraft_proof::check_text_with(&text, &spans, spelling, grammar, list_item);\n"
+  }
+ ],
+ "crates/ui-egui/Cargo.toml": [
   {
-   "after": "        ProofLang::Cs => cs::has_dictionary(),\n",
-   "insert": "        ProofLang::He => he::has_dictionary(),\n"
-  },
-  {
-   "after": "        ProofLang::Cs => Some(\"cs_CZ\"),\n",
-   "insert": "        ProofLang::He => Some(\"he_IL\"),\n"
-  },
-  {
-   "new": "        // Capitals, not every script: Hebrew, Arabic and Japanese have no case at all, so \"no\n        // lowercase letter\" says nothing there (`שלום` is no acronym), and only a word that\n        // really carries an uppercase letter is taken as capitals.\n        || (opts.ignore_uppercase && w.chars().any(char::is_uppercase) && w.chars().all(|c| !c.is_lowercase()))\n",
-   "old": "        || (opts.ignore_uppercase && w.chars().all(|c| !c.is_lowercase()))\n"
-  },
-  {
-   "after": "        ProofLang::Cs => \"Možná pravopisná chyba\",\n",
-   "insert": "        ProofLang::He => \"ייתכן שגיאת כתיב\",\n"
-  },
-  {
-   "after": "        ProofLang::Cs => accepted_by_options(word, opts) || cs::is_correct_with_options(word, opts),\n",
-   "insert": "        ProofLang::He => accepted_by_options(word, opts) || he::is_correct_with_options(word, opts),\n"
-  },
-  {
-   "after": "        ProofLang::Cs => cs::suggest(word, max),\n",
-   "insert": "        ProofLang::He => he::suggest(word, max),\n"
-  },
-  {
-   "after": "        ProofLang::Cs => cs::grammar::check(text),\n",
-   "insert": "        // Hebrew has no capitals either.\n        ProofLang::He => he::grammar::check(text),\n"
-  },
-  {
-   "after": "            (ProofLang::Cs, \"cs_CZ\"),\n",
-   "insert": "            (ProofLang::He, \"he_IL\"),\n"
-  },
-  {
-   "new": "        // Turkish has no test dictionary to put in the folder; Russian, Czech, Hebrew, Indonesian\n        // and the Spanishes follow it.\n",
-   "old": "        // Turkish has no test dictionary to put in the folder; Russian, Czech, Indonesian and the Spanishes follow it.\n"
-  },
-  {
-   "new": "            found[8..],\n",
-   "old": "            found[7..],\n"
-  },
-  {
-   "after": "        assert_eq!(found[5..7].iter().map(|(lang, _)| *lang).collect::<Vec<_>>(), [ProofLang::Ru, ProofLang::Cs], \"{found:?}\");\n",
-   "insert": "        // Hebrew comes from the system (`he_IL`), not from a folder, so only its language belongs\n        // here; its own tests install a dictionary directly, concurrently with this one.\n        assert_eq!(found[7].0, ProofLang::He, \"{found:?}\");\n"
-  },
-  {
-   "after": "        assert!(load_user_dictionary(&path).is_empty());\n    }\n\n",
-   "insert": "    /// A script without case is not \"written in capitals\": the UPPERCASE option must not accept\n    /// every Hebrew (or Japanese) word as a correct one.\n    #[test]\n    fn a_script_without_case_is_not_capitals() {\n        let opts = Options::default();\n        assert!(accepted_by_options(\"NASA\", &opts));\n        assert!(accepted_by_options(\"ДОМ\", &opts), \"Cyrillic has capitals too\");\n        assert!(!accepted_by_options(\"שלום\", &opts));\n        assert!(!accepted_by_options(\"日本語\", &opts));\n        assert!(!accepted_by_options(\"дом\", &opts));\n    }\n\n"
+   "after": "wordcraft-engine = { workspace = true }\n",
+   "insert": "# This fork's Hebrew proofer (see `crates/proof-he`): the interface reports whether the\n# caret's language is checked, and Hebrew's is.\nwordcraft-proof-he = { workspace = true }\n"
   }
  ],
  "crates/ui-egui/src/app.rs": [
   {
-   "after": "            fonts_system_cjk: false,\n",
+   "after": "            fonts_system_arabic: false,\n",
    "insert": "            fonts_lang: \"\",\n"
   }
  ],
@@ -143,36 +95,16 @@
  ],
  "crates/ui-egui/src/app/fonts.rs": [
   {
-   "after": "    pub(super) fn install_ui_fonts(&mut self, ctx: &egui::Context, lang: i18n::Lang) {\n",
-   "insert": "        // A right-to-left interface (Hebrew) mirrors egui's own chrome: menus and submenus open to\n        // the left, combo boxes and collapsing headers put their marker first, scroll bars sit on\n        // the left and a window's close button moves to the left edge. The app's own rows and\n        // groups flip through `crate::rtl`. Set every frame (a change only rewrites the styles),\n        // since an interface language can change without a font change.\n        let rtl = lang.is_rtl();\n        if ctx.global_style().right_to_left != rtl {\n            ctx.all_styles_mut(|s| s.set_right_to_left(rtl));\n        }\n"
-  },
-  {
-   "new": "        if !self.styled\n            || lang.code() != self.fonts_lang\n            || lang.prefers_hans() != self.fonts_hans\n            || lang.prefers_korean() != self.fonts_korean\n            || system_cjk != self.fonts_system_cjk\n",
-   "old": "        if !self.styled || lang.prefers_hans() != self.fonts_hans || lang.prefers_korean() != self.fonts_korean || system_cjk != self.fonts_system_cjk\n"
+   "after": "        if !self.styled\n",
+   "insert": "            || lang.code() != self.fonts_lang\n"
   },
   {
    "after": "            let mut faces = self.canvas.ime_faces.clone();\n",
    "insert": "            // Interface text in a script the interface faces leave out (Hebrew, Arabic, Thai …)\n            // borrows a document face, as the caption does: the Hebrew menus, dialogs and the\n            // language picker would otherwise draw as boxes. Looked at again only when the fonts\n            // are installed, that is when the language changes.\n            //\n            // Every language's own name, not just this one's: File ▸ Options lists them all, so a\n            // Hebrew interface (the default) shows „עברית” in that list before Hebrew is the\n            // current language — and after switching away from it.\n            let names = i18n::Lang::all().map(i18n::Lang::name);\n            faces.extend(theme::faces_for_interface_text(lang.catalog_texts().chain(names)));\n"
   },
   {
-   "after": "            self.fonts_system_cjk = system_cjk;\n",
+   "after": "            self.fonts_system_arabic = system_arabic;\n",
    "insert": "            self.fonts_lang = lang.code();\n"
-  }
- ],
- "crates/ui-egui/src/chrome.rs": [
-  {
-   "new": "            crate::rtl::horizontal_centered(ui, |ui| {\n                ui.spacing_mut().item_spacing = vec2(14.0, 0.0);\n",
-   "old": "            ui.horizontal_centered(|ui| {\n                ui.spacing_mut().item_spacing = vec2(14.0, 0.0);\n"
-  }
- ],
- "crates/ui-egui/src/dialogs/chrome.rs": [
-  {
-   "new": "    crate::rtl::horizontal(ui, |ui| {\n        // The buttons sit at the dialog's trailing edge: right in an English interface, left in\n        // a Hebrew one.\n        crate::rtl::with_layout(ui, egui::Layout::right_to_left(egui::Align::Center), |ui| {\n",
-   "old": "    ui.horizontal(|ui| {\n        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {\n"
-  },
-  {
-   "new": "    crate::rtl::with_layout(ui, egui::Layout::right_to_left(egui::Align::Center), |ui| {\n        close |= ui.add(crate::widgets::primary_button(ui, tl!(\"Close\"))).clicked();\n",
-   "old": "    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {\n        close |= ui.add(crate::widgets::primary_button(ui, tl!(\"Close\"))).clicked();\n"
   }
  ],
  "crates/ui-egui/src/i18n.rs": [
@@ -189,16 +121,16 @@
    "insert": "/// The interface language this fork opens in: Hebrew. A new profile, and every profile that never\n/// chose a language, shows Hebrew — which is what this fork exists for. File ▸ Options ▸ Interface\n/// language lists every other language beside it, `Automatic` (the system's language) among them,\n/// and a choice there is what the app keeps from then on\n/// ([`UiState::adopt_default_language`](crate::UiState)).\npub const DEFAULT_LANGUAGE: &str = \"he\";\n\n"
   },
   {
-   "new": "pub static LANGUAGES: [LangInfo; 28] = [\n",
-   "old": "pub static LANGUAGES: [LangInfo; 27] = [\n"
+   "new": "pub static LANGUAGES: [LangInfo; 29] = [\n",
+   "old": "pub static LANGUAGES: [LangInfo; 28] = [\n"
   },
   {
    "after": "    LangInfo { code: \"sl\", prefer_hans: false, editing_lang: None },\n",
-   "insert": "    // Hebrew, right to left; `he`, `he-IL` and `he_IL.UTF-8` resolve here. Its catalog is\n    // this fork's (`i18n-he/`, laid over craft-i18n by `i18n-he/tools/assemble.py`), not\n    // storytold/craft-i18n's: it is embedded whenever that overlay is in `CRAFT_I18N_DIR`. The\n    // interface mirrors right to left ([`Lang::is_rtl`], `crate::rtl`), and WordCraft proofs\n    // Hebrew (`ProofLang::He`), so new documents are written in Hebrew.\n    LangInfo { code: \"he\", prefer_hans: false, editing_lang: Some(\"he-IL\") },\n"
+   "insert": "    // Hebrew, right to left; `he`, `he-IL` and `he_IL.UTF-8` resolve here. Its catalog is this\n    // fork's (`i18n-he/`, laid over craft-i18n by `i18n-he/tools/assemble.py`), not\n    // storytold/craft-i18n's: it is embedded whenever that overlay is in `CRAFT_I18N_DIR`. The\n    // interface mirrors right to left ([`RTL_LANGUAGES`], `crate::rtl`), and WordCraft proofs\n    // Hebrew (`wordcraft_proof_he`), so new documents are written in Hebrew.\n    LangInfo { code: \"he\", prefer_hans: false, editing_lang: Some(\"he-IL\") },\n"
   },
   {
-   "after": "        self.info().and_then(|l| l.editing_lang)\n    }\n\n",
-   "insert": "    /// Is the interface written right to left (Hebrew, and Arabic when its catalog comes)? Then\n    /// egui's chrome mirrors (`Style::right_to_left`) and the app's own rows open a right-to-left\n    /// layout ([`crate::rtl`]).\n    pub fn is_rtl(self) -> bool {\n        matches!(self.code(), \"he\" | \"ar\" | \"fa\" | \"ur\")\n    }\n\n"
+   "new": "const RTL_LANGUAGES: [&str; 2] = [\"ar\", \"he\"];\n",
+   "old": "const RTL_LANGUAGES: [&str; 1] = [\"ar\"];\n"
   },
   {
    "new": "    pub fn catalog_texts(self) -> impl Iterator<Item = &'static str> {\n",
@@ -207,7 +139,7 @@
  ],
  "crates/ui-egui/src/i18n/tests.rs": [
   {
-   "after": "    };\n",
+   "after": "        }\n    };\n",
    "insert": "}\n\n/// Does this build embed this fork's Hebrew catalog? A catalog directory laid out from\n/// storytold/craft-i18n alone (`craft-i18n.rev`) has no `he` yet, so Hebrew is listed but not\n/// offered there; the daily build lays `i18n-he/` over it (`i18n-he/tools/assemble.py`).\nfn offers_hebrew() -> bool {\n    CRAFT_I18N.iter().any(|(code, ..)| *code == \"he\")\n"
   },
   {
@@ -216,7 +148,7 @@
   },
   {
    "after": "    assert_eq!(app.run(\"ui.language\", serde_json::json!({})).unwrap()[\"language\"], AUTO);\n",
-   "insert": "}\n\n/// This fork opens in Hebrew, and Hebrew is one row of File ▸ Options ▸ Interface language like\n/// every other language. A profile that never chose a language moves to it; a choice (`Automatic`\n/// included) is kept.\n#[test]\nfn this_fork_opens_in_hebrew_and_offers_hebrew_in_the_language_list() {\n    needs_catalogs!();\n    if !offers_hebrew() {\n        return;\n    }\n    assert_eq!(DEFAULT_LANGUAGE, \"he\");\n    let he = lang(DEFAULT_LANGUAGE);\n    assert!(he.is_rtl(), \"Hebrew mirrors the interface\");\n    assert_eq!(he.name(), \"עברית\", \"the picker shows it under its own name\");\n    assert!(Lang::for_picker().iter().any(|l| l.code() == DEFAULT_LANGUAGE), \"Hebrew is in the picker\");\n\n    // `ui.json` from a version before `languageChosen`: `auto` was written on the first run\n    // whether or not anyone had chosen, so such a profile opens in Hebrew.\n    let mut old: crate::UiState = crate::UiState::from_json(br#\"{\"tab\":\"Home\",\"language\":\"auto\"}\"#).unwrap();\n    assert!(!old.language_chosen);\n    old.adopt_default_language();\n    assert_eq!(old.language, DEFAULT_LANGUAGE);\n    assert_eq!(Lang::from_pref(&old.language), he);\n\n    // A choice is kept, and choosing `Automatic` records one, so `auto` survives a restart.\n    let mut chosen: crate::UiState = crate::UiState::from_json(br#\"{\"language\":\"auto\",\"languageChosen\":true}\"#).unwrap();\n    chosen.adopt_default_language();\n    assert_eq!(chosen.language, AUTO, \"the user's Automatic stays automatic\");\n    let mut app = crate::WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::new()), Default::default());\n    assert!(!app.ui.language_chosen, \"a new window has not chosen a language\");\n    app.run(\"ui.language\", serde_json::json!({\"value\": \"auto\"})).unwrap();\n    assert!(app.ui.language_chosen, \"picking Automatic is a choice\");\n    let restored: crate::UiState = serde_json::from_str(&serde_json::to_string(&app.ui).unwrap()).unwrap();\n    assert_eq!(restored.language, AUTO);\n"
+   "insert": "}\n\n/// This fork opens in Hebrew, and Hebrew is one row of File ▸ Options ▸ Interface language like\n/// every other language. A profile that never chose a language moves to it; a choice (`Automatic`\n/// included) is kept.\n#[test]\nfn this_fork_opens_in_hebrew_and_offers_hebrew_in_the_language_list() {\n    needs_catalogs!();\n    if !offers_hebrew() {\n        return;\n    }\n    assert_eq!(DEFAULT_LANGUAGE, \"he\");\n    let he = lang(DEFAULT_LANGUAGE);\n    assert!(he.rtl(), \"Hebrew mirrors the interface\");\n    assert_eq!(he.name(), \"עברית\", \"the picker shows it under its own name\");\n    assert!(Lang::for_picker().iter().any(|l| l.code() == DEFAULT_LANGUAGE), \"Hebrew is in the picker\");\n\n    // `ui.json` from a version before `languageChosen`: `auto` was written on the first run\n    // whether or not anyone had chosen, so such a profile opens in Hebrew.\n    let mut old: crate::UiState = crate::UiState::from_json(br#\"{\"tab\":\"Home\",\"language\":\"auto\"}\"#).unwrap();\n    assert!(!old.language_chosen);\n    old.adopt_default_language();\n    assert_eq!(old.language, DEFAULT_LANGUAGE);\n    assert_eq!(Lang::from_pref(&old.language), he);\n\n    // A choice is kept, and choosing `Automatic` records one, so `auto` survives a restart.\n    let mut chosen: crate::UiState = crate::UiState::from_json(br#\"{\"language\":\"auto\",\"languageChosen\":true}\"#).unwrap();\n    chosen.adopt_default_language();\n    assert_eq!(chosen.language, AUTO, \"the user's Automatic stays automatic\");\n    let mut app = crate::WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::new()), Default::default());\n    assert!(!app.ui.language_chosen, \"a new window has not chosen a language\");\n    app.run(\"ui.language\", serde_json::json!({\"value\": \"auto\"})).unwrap();\n    assert!(app.ui.language_chosen, \"picking Automatic is a choice\");\n    let restored: crate::UiState = serde_json::from_str(&serde_json::to_string(&app.ui).unwrap()).unwrap();\n    assert_eq!(restored.language, AUTO);\n"
   },
   {
    "new": "    assert_eq!(with, [(\"pt-br\", \"pt-BR\"), (\"pl\", \"pl-PL\"), (\"cs\", \"cs-CZ\"), (\"tr\", \"tr-TR\"), (\"it\", \"it-IT\"), (\"he\", \"he-IL\")]);\n",
@@ -225,13 +157,13 @@
   {
    "new": "    // This fork's Hebrew is offered only when its overlay is embedded (see `offers_hebrew`).\n    let listed: Vec<&str> = LANGUAGES.iter().map(|l| l.code).filter(|c| *c != \"he\" || offers_hebrew()).collect();\n",
    "old": "    let listed: Vec<&str> = LANGUAGES.iter().map(|l| l.code).collect();\n"
+  },
+  {
+   "new": "    // Arabic and — when this fork's overlay is embedded — Hebrew are the right-to-left ones.\n    let rtl: Vec<&str> = Lang::all().filter(|l| l.rtl()).map(|l| l.code()).collect();\n    assert!(rtl.contains(&\"ar\"), \"Arabic mirrors the interface: {rtl:?}\");\n    assert!(rtl.iter().all(|c| [\"ar\", \"he\"].contains(c)), \"only Arabic and Hebrew are right to left: {rtl:?}\");\n",
+   "old": "    assert!(Lang::all().filter(|l| l.rtl()).eq([ar]), \"Arabic is the only right-to-left language\");\n"
   }
  ],
  "crates/ui-egui/src/lib.rs": [
-  {
-   "after": "pub mod ribbon_fit;\n",
-   "insert": "pub mod rtl;\n"
-  },
   {
    "after": "    /// Interface language: `auto` (follow the system) or a code from [`i18n::LANGUAGES`].\n",
    "insert": "    /// A profile that never chose one opens in [`i18n::DEFAULT_LANGUAGE`]\n    /// ([`UiState::adopt_default_language`]).\n"
@@ -249,25 +181,19 @@
    "insert": "    }\n\n    /// This fork opens in Hebrew: a profile that has never chosen an interface language gets\n    /// [`i18n::DEFAULT_LANGUAGE`] here, when the app loads its preferences.\n    ///\n    /// Versions before [`UiState::language_chosen`] wrote `auto` on the first run whether or not\n    /// anyone had chosen anything, so `auto` on its own cannot mean \"the system's language\": a\n    /// profile without the flag is one that never chose, and it moves to Hebrew. A choice made in\n    /// File ▸ Options ▸ Interface language, `Automatic` included, sets the flag (the `ui.language`\n    /// command), and is kept.\n    ///\n    /// Not part of [`UiState::default`] or [`UiState::from_json`]: the interface is one thing for\n    /// this fork's app and another for its tests (which read the English labels) and for the other\n    /// front ends that share this state, so the app asks for it, in `load_prefs`.\n    pub fn adopt_default_language(&mut self) {\n        if !self.language_chosen && self.language.eq_ignore_ascii_case(i18n::AUTO) {\n            self.language = i18n::DEFAULT_LANGUAGE.to_string();\n        }\n"
   },
   {
-   "after": "    fonts_system_cjk: bool,\n",
+   "after": "    fonts_system_arabic: bool,\n",
    "insert": "    /// The interface language whose script the installed UI fonts' borrowed faces cover (`\"\"`\n    /// before the first install): switching to Hebrew installs a Hebrew face even though the CJK\n    /// settings do not change.\n    fonts_lang: &'static str,\n"
   }
  ],
  "crates/ui-egui/src/mini_toolbar.rs": [
   {
-   "new": "        // A Hebrew interface turns each row around, the way the ribbon's rows are.\n        let layout = crate::rtl::left_to_right(ui, Align::Center);\n        ui.allocate_ui_with_layout(Vec2::new(ui.available_width(), ROW_H), layout, |ui| {\n",
+   "new": "        // A Hebrew interface turns each row around, the way the ribbon's rows are.\n        let layout = crate::rtl::row_layout(ui, Align::Center);\n        ui.allocate_ui_with_layout(Vec2::new(ui.available_width(), ROW_H), layout, |ui| {\n",
    "old": "        ui.allocate_ui_with_layout(Vec2::new(ui.available_width(), ROW_H), Layout::left_to_right(Align::Center), |ui| {\n"
-  }
- ],
- "crates/ui-egui/src/options.rs": [
-  {
-   "after": "        ProofLang::Cs => tl!(\"Czech\"),\n",
-   "insert": "        ProofLang::He => tl!(\"Hebrew\"),\n"
   }
  ],
  "crates/ui-egui/src/previews.rs": [
   {
-   "new": "        let mut f: Vec<String> = self.families.as_ref().map(|(_, f)| f.clone()).unwrap_or_default();\n        // A Hebrew interface puts the fonts that draw Hebrew first, so the list opens on fonts that\n        // can show the document. Which those are is a scan of every installed font's character\n        // map: it runs once, in the background, and this asks for its answer every frame until the\n        // answer is there — the list is alphabetical until then, and reorders itself after.\n        if crate::i18n::current().is_rtl() && let Some(hebrew) = hebrew_families() {\n            hebrew_first(&mut f, &hebrew);\n        }\n        f\n",
+   "new": "        let mut f: Vec<String> = self.families.as_ref().map(|(_, f)| f.clone()).unwrap_or_default();\n        // A Hebrew interface puts the fonts that draw Hebrew first, so the list opens on fonts that\n        // can show the document. Which those are is a scan of every installed font's character\n        // map: it runs once, in the background, and this asks for its answer every frame until the\n        // answer is there — the list is alphabetical until then, and reorders itself after.\n        if crate::i18n::current().rtl()\n            && let Some(hebrew) = hebrew_families()\n        {\n            hebrew_first(&mut f, &hebrew);\n        }\n        f\n",
    "old": "        self.families.as_ref().map(|(_, f)| f.clone()).unwrap_or_default()\n"
   },
   {
@@ -275,8 +201,8 @@
    "insert": "/// A Hebrew word a font-list entry shows after the family's name, drawn in that face (see\n/// [`entry_text`]): the list is then a row of Hebrew letterforms, not just names.\nconst HEBREW_SAMPLE: &str = \"שלום\";\n\n/// [`Previews::families`]' order in a Hebrew interface: the families that draw [`HEBREW_SAMPLE`]\n/// first, then the others, each group in the alphabetical order the list already has.\nfn hebrew_first(families: &mut [String], hebrew: &std::collections::HashSet<String>) {\n    families.sort_by_key(|name| !hebrew.contains(&name.to_lowercase()));\n}\n\n/// The families whose faces draw Hebrew — the first ones in a Hebrew interface's font list.\n///\n/// The answer is a scan over every installed family (each one's character map, read from its file),\n/// so it is made once, on a background thread the first call starts: `None` while the scan runs,\n/// and `None` for good on wasm, which has neither the thread nor an installed list. Nothing waits\n/// for it; the list keeps its alphabetical order until the scan is done.\nfn hebrew_families() -> Option<std::sync::Arc<std::collections::HashSet<String>>> {\n    #[cfg(target_arch = \"wasm32\")]\n    {\n        None\n    }\n    #[cfg(not(target_arch = \"wasm32\"))]\n    {\n        use std::collections::HashSet;\n        use std::sync::{Arc, Mutex, Once, OnceLock};\n\n        static SCAN: OnceLock<Mutex<Option<Arc<HashSet<String>>>>> = OnceLock::new();\n        static START: Once = Once::new();\n        let answer = SCAN.get_or_init(|| Mutex::new(None));\n        START.call_once(|| {\n            // A failed spawn leaves the list alphabetical.\n            let _ = std::thread::Builder::new().name(\"hebrew-fonts\".into()).spawn(move || {\n                let db = wordcraft_fonts::FontDb::global();\n                let draws_hebrew = |family: &str| db.preview_face(family).is_some_and(|face| HEBREW_SAMPLE.chars().all(|c| face.covers(c)));\n                let hebrew: HashSet<String> = db.families().into_iter().filter(|f| draws_hebrew(f)).map(|f| f.to_lowercase()).collect();\n                *answer.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Arc::new(hebrew));\n            });\n        });\n        answer.lock().unwrap_or_else(std::sync::PoisonError::into_inner).clone()\n    }\n}\n\n/// The text one font-list entry is drawn with: the family's name, and after it — in a Hebrew\n/// interface, in a face that draws it — the Hebrew word, so the entry shows the letterforms the\n/// font gives Hebrew and not just its Latin name.\n///\n/// The word is spelled backwards here: [`wordcraft_render::render_text_line`] draws the glyphs in\n/// the order it is handed them, right-to-left runs included, so read from the right it says\n/// „שלום”. (A face without the letters gets the name alone, in the fallback face.)\nfn entry_text(face: &wordcraft_fonts::FontFace, name: &str, rtl: bool) -> String {\n    if !rtl || !HEBREW_SAMPLE.chars().all(|c| face.covers(c)) {\n        return name.to_string();\n    }\n    format!(\"{name}  {}\", HEBREW_SAMPLE.chars().rev().collect::<String>())\n}\n\n"
   },
   {
-   "new": "    let text = entry_text(&face, name, crate::i18n::current().is_rtl());\n    let img = wordcraft_render::render_text_line(&face, &text, 13.0, 244.0, 22.0, 2.0, ppp);\n",
-   "old": "    let img = wordcraft_render::render_text_line(&face, name, 13.0, 244.0, 22.0, 2.0, ppp);\n"
+   "new": "    let text = entry_text(&face, name, crate::i18n::current().rtl());\n    let img = wordcraft_render::render_text_line(&face, &text, 13.0, 244.0, FONT_PREVIEW_RENDER_H, 2.0, ppp);\n",
+   "old": "    let img = wordcraft_render::render_text_line(&face, name, 13.0, 244.0, FONT_PREVIEW_RENDER_H, 2.0, ppp);\n"
   }
  ],
  "crates/ui-egui/src/previews/tests.rs": [
@@ -285,63 +211,15 @@
    "insert": "\n/// A Hebrew interface's font list opens on the fonts that draw Hebrew: the two groups keep the\n/// alphabetical order the list has.\n#[test]\nfn a_hebrew_interface_lists_the_fonts_that_draw_hebrew_first() {\n    let mut families: Vec<String> = [\"Arial\", \"David\", \"FrankRuehl\", \"Narkisim\"].iter().map(|f| f.to_string()).collect();\n    let hebrew: std::collections::HashSet<String> = [\"david\", \"narkisim\"].iter().map(|f| f.to_string()).collect();\n    hebrew_first(&mut families, &hebrew);\n    assert_eq!(families, [\"David\", \"Narkisim\", \"Arial\", \"FrankRuehl\"], \"the Hebrew fonts first, each group as the list had it\");\n}\n\n/// The Hebrew word after a name comes from the face itself, so the list shows its Hebrew letters,\n/// and only a Hebrew interface adds it. `render_text_line` draws the glyphs in the order it is\n/// given, so the entry spells the word backwards.\n#[test]\nfn a_font_entry_shows_a_hebrew_word_only_in_hebrew() {\n    let db = wordcraft_fonts::FontDb::global();\n    let latin = db.face(\"Source Sans 3\", \"Regular\");\n    assert_eq!(entry_text(&latin, \"Source Sans 3\", true), \"Source Sans 3\", \"a face without Hebrew keeps its name alone\");\n    assert_eq!(entry_text(&latin, \"Source Sans 3\", false), \"Source Sans 3\");\n    // A face that does draw Hebrew; a machine with no such font installed skips this half.\n    if let Some(face) = db.fallback_for('ש', u32::MAX) {\n        assert_eq!(entry_text(&face, \"David\", true), format!(\"David  {}\", HEBREW_SAMPLE.chars().rev().collect::<String>()));\n        assert_eq!(entry_text(&face, \"David\", false), \"David\", \"an English interface shows the name alone\");\n    }\n}\n"
   }
  ],
- "crates/ui-egui/src/ribbon.rs": [
-  {
-   "new": "                // Share, Editing and Comments trail the tabs: the right end of an English strip,\n                // the left end of a Hebrew one, as in Word.\n                crate::rtl::with_layout(ui, egui::Layout::right_to_left(egui::Align::Center), |ui| {\n",
-   "old": "                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {\n"
-  },
-  {
-   "new": "                        // Icon first, then the word: from the right in a Hebrew interface.\n                        let rtl = crate::rtl::is_rtl(ui);\n                        let icon_x = if !share_text {\n                            r.center().x\n                        } else if rtl {\n                            r.max.x - 14.0\n                        } else {\n                            r.min.x + 14.0\n                        };\n",
-   "old": "                        let icon_x = if share_text { r.min.x + 14.0 } else { r.center().x };\n"
-  },
-  {
-   "new": "                            let (x, align) = if rtl { (r.max.x - 26.0, Align2::RIGHT_CENTER) } else { (r.min.x + 26.0, Align2::LEFT_CENTER) };\n                            ui.painter().text(pos2(x, r.center().y), align, share, medium(12.0), t.on_accent);\n",
-   "old": "                            ui.painter().text(pos2(r.min.x + 26.0, r.center().y), Align2::LEFT_CENTER, share, medium(12.0), t.on_accent);\n"
-  },
-  {
-   "new": "                    // File, Home, Insert … from the right in a Hebrew strip.\n                    crate::rtl::with_layout(ui, egui::Layout::left_to_right(egui::Align::Center), |ui| {\n",
-   "old": "                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {\n"
-  },
-  {
-   "after": "                            let holds_active = left_out.iter().any(|(tab, _)| *tab == app.ui.tab);\n",
-   "insert": "                            let more_glyph = if crate::rtl::is_rtl(ui) { \"«\" } else { \"»\" };\n"
-  },
-  {
-   "new": "                                more_glyph,\n",
-   "old": "                                \"»\",\n"
-  },
-  {
-   "new": "                // A Hebrew interface turns the row around: the first group starts at the right\n                // edge and the rest run leftwards (`crate::rtl`, `widgets::group_titled`).\n                crate::rtl::horizontal_top(ui, |ui| {\n",
-   "old": "                ui.horizontal_top(|ui| {\n"
-  },
-  {
-   "after": "                    ui.spacing_mut().item_spacing = vec2(2.0, 2.0);\n",
-   "insert": "                    // A group is measured along this row: an unbounded one has no edge to start\n                    // at, and would place its groups at infinity.\n                    debug_assert!(ui.available_width().is_finite(), \"the ribbon row of `{}` has no width\", app.ui.tab);\n"
-  },
-  {
-   "after": "            // where more is and scroll it on click. Every command also stays reachable through Search Commands.\n",
-   "insert": "            //\n            // No chevrons in a Hebrew interface: that row starts at the right edge and runs left, so\n            // what doesn't fit is off the left, while a scroll area's offset counts from the left of\n            // its content — a press would move the row the wrong way. `ribbon_fit` folds groups until\n            // the row fits, and Help ▸ Search Commands reaches every command.\n"
-  },
-  {
-   "new": "            let overflow = if crate::rtl::is_rtl(ui) { 0.0 } else { scroll.content_size.x - r.width() };\n",
-   "old": "            let overflow = scroll.content_size.x - r.width();\n"
-  }
- ],
- "crates/ui-egui/src/ribbon/common.rs": [
-  {
-   "new": "    // A column of small buttons: in a Hebrew ribbon it hugs the right of the row it sits in.\n    crate::rtl::vertical_top(ui, |ui| {\n",
-   "old": "    ui.vertical(|ui| {\n"
-  }
- ],
  "crates/ui-egui/src/ribbon/design.rs": [
   {
-   "new": "    // The thumbnails read right to left in a Hebrew interface, like the rest of the ribbon.\n    let mut gui = ui.new_child(egui::UiBuilder::new().max_rect(gallery).layout(crate::rtl::left_to_right(ui, egui::Align::Min)));\n",
+   "new": "    // The thumbnails read right to left in a Hebrew interface, like the rest of the ribbon.\n    let mut gui = ui.new_child(egui::UiBuilder::new().max_rect(gallery).layout(crate::rtl::row_layout(ui, egui::Align::Min)));\n",
    "old": "    let mut gui = ui.new_child(egui::UiBuilder::new().max_rect(gallery).layout(egui::Layout::left_to_right(egui::Align::Min)));\n"
   }
  ],
  "crates/ui-egui/src/ribbon/home.rs": [
   {
-   "new": "                // These buttons, and the pair of text directions after them, are where mirrored\n                // order alone reads wrong: a Hebrew row would start (at the right) with the\n                // flush-left icon and end with the flush-right one. The icons face the way the text\n                // does, so the row keeps the paragraph's reading order — in a Hebrew one it starts\n                // with Align Right, and the directions start with right-to-left.\n                let mut aligns = [\n                    (\"alignLeft\", \"Align Left\", \"para.alignLeft\", align == A::Left),\n                    (\"alignCenter\", \"Center\", \"para.alignCenter\", align == A::Center),\n                    (\"alignRight\", \"Align Right\", \"para.alignRight\", align == A::Right),\n                    (\"justify\", \"Justify\", \"para.justify\", align == A::Justify),\n                ];\n                let mut directions =\n                    [(\"textLtr\", \"Left-to-Right Text Direction\", \"para.ltr\", !rtl), (\"textRtl\", \"Right-to-Left Text Direction\", \"para.rtl\", rtl)];\n                if crate::rtl::is_rtl(ui) {\n                    // The row is drawn from its right edge in a Hebrew interface, so the first\n                    // button here is the rightmost one: the flush-right icon must come first and the\n                    // flush-left one after Center, and Justify — which faces nowhere — stays last.\n                    aligns.swap(0, 2);\n                    directions.reverse();\n                }\n                for (icon, tip, cmd, on) in aligns {\n                    small(ui, app, icon, None, tip, crate::widgets::ButtonAction::new(cmd, json!({}), on));\n                }\n",
+   "new": "                // These buttons, and the pair of text directions after them, are where mirrored\n                // order alone reads wrong: a Hebrew row would start (at the right) with the\n                // flush-left icon and end with the flush-right one. The icons face the way the text\n                // does, so the row keeps the paragraph's reading order — in a Hebrew one it starts\n                // with Align Right, and the directions start with right-to-left.\n                let mut aligns = [\n                    (\"alignLeft\", \"Align Left\", \"para.alignLeft\", align == A::Left),\n                    (\"alignCenter\", \"Center\", \"para.alignCenter\", align == A::Center),\n                    (\"alignRight\", \"Align Right\", \"para.alignRight\", align == A::Right),\n                    (\"justify\", \"Justify\", \"para.justify\", align == A::Justify),\n                ];\n                let mut directions =\n                    [(\"textLtr\", \"Left-to-Right Text Direction\", \"para.ltr\", !rtl), (\"textRtl\", \"Right-to-Left Text Direction\", \"para.rtl\", rtl)];\n                if crate::rtl::on() {\n                    // The row is drawn from its right edge in a Hebrew interface, so the first\n                    // button here is the rightmost one: the flush-right icon must come first and the\n                    // flush-left one after Center, and Justify — which faces nowhere — stays last.\n                    aligns.swap(0, 2);\n                    directions.reverse();\n                }\n                for (icon, tip, cmd, on) in aligns {\n                    small(ui, app, icon, None, tip, crate::widgets::ButtonAction::new(cmd, json!({}), on));\n                }\n",
    "old": "                small(ui, app, \"alignLeft\", None, \"Align Left\", crate::widgets::ButtonAction::new(\"para.alignLeft\", json!({}), align == A::Left));\n                small(ui, app, \"alignCenter\", None, \"Center\", crate::widgets::ButtonAction::new(\"para.alignCenter\", json!({}), align == A::Center));\n                small(ui, app, \"alignRight\", None, \"Align Right\", crate::widgets::ButtonAction::new(\"para.alignRight\", json!({}), align == A::Right));\n                small(ui, app, \"justify\", None, \"Justify\", crate::widgets::ButtonAction::new(\"para.justify\", json!({}), align == A::Justify));\n"
   },
   {
@@ -359,24 +237,12 @@
    "insert": "    (\"he-IL\", \"Hebrew\"),\n"
   },
   {
-   "after": "            wordcraft_engine::proof::ProofLang::Cs => \"Czech\".into(),\n",
-   "insert": "            wordcraft_engine::proof::ProofLang::He => \"Hebrew\".into(),\n"
-  }
- ],
- "crates/ui-egui/src/ribbon/layout.rs": [
-  {
-   "new": "        // A grid in a Hebrew row: see `rtl::grid_box`.\n        crate::rtl::grid_box(ui, |ui| {\n            egui::Grid::new(\"layout_para\").spacing(vec2(4.0, 1.5)).min_row_height(FIELD.y).show(ui, |ui| {\n                ui.label(egui::RichText::new(tl!(\"Indent\")).small().strong());\n                ui.label(\"\");\n                spaced(ui, egui::RichText::new(tl!(\"Spacing\")).small().strong());\n                ui.end_row();\n                // Indents in the File › Options unit.\n                let u = crate::options::unit();\n                let k = u.pt_per_unit();\n                let mut l = rp.indent_left / k;\n                let mut b = rp.space_before;\n                ui.label(egui::RichText::new(tl!(\"Left:\")).small());\n                if ui\n                    .add_sized(FIELD, egui::DragValue::new(&mut l).speed(3.6 / k).range(-792.0 / k..=1584.0 / k).measure(u).max_decimals(2))\n                    .changed()\n                {\n                    let _ = app.run(\"para.indents\", json!({\"left\": l * k}));\n                }\n                spaced(ui, egui::RichText::new(tl!(\"Before:\")).small());\n                if ui.add_sized(FIELD, egui::DragValue::new(&mut b).speed(1.0).range(0.0..=1584.0).suffix(format!(\" {}\", tl!(\"pt\")))).changed() {\n                    let _ = app.run(\"para.spacing\", json!({\"before\": b}));\n                }\n                ui.end_row();\n                let mut r = rp.indent_right / k;\n                let mut a = rp.space_after;\n                ui.label(egui::RichText::new(tl!(\"Right:\")).small());\n                if ui\n                    .add_sized(FIELD, egui::DragValue::new(&mut r).speed(3.6 / k).range(-792.0 / k..=1584.0 / k).measure(u).max_decimals(2))\n                    .changed()\n                {\n                    let _ = app.run(\"para.indents\", json!({\"right\": r * k}));\n                }\n                spaced(ui, egui::RichText::new(tl!(\"After:\")).small());\n                if ui.add_sized(FIELD, egui::DragValue::new(&mut a).speed(1.0).range(0.0..=1584.0).suffix(format!(\" {}\", tl!(\"pt\")))).changed() {\n                    let _ = app.run(\"para.spacing\", json!({\"after\": a}));\n                }\n                ui.end_row();\n            });\n",
-   "old": "        egui::Grid::new(\"layout_para\").spacing(vec2(4.0, 1.5)).min_row_height(FIELD.y).show(ui, |ui| {\n            ui.label(egui::RichText::new(tl!(\"Indent\")).small().strong());\n            ui.label(\"\");\n            spaced(ui, egui::RichText::new(tl!(\"Spacing\")).small().strong());\n            ui.end_row();\n            // Indents in the File › Options unit.\n            let u = crate::options::unit();\n            let k = u.pt_per_unit();\n            let mut l = rp.indent_left / k;\n            let mut b = rp.space_before;\n            ui.label(egui::RichText::new(tl!(\"Left:\")).small());\n            if ui.add_sized(FIELD, egui::DragValue::new(&mut l).speed(3.6 / k).range(-792.0 / k..=1584.0 / k).measure(u).max_decimals(2)).changed() {\n                let _ = app.run(\"para.indents\", json!({\"left\": l * k}));\n            }\n            spaced(ui, egui::RichText::new(tl!(\"Before:\")).small());\n            if ui.add_sized(FIELD, egui::DragValue::new(&mut b).speed(1.0).range(0.0..=1584.0).suffix(format!(\" {}\", tl!(\"pt\")))).changed() {\n                let _ = app.run(\"para.spacing\", json!({\"before\": b}));\n            }\n            ui.end_row();\n            let mut r = rp.indent_right / k;\n            let mut a = rp.space_after;\n            ui.label(egui::RichText::new(tl!(\"Right:\")).small());\n            if ui.add_sized(FIELD, egui::DragValue::new(&mut r).speed(3.6 / k).range(-792.0 / k..=1584.0 / k).measure(u).max_decimals(2)).changed() {\n                let _ = app.run(\"para.indents\", json!({\"right\": r * k}));\n            }\n            spaced(ui, egui::RichText::new(tl!(\"After:\")).small());\n            if ui.add_sized(FIELD, egui::DragValue::new(&mut a).speed(1.0).range(0.0..=1584.0).suffix(format!(\" {}\", tl!(\"pt\")))).changed() {\n                let _ = app.run(\"para.spacing\", json!({\"after\": a}));\n            }\n            ui.end_row();\n"
-  }
- ],
- "crates/ui-egui/src/ribbon/table.rs": [
-  {
-   "new": "        // A grid measures its cells from its row's left edge, and a Hebrew row leaves that edge\n        // open: see `rtl::grid_box`. Its cells still go left to right, so in a Hebrew interface the\n        // right-hand cell of a row is the paragraph's start.\n        crate::rtl::grid_box(ui, |ui| {\n            egui::Grid::new(\"cellalign\").spacing(vec2(1.0, 1.0)).show(ui, |ui| {\n                for row in [\n                    [(\"topLeft\", \"Align Top Left\"), (\"topCenter\", \"Align Top Center\"), (\"topRight\", \"Align Top Right\")],\n                    [(\"centerLeft\", \"Align Center Left\"), (\"center\", \"Align Center\"), (\"centerRight\", \"Align Center Right\")],\n                    [(\"bottomLeft\", \"Align Bottom Left\"), (\"bottomCenter\", \"Align Bottom Center\"), (\"bottomRight\", \"Align Bottom Right\")],\n                ] {\n                    for (v, tip) in row {\n                        small(ui, app, \"cellAlign\", None, tip, crate::widgets::ButtonAction::new(\"table.cellAlign\", json!({\"value\": v}), false));\n                    }\n                    ui.end_row();\n",
-   "old": "        egui::Grid::new(\"cellalign\").spacing(vec2(1.0, 1.0)).show(ui, |ui| {\n            for row in [\n                [(\"topLeft\", \"Align Top Left\"), (\"topCenter\", \"Align Top Center\"), (\"topRight\", \"Align Top Right\")],\n                [(\"centerLeft\", \"Align Center Left\"), (\"center\", \"Align Center\"), (\"centerRight\", \"Align Center Right\")],\n                [(\"bottomLeft\", \"Align Bottom Left\"), (\"bottomCenter\", \"Align Bottom Center\"), (\"bottomRight\", \"Align Bottom Right\")],\n            ] {\n                for (v, tip) in row {\n                    small(ui, app, \"cellAlign\", None, tip, crate::widgets::ButtonAction::new(\"table.cellAlign\", json!({\"value\": v}), false));\n"
+   "after": "/// Does WordCraft check spelling and grammar in the caret's language at all (Bulgarian: no)?\n",
+   "insert": "///\n/// Hebrew yes: this fork proofs it itself (`wordcraft-proof-he`), and its grammar rules run even\n/// when no `he_IL` dictionary is installed.\n"
   },
   {
-   "new": "            })\n        });\n        big(ui, app, \"textDirection\", \"Text\\nDirection\", \"table.textDirection\", json!({}), false);\n",
-   "old": "                ui.end_row();\n            }\n        });\n        big(ui, app, \"textDirection\", \"Text\\nDirection\", \"table.textDirection\", json!({}), false);\n"
+   "new": "    let tag = caret_lang_tag(app);\n    if tag.as_deref().is_some_and(wordcraft_proof_he::is_hebrew_tag) {\n        return true;\n    }\n    wordcraft_engine::proof::has_dictionary(tag.as_deref())\n",
+   "old": "    wordcraft_engine::proof::has_dictionary(caret_lang_tag(app).as_deref())\n"
   }
  ],
  "crates/ui-egui/src/ribbon/tests.rs": [
@@ -401,16 +267,6 @@
    "insert": "    // The hook outlives the test that set it: put back the one the harness brought.\n    if let Some(previous) = previous.lock().unwrap().take() {\n        std::panic::set_hook(previous);\n    }\n"
   }
  ],
- "crates/ui-egui/src/ribbon_fit.rs": [
-  {
-   "new": "//! (collapsed), starting from the far end of the row: the right in an English interface, the left\n//! in a Hebrew one, where the row itself is drawn right to left.\n",
-   "old": "//! (collapsed), starting from the right.\n"
-  },
-  {
-   "new": "/// Each group's level (by position) so that the row fits `avail`: groups shrink from the far end of\n/// the row (the last drawn — the right in an English row, the left in a Hebrew one), first all to\n/// compact, then to collapsed, stopping as soon as the row fits. Then whatever room is left is given\n/// back, from the near end.\n",
-   "old": "/// Each group's level (by position) so that the row fits `avail`: groups shrink from the right,\n/// first all to compact, then to collapsed, stopping as soon as the row fits. Then whatever room is\n/// left is given back, from the left.\n"
-  }
- ],
  "crates/ui-egui/src/widgets.rs": [
   {
    "after": "}\n\n#[cfg(test)]\n",
@@ -419,7 +275,7 @@
  ],
  "crates/ui-egui/src/widgets/buttons.rs": [
   {
-   "new": "    // A Hebrew interface reads right to left, so the drop-down marker comes before the text.\n    let rtl = crate::rtl::is_rtl(ui);\n    ui.painter().galley(pos2(if marker && rtl { x + extra } else { x }, y), galley, color);\n",
+   "new": "    // A right-to-left row reads from the right, so the drop-down marker comes before the text.\n    let rtl = crate::rtl::flows(ui);\n    ui.painter().galley(pos2(if marker && rtl { x + extra } else { x }, y), galley, color);\n",
    "old": "    ui.painter().galley(pos2(x, y), galley, color);\n"
   },
   {
@@ -429,109 +285,17 @@
   {
    "after": "    let (r, resp) = ui.allocate_exact_size(vec2(24.0 + text_w, 22.0), Sense::click());\n",
    "insert": "    #[cfg(test)]\n    super::BUTTON_RECTS.with(|b| b.borrow_mut().push((id.to_string(), r)));\n"
-  },
-  {
-   "new": "    // A Hebrew interface puts the icon at the button's right and its label to the left of it.\n    let rtl = crate::rtl::is_rtl(ui);\n    let ic = Rect::from_center_size(pos2(if rtl { r.max.x - 12.0 } else { r.min.x + 12.0 }, r.center().y), vec2(17.0, 17.0));\n",
-   "old": "    let ic = Rect::from_center_size(pos2(r.min.x + 12.0, r.center().y), vec2(17.0, 17.0));\n"
-  },
-  {
-   "new": "        let (x, align) = if rtl { (r.max.x - 24.0, Align2::RIGHT_CENTER) } else { (r.min.x + 24.0, Align2::LEFT_CENTER) };\n        ui.painter().text(pos2(x, r.center().y), align, l, regular(11.5), if on { t.text } else { t.text_disabled });\n",
-   "old": "        ui.painter().text(pos2(r.min.x + 24.0, r.center().y), Align2::LEFT_CENTER, l, regular(11.5), if on { t.text } else { t.text_disabled });\n"
-  }
- ],
- "crates/ui-egui/src/widgets/combo.rs": [
-  {
-   "after": "    let mut focused = false;\n    let t = Tokens::get(ui.ctx());\n",
-   "insert": "    // A Hebrew row runs the other way: the arrow is on the field's left, and the outline is\n    // rounded on the outside of the pair, which is now its right.\n    let rtl = crate::rtl::is_rtl(ui);\n"
-  },
-  {
-   "new": "            // The field keeps the rounded corners that face away from the arrow.\n            if rtl {\n                v.corner_radius.nw = 0;\n                v.corner_radius.sw = 0;\n            } else {\n                v.corner_radius.ne = 0;\n                v.corner_radius.se = 0;\n            }\n",
-   "old": "            v.corner_radius.ne = 0;\n            v.corner_radius.se = 0;\n"
-  },
-  {
-   "after": "        let te = egui::TextEdit::singleline(&mut text).id(te_id).desired_width(width - 16.0).font(regular(12.0)).margin(vec2(4.0, 3.0));\n",
-   "insert": "        // The value starts at the field's reading edge: the left in an English interface, the right\n        // in a Hebrew one, where the arrow is on its left and a left-aligned value would touch it.\n        let te = if rtl { te.horizontal_align(egui::Align::RIGHT) } else { te };\n"
-  },
-  {
-   "new": "        // It reaches one border width under the field, so the border between them is one line: two\n        // borders side by side read as a double-width divider. The arrow is on the field's right,\n        // or its left in a Hebrew interface.\n        let ar_radius = if rtl { CornerRadius { nw: r.ne, sw: r.se, ne: 0, se: 0 } } else { CornerRadius { nw: 0, sw: 0, ne: r.ne, se: r.se } };\n        let under = if rtl {\n            Rect::from_min_max(ar.min, pos2(ar.max.x + ARROW_BORDER, ar.max.y))\n        } else {\n            Rect::from_min_max(pos2(ar.min.x - ARROW_BORDER, ar.min.y), ar.max)\n        };\n",
-   "old": "        // It reaches one border width under the field, so the field's right border is the only line\n        // between them: two borders side by side read as a double-width divider.\n        let ar_radius = CornerRadius { nw: 0, sw: 0, ne: r.ne, se: r.se };\n        let under = Rect::from_min_max(pos2(ar.min.x - ARROW_BORDER, ar.min.y), ar.max);\n"
-  },
-  {
-   "new": "    ui.allocate_ui_with_layout(size, crate::rtl::left_to_right(ui, egui::Align::Center), |ui| {\n",
-   "old": "    ui.allocate_ui_with_layout(size, egui::Layout::left_to_right(egui::Align::Center), |ui| {\n"
   }
  ],
  "crates/ui-egui/src/widgets/groups.rs": [
   {
-   "new": "",
-   "old": "#[cfg(test)]\nuse super::TALL_GROUPS;\n"
-  },
-  {
-   "after": "use super::{Align2, Rect, Response, Sense, Stroke, Tokens, Ui, WordApp, icons, pos2, regular, vec2};\n",
-   "insert": "#[cfg(test)]\nuse super::{GROUP_RECTS, TALL_GROUPS};\n"
-  },
-  {
-   "new": "/// A ribbon group: content, a centred label below and a divider on the trailing side — the right\n/// one in an English interface, the left one in a Hebrew one.\n",
-   "old": "/// A ribbon group: content, a centred label below and a divider on the right.\n"
-  },
-  {
-   "new": "    // A Hebrew interface turns the row around: a group starts at the row's right edge and the next\n    // one is drawn to its left.\n    let rtl = crate::rtl::is_rtl(ui);\n    let start = ui.cursor();\n    let top = start.min.y;\n    // The edge the group begins at, and leaves the cursor at: the row's left edge, or its right\n    // edge in a Hebrew row.\n    let edge = |ui: &Ui| if rtl { ui.cursor().max.x } else { ui.cursor().min.x };\n    let start_x = edge(ui);\n",
-   "old": "    let start = ui.cursor().min;\n"
-  },
-  {
-   "new": "        // A Hebrew row draws its groups right to left; left to right it is as it always was. The\n        // room a group's controls are given is read off this row (inside a right-to-left row the\n        // space to the left is unbounded), so the two directions give exactly the same box.\n        let row_w = ui.available_width();\n        debug_assert!(row_w.is_finite(), \"group {id_title}: the ribbon row's width is {row_w}\");\n        let column = if rtl { egui::Layout::top_down(egui::Align::Max) } else { egui::Layout::top_down(egui::Align::Min) };\n        let controls = if rtl { egui::Layout::right_to_left(egui::Align::Min) } else { egui::Layout::left_to_right(egui::Align::Min) };\n        let inner = ui.with_layout(column, |ui| {\n",
-   "old": "        let inner = ui.vertical(|ui| {\n"
-  },
-  {
-   "new": "            let content = ui.allocate_ui_with_layout(vec2(row_w, CONTENT_H), controls, |ui| {\n",
-   "old": "            let content = ui.allocate_ui_with_layout(vec2(ui.available_width(), CONTENT_H), egui::Layout::left_to_right(egui::Align::Min), |ui| {\n"
-  },
-  {
-   "after": "            let _ = content;\n        });\n",
-   "insert": "        // The title sits under the controls, whose rect is the group's: the row's cursor never\n        // moves along the row, so its right edge is the same before and after the group.\n"
-  },
-  {
-   "new": "        title_row(ui, Rect::from_min_max(pos2(r.min.x, top + CONTENT_H), pos2(r.max.x, top + CONTENT_H + LABEL_H)), id_title, title, launcher, app);\n",
-   "old": "        title_row(\n            ui,\n            Rect::from_min_max(pos2(start.x, start.y + CONTENT_H), pos2(r.max.x, start.y + CONTENT_H + LABEL_H)),\n            id_title,\n            title,\n            launcher,\n            app,\n        );\n"
-  },
-  {
-   "new": "    let x = edge(ui);\n    // The group's box, for the test that checks which edge a Hebrew row starts at.\n    #[cfg(test)]\n    GROUP_RECTS.with(|g| {\n        let width = (start_x - x).abs();\n        let min = if rtl { start_x - width } else { start_x };\n        g.borrow_mut().push((id_title.to_string(), Rect::from_min_max(pos2(min, top), pos2(min + width, top + CONTENT_H + LABEL_H))));\n    });\n    ui.painter().line_segment([pos2(x, top + 4.0), pos2(x, top + CONTENT_H + LABEL_H - 4.0)], Stroke::new(1.0, t.border));\n",
-   "old": "    let x = ui.cursor().min.x;\n    ui.painter().line_segment([pos2(x, start.y + 4.0), pos2(x, start.y + CONTENT_H + LABEL_H - 4.0)], Stroke::new(1.0, t.border));\n"
-  },
-  {
-   "new": "    crate::ribbon_fit::record(ui.ctx(), id_title, level, (start_x - edge(ui)).abs());\n",
-   "old": "    crate::ribbon_fit::record(ui.ctx(), id_title, level, ui.cursor().min.x - start.x);\n"
-  },
-  {
-   "new": "        // The launcher sits at the title row's trailing corner: the right one, or the left one in\n        // a Hebrew interface.\n        let x = if crate::rtl::is_rtl(ui) { r.min.x + 6.0 } else { r.max.x - 6.0 };\n        let lr = Rect::from_center_size(pos2(x, title_y), vec2(11.0, 11.0));\n",
-   "old": "        let lr = Rect::from_center_size(pos2(r.max.x - 6.0, title_y), vec2(11.0, 11.0));\n"
-  },
-  {
-   "new": "            // The whole group lies under its button, and in a Hebrew interface that means to the\n            // left of the right edge.\n            crate::rtl::vertical_top(ui, |ui| {\n                crate::rtl::horizontal_top(ui, |ui| {\n",
-   "old": "            ui.vertical(|ui| {\n                ui.horizontal_top(|ui| {\n"
-  }
- ],
- "crates/ui-egui/src/widgets/icon_buttons.rs": [
-  {
-   "new": "    // A Hebrew interface reads from the right: the icon leads there, the text and the marker\n    // follow it leftwards.\n    let rtl = crate::rtl::is_rtl(ui);\n    let icon_x = if rtl { r.max.x - pad.x - icon_w / 2.0 } else { r.min.x + pad.x + icon_w / 2.0 };\n    icons::paint(ui.painter(), Rect::from_center_size(pos2(icon_x, r.center().y), vec2(icon_w, icon_w)), icon, t.icon, t.accent);\n    let gap = if show_text { 4.0 } else { 0.0 };\n    let text_x = if rtl { r.max.x - pad.x - icon_w - gap - text_w } else { r.min.x + pad.x + icon_w + gap };\n",
-   "old": "    icons::paint(\n        ui.painter(),\n        Rect::from_center_size(pos2(r.min.x + pad.x + icon_w / 2.0, r.center().y), vec2(icon_w, icon_w)),\n        icon,\n        t.icon,\n        t.accent,\n    );\n    let text_x = r.min.x + pad.x + icon_w + if show_text { 4.0 } else { 0.0 };\n"
-  },
-  {
-   "new": "        let x = if rtl { text_x - 4.0 - DROPDOWN / 2.0 } else { text_x + text_w + 4.0 + DROPDOWN / 2.0 };\n        let c = pos2(x, r.center().y);\n",
-   "old": "        let c = pos2(text_x + text_w + 4.0 + DROPDOWN / 2.0, r.center().y);\n"
-  },
-  {
-   "new": "    // A Hebrew menu reads from the right: the icon at the item's right, the shortcut at its left.\n    let rtl = crate::rtl::is_rtl(ui);\n    let icon_x = if rtl { r.max.x - pad.x - icon_w / 2.0 } else { r.min.x + pad.x + icon_w / 2.0 };\n    icons::paint(ui.painter(), Rect::from_center_size(pos2(icon_x, r.center().y), vec2(icon_w, icon_w)), icon, line, accent);\n    let text_x = if rtl { r.max.x - pad.x - icon_w - 6.0 - galley.size().x } else { r.min.x + pad.x + icon_w + 6.0 };\n    ui.painter().galley(pos2(text_x, r.center().y - galley.size().y / 2.0), galley, text_c);\n",
-   "old": "    icons::paint(ui.painter(), Rect::from_center_size(pos2(r.min.x + pad.x + icon_w / 2.0, r.center().y), vec2(icon_w, icon_w)), icon, line, accent);\n    ui.painter().galley(pos2(r.min.x + pad.x + icon_w + 6.0, r.center().y - galley.size().y / 2.0), galley, text_c);\n"
-  },
-  {
-   "new": "        let x = if rtl { r.min.x + pad.x } else { r.max.x - pad.x - g.size().x };\n        ui.painter().galley(pos2(x, r.center().y - g.size().y / 2.0), g, t.text_disabled);\n",
-   "old": "        ui.painter().galley(pos2(r.max.x - pad.x - g.size().x, r.center().y - g.size().y / 2.0), g, t.text_disabled);\n"
+   "after": "        let r = inner.response.rect;\n",
+   "insert": "        // Where this group was drawn: a Hebrew interface must start the row at the right edge (the\n        // test in `ribbon/tests.rs` reads it).\n        #[cfg(test)]\n        super::GROUP_RECTS.with(|g| {\n            let box_ = Rect::from_min_max(pos2(r.min.x, start.y), pos2(r.max.x, start.y + CONTENT_H + LABEL_H));\n            g.borrow_mut().push((id_title.to_string(), box_));\n        });\n"
   }
  ],
  "crates/ui-egui/src/window_ui.rs": [
   {
-   "after": "            fonts_system_cjk: _,\n",
+   "after": "            fonts_system_arabic: _,\n",
    "insert": "            fonts_lang: _,\n"
   },
   {

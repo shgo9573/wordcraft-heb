@@ -14,9 +14,8 @@ after — and the text it becomes. `crates/ui-egui/src/i18n.rs`'s `he` row is le
 
 `--check` needs no base: it verifies that every recorded change is in the tree (an inserted or
 replacement block present, a replaced base text gone) and that `i18n-he/code/` still matches the
-files it copies. That holds through a sync merge, where upstream's newer code sits around the
-changes. Files this fork adds whole are copied to `i18n-he/code/<path>` by hand; `--check` reports
-when a copy has drifted.
+files it copies — this fork's Hebrew proofer, `crates/proof-he/`, whose sources and manifest are
+copied there by hand; `--check` reports when a copy has drifted.
 """
 
 from __future__ import annotations
@@ -33,44 +32,45 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from code_match import applied, has_code, same_code  # noqa: E402  (the sibling tool's matcher)
 
 # The files the Hebrew overlay edits, by their place in the tree. A file that upstream does not
-# have (it was renamed or removed) is reported, so the table stops quietly rotting. The ribbon is
-# here too (`ribbon.rs`, `ribbon/common.rs`, `widgets/groups.rs`, `widgets/buttons.rs`,
-# `widgets/icon_buttons.rs`, `mini_toolbar.rs`): a Hebrew row runs right to left, and a group is
-# measured by the row's right edge instead of its left one (see `crates/ui-egui/src/rtl.rs`). Up
-# upstream those files are unchanged, so a change there collides and is reported, and the change is
-# re-applied rather than lost.
+# have (it was renamed or removed) is reported, so the table stops quietly rotting.
+#
+# Deliberately short. Upstream mirrors a right-to-left interface itself now (`crates/ui-egui/src/rtl.rs`
+# and its `he`-less `RTL_LANGUAGES`): Hebrew is one entry in that list here, and the ribbon, the
+# dialogs, the grids and the combo boxes need no change of ours. What is left is this fork's own
+# work — the Hebrew interface language and its default, the interface faces for a Hebrew UI, the
+# Hebrew font list, and this fork's Hebrew proofer (`crates/proof-he/`, added whole below) — plus
+# the handful of rows inside the ribbon that a mirror does not fix (an alignment row whose icons
+# face the text).
+#
+# The `Cargo.toml` files are here because the proofer is a crate of its own: its membership and its
+# three dependents' dependencies come from the table too, or upstream's next edit to those lines
+# would break the merge.
 FILES = [
+    "Cargo.toml",
     "apps/wordcraft/src/main.rs",
     "crates/control-key/src/lib.rs",
-    "crates/proof/src/hyphen.rs",
-    "crates/proof/src/lang.rs",
-    "crates/proof/src/lib.rs",
+    "crates/engine/Cargo.toml",
+    "crates/engine/src/cmd/review/proofing.rs",
+    "crates/engine/src/packs.rs",
+    "crates/layout/Cargo.toml",
+    "crates/layout/src/para/proof.rs",
+    "crates/ui-egui/Cargo.toml",
     "crates/ui-egui/src/app.rs",
     "crates/ui-egui/src/app/commands.rs",
     "crates/ui-egui/src/app/fonts.rs",
-    "crates/ui-egui/src/chrome.rs",
-    "crates/ui-egui/src/dialogs/chrome.rs",
     "crates/ui-egui/src/i18n.rs",
     "crates/ui-egui/src/i18n/tests.rs",
     "crates/ui-egui/src/lib.rs",
     "crates/ui-egui/src/mini_toolbar.rs",
-    "crates/ui-egui/src/options.rs",
     "crates/ui-egui/src/previews.rs",
     "crates/ui-egui/src/previews/tests.rs",
-    "crates/ui-egui/src/ribbon.rs",
-    "crates/ui-egui/src/ribbon/common.rs",
     "crates/ui-egui/src/ribbon/design.rs",
     "crates/ui-egui/src/ribbon/home.rs",
-    "crates/ui-egui/src/ribbon/layout.rs",
-    "crates/ui-egui/src/ribbon/table.rs",
     "crates/ui-egui/src/ribbon/language.rs",
     "crates/ui-egui/src/ribbon/tests.rs",
-    "crates/ui-egui/src/ribbon_fit.rs",
     "crates/ui-egui/src/widgets.rs",
     "crates/ui-egui/src/widgets/buttons.rs",
-    "crates/ui-egui/src/widgets/combo.rs",
     "crates/ui-egui/src/widgets/groups.rs",
-    "crates/ui-egui/src/widgets/icon_buttons.rs",
     "crates/ui-egui/src/window_ui.rs",
 ]
 
@@ -178,7 +178,8 @@ def missing_from_tree(root: Path, table: dict[str, list[dict]]) -> list[str]:
                 still = "still has the text the overlay replaces" if has_code(source, hunk["old"]) else "has neither the overlay's text nor the text it replaces"
                 problems.append(f"{path}: {still}: `{hunk['old'].strip().splitlines()[0][:60]}`")
     code = root / "i18n-he/code"
-    for copy in sorted(code.rglob("*.rs")):
+    added = sorted(p for p in code.rglob("*") if p.suffix == ".rs" or p.name == "Cargo.toml")
+    for copy in added:
         relative = copy.relative_to(code)
         target = root / relative
         if not target.exists():

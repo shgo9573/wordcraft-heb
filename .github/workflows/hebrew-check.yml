@@ -1,8 +1,9 @@
 name: Hebrew check (Rust)
 
-# The Hebrew overlay's Rust — `crates/ui-egui/src/rtl.rs`, `crates/proof/src/he/` and the call
-# sites it converts — has to compile, and the Hebrew proofing tests have to pass, before a pull
-# request is merged. This is a workflow of its own so the daily sync's long package build
+# The Hebrew overlay's Rust — this fork's Hebrew proofer (`crates/proof-he/`) and the call sites it
+# converts — has to compile, and the Hebrew proofing tests have to pass, before a pull request is
+# merged. (The right-to-left interface itself is upstream's: Hebrew is one entry in its
+# `RTL_LANGUAGES`.) This is a workflow of its own so the daily sync's long package build
 # (`sync-upstream.yml`, whose concurrency group pauses everything else) does not hold a pull
 # request's verdict back.
 
@@ -116,21 +117,21 @@ jobs:
           status=${PIPESTATUS[0]}
           python3 i18n-he/tools/rust_failures.py --annotate "$RUNNER_TEMP/rust.log"
           exit "$status"
-      - name: The proofing crate's tests (Hebrew spelling, suggestions, grammar and hyphenation among them)
+      - name: The Hebrew proofer's tests (spelling, suggestions and grammar)
         if: ${{ !cancelled() }}
         run: |
           set +e
-          cargo test -p wordcraft-proof --lib 2>&1 | tee "$RUNNER_TEMP/proof-tests.log"
+          cargo test -p wordcraft-proof-he --lib 2>&1 | tee "$RUNNER_TEMP/proof-tests.log"
           status=${PIPESTATUS[0]}
           python3 i18n-he/tools/rust_failures.py --annotate --title "The proofing tests failed" "$RUNNER_TEMP/proof-tests.log"
           exit "$status"
       # One gap, unrelated to Hebrew and documented rather than hidden: the Zotero tests open a
       # socket to a fake server of their own and time out on a shared runner.
-      # `ribbon_groups_fit_above_their_labels` runs here, over every language: the Hebrew ribbon
-      # lays its groups out right to left (see `crates/ui-egui/src/rtl.rs`), and a group is measured
-      # by the edge the row starts at, so an unbounded or NaN size there fails this test rather than
-      # a build nobody is watching. (Before that the ribbon stayed left to right: opening it right
-      # to left piled the groups on top of each other at the left edge.)
+      # `ribbon_groups_fit_above_their_labels` runs here, over every language: a Hebrew ribbon lays
+      # its groups out right to left (`crate::rtl`, upstream's), and a group is measured by the edge
+      # the row starts at, so an unbounded or NaN size there fails this test rather than a build
+      # nobody is watching. The Hebrew rows this fork adds on top of the mirror are tested here too
+      # (the alignment row's order, the font list's Hebrew fonts first).
       - name: The interface crate's own tests (the right-to-left layout among them)
         if: ${{ !cancelled() }}
         env:

@@ -1,6 +1,6 @@
 use super::groups::command_menu;
 use super::tooltip::{keytip_badge, shortcut_text, show_hint, tooltip, tooltip_lines};
-use super::{Align2, Color32, CornerRadius, Rect, Response, Sense, Stroke, Tokens, Ui, Value, WordApp, icons, pos2, regular, vec2};
+use super::{Color32, CornerRadius, Rect, Response, Sense, Stroke, Tokens, Ui, Value, WordApp, icons, pos2, regular, vec2};
 
 /// Height of the ribbon content area (without group labels).
 pub const CONTENT_H: f32 = 66.0;
@@ -81,8 +81,8 @@ pub fn label_line(ui: &Ui, cx: f32, y: f32, text: &str, font: egui::FontId, colo
     let extra = if marker { DROPDOWN + 3.0 } else { 0.0 };
     let size = galley.size();
     let x = cx - (size.x + extra) / 2.0;
-    // A Hebrew interface reads right to left, so the drop-down marker comes before the text.
-    let rtl = crate::rtl::is_rtl(ui);
+    // A right-to-left row reads from the right, so the drop-down marker comes before the text.
+    let rtl = crate::rtl::flows(ui);
     ui.painter().galley(pos2(if marker && rtl { x + extra } else { x }, y), galley, color);
     if marker {
         let marker_x = if rtl { x } else { x + size.x + 3.0 };
@@ -152,14 +152,13 @@ pub fn small(ui: &mut Ui, app: &mut WordApp, icon: &str, label: Option<&str>, ti
     keytip_badge(ui, r, id, tip);
     let on = enabled(app, id);
     bg(ui, r, &resp, checked, &t);
-    // A Hebrew interface puts the icon at the button's right and its label to the left of it.
-    let rtl = crate::rtl::is_rtl(ui);
-    let ic = Rect::from_center_size(pos2(if rtl { r.max.x - 12.0 } else { r.min.x + 12.0 }, r.center().y), vec2(17.0, 17.0));
+    let rtl = crate::rtl::flows(ui);
+    let ic = Rect::from_center_size(pos2(crate::rtl::lead_x(rtl, r, 12.0), r.center().y), vec2(17.0, 17.0));
     let (c, a) = if on { (t.icon, t.accent) } else { (t.text_disabled, t.text_disabled) };
     icons::paint(ui.painter(), ic, icon, c, a);
     if let Some(l) = label {
-        let (x, align) = if rtl { (r.max.x - 24.0, Align2::RIGHT_CENTER) } else { (r.min.x + 24.0, Align2::LEFT_CENTER) };
-        ui.painter().text(pos2(x, r.center().y), align, l, regular(11.5), if on { t.text } else { t.text_disabled });
+        let at = pos2(crate::rtl::lead_x(rtl, r, 24.0), r.center().y);
+        ui.painter().text(at, crate::rtl::lead_center(rtl), l, regular(11.5), if on { t.text } else { t.text_disabled });
     }
     let resp = tooltip(app, resp, tip, id);
     command_menu(&resp, app, id);
@@ -179,7 +178,7 @@ pub fn split(
     action: ButtonAction<'_>,
     swatch: Option<Color32>,
     menu: impl FnOnce(&mut Ui, &mut WordApp),
-) {
+) -> Response {
     let ButtonAction { id, params, checked } = action;
     let tip = tl!(tip);
     let t = Tokens::get(ui.ctx());
@@ -211,12 +210,13 @@ pub fn split(
     // (#3172).
     aresp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, on, &arrow_title));
     if !on {
-        return;
+        return resp;
     }
-    egui::Popup::menu(&aresp).show(|ui| {
+    crate::rtl::menu(&aresp).show(|ui| {
         ui.set_min_width(180.0);
         menu(ui, app);
     });
+    resp
 }
 
 /// Whether a menu button whose menu is about command `id` is on ("" = always).
@@ -271,11 +271,14 @@ pub fn menu_button(ui: &mut Ui, app: &mut WordApp, options: MenuButtonOptions<'_
         let (r, resp) = ui.allocate_exact_size(vec2(24.0 + text_w + 10.0, 22.0), Sense::click());
         keytip_badge(ui, r, "menu", tip);
         bg(ui, r, &resp, false, &t);
-        icons::paint(ui.painter(), Rect::from_center_size(pos2(r.min.x + 12.0, r.center().y), vec2(17.0, 17.0)), icon, c, a);
+        let rtl = crate::rtl::flows(ui);
+        let lead = |inset: f32| crate::rtl::lead_x(rtl, r, inset);
+        icons::paint(ui.painter(), Rect::from_center_size(pos2(lead(12.0), r.center().y), vec2(17.0, 17.0)), icon, c, a);
         if let Some(l) = label {
-            ui.painter().text(pos2(r.min.x + 24.0, r.center().y), Align2::LEFT_CENTER, l, regular(11.5), text);
+            ui.painter().text(pos2(lead(24.0), r.center().y), crate::rtl::lead_center(rtl), l, regular(11.5), text);
         }
-        icons::paint(ui.painter(), Rect::from_center_size(pos2(r.max.x - 6.0, r.center().y), vec2(DROPDOWN, DROPDOWN)), "dropdown", c, c);
+        let arrow = pos2(crate::rtl::trail_x(rtl, r, 6.0), r.center().y);
+        icons::paint(ui.painter(), Rect::from_center_size(arrow, vec2(DROPDOWN, DROPDOWN)), "dropdown", c, c);
         resp
     };
     let reason = if on { None } else { Some(app.session.why_disabled(id).unwrap_or("")) };
@@ -285,7 +288,7 @@ pub fn menu_button(ui: &mut Ui, app: &mut WordApp, options: MenuButtonOptions<'_
     if !on {
         return;
     }
-    egui::Popup::menu(&resp).show(|ui| {
+    crate::rtl::menu(&resp).show(|ui| {
         ui.set_min_width(200.0);
         menu(ui, app);
     });

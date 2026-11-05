@@ -34,8 +34,9 @@ file's name there (the pencil is disabled for renames — use the command line a
 
 ## Note on the parked `ci.yml`
 
-`ci.yml` runs `cargo fmt --all -- --check`. This fork's own Rust (`crates/ui-egui/src/rtl.rs`,
-`crates/proof/src/he/`) was written without a local toolchain, so before turning `ci.yml` back on run
+`ci.yml` runs `cargo fmt --all -- --check`. This fork's own Rust (`crates/proof-he/` and the rows the
+overlay adds to upstream's files) was written without a local toolchain, so before turning `ci.yml`
+back on run
 
 ```sh
 cargo fmt --all
