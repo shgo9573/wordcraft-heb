@@ -34,7 +34,10 @@ i18n-he/
 
 1. `crates/ui-egui/build.rs` אורז את הקטלוגים מתוך `CRAFT_I18N_DIR` (משתנה סביבה — לא תלות Cargo).
 2. `crates/ui-egui/src/i18n.rs` מציע את השפות שב-`LANGUAGES`; `he` נוסף שם.
-3. `tools/assemble.py` מעתיק את `locales/` של craft-i18n ומוסיף עליו את `i18n-he/locales/he/`:
+3. `tools/assemble.py` מעתיק את `locales/` **ואת `language-data/`** של craft-i18n ומוסיף עליהם את
+   `i18n-he/locales/he/`. את `language-data/` (מילוני SCOWL ודפוסי מיקוף) אורז `craft-proof`
+   בזמן build, ובלעדיו בנייה עם `CRAFT_I18N_REQUIRED=1` נכשלת ב־"has no language-data/" — עברית
+   לא צריכה נתונים משלה, המילון שלה הוא `he_IL` מהמערכת:
 
    ```sh
    python3 i18n-he/tools/assemble.py --craft-i18n ../craft-i18n --out .he-catalogs
