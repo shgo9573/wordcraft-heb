@@ -328,7 +328,8 @@ mod tests {
         assert_eq!(spelling[0].message, "ייתכן שגיאת כתיב");
         assert_eq!(spelling[0].lang, hebrew_lang());
         assert!(suggest("שאלום", 8).contains(&"שלום".to_string()));
-        // A span outside the Hebrew range is left alone, and a double space is grammar, not spelling.
+        // A run that ends inside a word leaves that word alone (half a word is no misspelling), and a
+        // double space is grammar, not spelling.
         assert!(issues("שלום  עולם", 0..4, &Options::default(), true).is_empty());
         let doubled = issues("שלום  עולם", 0.."שלום  עולם".len(), &Options::default(), true);
         assert!(doubled.iter().any(|i| i.kind == wordcraft_proof::IssueKind::Grammar), "{doubled:?}");
@@ -403,6 +404,11 @@ fn damerau(a: &[char], b: &str) -> usize {
 /// order: a word the dictionary does not know, and [`grammar`]'s rules. `opts` are the File ▸
 /// Options ▸ Proofing choices; `grammar` turns the grammar rules on and off like upstream's.
 ///
+/// Spelling is decided on the whole text and reported only for the words wholly inside `range`: a
+/// run can end in the middle of a word (Hebrew beside a Latin word in one paragraph, a character
+/// style over part of it), and half a word is not a misspelling. Grammar, which reads spaces and
+/// the maqaf, looks at the run itself.
+///
 /// The spelling issue's suggestions are in the issue itself, so a context menu shows the
 /// dictionary's Hebrew words without knowing which language produced them.
 pub fn issues(text: &str, range: Range<usize>, opts: &Options, grammar: bool) -> Vec<wordcraft_proof::Issue> {
@@ -412,10 +418,12 @@ pub fn issues(text: &str, range: Range<usize>, opts: &Options, grammar: bool) ->
     }
     let d = dictionary();
     let mut out: Vec<wordcraft_proof::Issue> = Vec::new();
-    for (a, b) in wordcraft_proof::words(run) {
-        let Some(word) = run.get(a..b) else { continue };
+    for (start, end) in wordcraft_proof::words(text) {
+        if start < range.start || end > range.end {
+            continue;
+        }
+        let Some(word) = text.get(start..end) else { continue };
         if !check(&d, word, opts) {
-            let (start, end) = (range.start + a, range.start + b);
             out.push(wordcraft_proof::Issue {
                 start,
                 end,
