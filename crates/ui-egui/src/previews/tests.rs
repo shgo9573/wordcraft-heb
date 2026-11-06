@@ -407,3 +407,15 @@ fn a_font_entry_shows_a_hebrew_word_only_in_hebrew() {
         assert_eq!(entry_text(&face, "David", false), "David", "an English interface shows the name alone");
     }
 }
+
+#[test]
+fn font_sample_shows_small_caps_and_the_script_mark() {
+    let white = wordcraft_doc::Rgb(255, 255, 255);
+    let plain = CharProps { size: Some(20.0), ..Default::default() };
+    let draw = |p: &CharProps, mark, dark| font_sample("AaBbYyZz", p, mark, (200.0, 40.0, 1.0), white, dark).map(|i| i.pixels);
+    let small = CharProps { small_caps: Some(true), ..plain.clone() };
+    assert_ne!(draw(&plain, None, false), draw(&small, None, false), "small caps change the sample");
+    let sup = Some(wordcraft_doc::props::VertAlign::Superscript);
+    assert_ne!(draw(&plain, None, false), draw(&plain, sup, false), "the mark is drawn");
+    assert_ne!(draw(&plain, None, false), draw(&plain, None, true), "Switch Modes transforms the preview");
+}
