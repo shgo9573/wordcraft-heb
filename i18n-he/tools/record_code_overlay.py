@@ -74,8 +74,13 @@ FILES = [
     "crates/ui-egui/src/window_ui.rs",
 ]
 
-# Written by `apply_code_overlay.py` itself (the Hebrew row and its comment), not recorded here.
-SKIP_IN = {"crates/ui-egui/src/i18n.rs": ['code: "he"']}
+# Written by `apply_code_overlay.py` itself (`apply_i18n`: the Hebrew row and its comment, the
+# `LANGUAGES` count that row raises, and the public `catalog_texts`), not recorded here: those are
+# the changes that must survive the count moving under them, which happens whenever upstream adds a
+# language of its own — a recorded `[LangInfo; 28]` would then find nothing to replace.
+SKIP_IN = {
+    "crates/ui-egui/src/i18n.rs": ['code: "he"', "pub static LANGUAGES: [LangInfo;", "fn catalog_texts(self)"],
+}
 
 
 def base_text(root: Path, base: str, path: str) -> str:
@@ -96,7 +101,8 @@ def hunks_for(before: str, after: str, path: str) -> list[dict]:
         if tag == "equal":
             continue
         old, made = "".join(a[i1:i2]), "".join(b[j1:j2])
-        if any(marker in old for marker in skips):
+        # A pure insertion has no `old` text: its added lines are what the skip looks at.
+        if any(marker in old or marker in made for marker in skips):
             floor_a, floor_b = i2, j2
             continue
         previous = [op for op in ops[:index] if op[0] == "equal"]
@@ -215,7 +221,12 @@ def main() -> int:
             before = base_text(root, args.base, path)
         except subprocess.CalledProcessError:
             raise SystemExit(f"error: {args.base} has no {path}: wrong base, or upstream moved the file") from None
-        table[path] = hunks_for(before, (root / path).read_text(encoding="utf-8"), path)
+        # A file upstream has caught up with (it made the same change itself, like the ribbon
+        # gallery mirroring in `ribbon/design.rs`) records nothing: keeping an empty entry would
+        # only make the table look bigger than the fork's work.
+        hunks = hunks_for(before, (root / path).read_text(encoding="utf-8"), path)
+        if hunks:
+            table[path] = hunks
     # Recording against a tree that already has the overlay would produce an empty table: say so.
     if not any(table.values()):
         raise SystemExit(f"error: {args.base} already contains the overlay: pass upstream's commit, not this fork's")
