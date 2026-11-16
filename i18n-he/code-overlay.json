@@ -121,20 +121,8 @@
    "insert": "/// The interface language this fork opens in: Hebrew. A new profile, and every profile that never\n/// chose a language, shows Hebrew — which is what this fork exists for. File ▸ Options ▸ Interface\n/// language lists every other language beside it, `Automatic` (the system's language) among them,\n/// and a choice there is what the app keeps from then on\n/// ([`UiState::adopt_default_language`](crate::UiState)).\npub const DEFAULT_LANGUAGE: &str = \"he\";\n\n"
   },
   {
-   "new": "pub static LANGUAGES: [LangInfo; 29] = [\n",
-   "old": "pub static LANGUAGES: [LangInfo; 28] = [\n"
-  },
-  {
-   "after": "    LangInfo { code: \"sl\", prefer_hans: false, editing_lang: None },\n",
-   "insert": "    // Hebrew, right to left; `he`, `he-IL` and `he_IL.UTF-8` resolve here. Its catalog is this\n    // fork's (`i18n-he/`, laid over craft-i18n by `i18n-he/tools/assemble.py`), not\n    // storytold/craft-i18n's: it is embedded whenever that overlay is in `CRAFT_I18N_DIR`. The\n    // interface mirrors right to left ([`RTL_LANGUAGES`], `crate::rtl`), and WordCraft proofs\n    // Hebrew (`wordcraft_proof_he`), so new documents are written in Hebrew.\n    LangInfo { code: \"he\", prefer_hans: false, editing_lang: Some(\"he-IL\") },\n"
-  },
-  {
    "new": "const RTL_LANGUAGES: [&str; 2] = [\"ar\", \"he\"];\n",
-   "old": "const RTL_LANGUAGES: [&str; 1] = [\"ar\"];\n"
-  },
-  {
-   "new": "    pub fn catalog_texts(self) -> impl Iterator<Item = &'static str> {\n",
-   "old": "    fn catalog_texts(self) -> impl Iterator<Item = &'static str> {\n"
+   "old": "const RTL_LANGUAGES: [&str; 1] = [\"ar\"];\n\n"
   }
  ],
  "crates/ui-egui/src/i18n/tests.rs": [
@@ -207,14 +195,8 @@
  ],
  "crates/ui-egui/src/previews/tests.rs": [
   {
-   "after": "        assert_eq!(images, 1, \"{theme:?}: the entry draws its rendered name\");\n    }\n}\n",
-   "insert": "\n/// A Hebrew interface's font list opens on the fonts that draw Hebrew: the two groups keep the\n/// alphabetical order the list has.\n#[test]\nfn a_hebrew_interface_lists_the_fonts_that_draw_hebrew_first() {\n    let mut families: Vec<String> = [\"Arial\", \"David\", \"FrankRuehl\", \"Narkisim\"].iter().map(|f| f.to_string()).collect();\n    let hebrew: std::collections::HashSet<String> = [\"david\", \"narkisim\"].iter().map(|f| f.to_string()).collect();\n    hebrew_first(&mut families, &hebrew);\n    assert_eq!(families, [\"David\", \"Narkisim\", \"Arial\", \"FrankRuehl\"], \"the Hebrew fonts first, each group as the list had it\");\n}\n\n/// The Hebrew word after a name comes from the face itself, so the list shows its Hebrew letters,\n/// and only a Hebrew interface adds it. `render_text_line` draws the glyphs in the order it is\n/// given, so the entry spells the word backwards.\n#[test]\nfn a_font_entry_shows_a_hebrew_word_only_in_hebrew() {\n    let db = wordcraft_fonts::FontDb::global();\n    let latin = db.face(\"Source Sans 3\", \"Regular\");\n    assert_eq!(entry_text(&latin, \"Source Sans 3\", true), \"Source Sans 3\", \"a face without Hebrew keeps its name alone\");\n    assert_eq!(entry_text(&latin, \"Source Sans 3\", false), \"Source Sans 3\");\n    // A face that does draw Hebrew; a machine with no such font installed skips this half.\n    if let Some(face) = db.fallback_for('ש', u32::MAX) {\n        assert_eq!(entry_text(&face, \"David\", true), format!(\"David  {}\", HEBREW_SAMPLE.chars().rev().collect::<String>()));\n        assert_eq!(entry_text(&face, \"David\", false), \"David\", \"an English interface shows the name alone\");\n    }\n}\n"
-  }
- ],
- "crates/ui-egui/src/ribbon/design.rs": [
-  {
-   "new": "    // The thumbnails read right to left in a Hebrew interface, like the rest of the ribbon.\n    let mut gui = ui.new_child(egui::UiBuilder::new().max_rect(gallery).layout(crate::rtl::row_layout(ui, egui::Align::Min)));\n",
-   "old": "    let mut gui = ui.new_child(egui::UiBuilder::new().max_rect(gallery).layout(egui::Layout::left_to_right(egui::Align::Min)));\n"
+   "after": "        assert_eq!(images, 1, \"{theme:?}: the entry draws its rendered name\");\n    }\n}\n\n",
+   "insert": "/// A Hebrew interface's font list opens on the fonts that draw Hebrew: the two groups keep the\n/// alphabetical order the list has.\n#[test]\nfn a_hebrew_interface_lists_the_fonts_that_draw_hebrew_first() {\n    let mut families: Vec<String> = [\"Arial\", \"David\", \"FrankRuehl\", \"Narkisim\"].iter().map(|f| f.to_string()).collect();\n    let hebrew: std::collections::HashSet<String> = [\"david\", \"narkisim\"].iter().map(|f| f.to_string()).collect();\n    hebrew_first(&mut families, &hebrew);\n    assert_eq!(families, [\"David\", \"Narkisim\", \"Arial\", \"FrankRuehl\"], \"the Hebrew fonts first, each group as the list had it\");\n}\n\n/// The Hebrew word after a name comes from the face itself, so the list shows its Hebrew letters,\n/// and only a Hebrew interface adds it. `render_text_line` draws the glyphs in the order it is\n/// given, so the entry spells the word backwards.\n#[test]\nfn a_font_entry_shows_a_hebrew_word_only_in_hebrew() {\n    let db = wordcraft_fonts::FontDb::global();\n    let latin = db.face(\"Source Sans 3\", \"Regular\");\n    assert_eq!(entry_text(&latin, \"Source Sans 3\", true), \"Source Sans 3\", \"a face without Hebrew keeps its name alone\");\n    assert_eq!(entry_text(&latin, \"Source Sans 3\", false), \"Source Sans 3\");\n    // A face that does draw Hebrew; a machine with no such font installed skips this half.\n    if let Some(face) = db.fallback_for('ש', u32::MAX) {\n        assert_eq!(entry_text(&face, \"David\", true), format!(\"David  {}\", HEBREW_SAMPLE.chars().rev().collect::<String>()));\n        assert_eq!(entry_text(&face, \"David\", false), \"David\", \"an English interface shows the name alone\");\n    }\n}\n\n"
   }
  ],
  "crates/ui-egui/src/ribbon/home.rs": [

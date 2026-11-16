@@ -188,6 +188,25 @@ def apply_fonts(source: str) -> tuple[str, list[str]]:
     return source.replace(FONTS_ANCHOR, FONTS_ANCHOR + FONTS_LINES, 1), ["app/fonts.rs: borrow document faces for the interface text"]
 
 
+GITATTRIBUTES_LINES = """# The Hebrew catalogs are TAB-separated: LF everywhere, so a Windows checkout writes the same bytes.
+i18n-he/** text eol=lf
+"""
+
+
+def apply_gitattributes(source: str) -> tuple[str, list[str]]:
+    """This fork's `.gitattributes` lines, appended to whatever upstream's file says.
+
+    Upstream added a `* text=auto` block of its own (and `craft-i18n.rev text eol=lf`, which this
+    fork had): both sides edit the same few lines, so a merge conflicts there. Taking upstream's
+    file and appending our line keeps both.
+    """
+    if "i18n-he/** text eol=lf" in source:
+        return source, []
+    if source and not source.endswith("\n"):
+        source += "\n"
+    return source + GITATTRIBUTES_LINES, [".gitattributes: the Hebrew catalogs are LF"]
+
+
 def locate(source: str, text: str, name: str, what: str, anchor: bool = False) -> tuple[int, int] | None:
     """Where `source` has `text`, or None; SystemExit when it has it more than once."""
     where = candidates(source, text, anchor)
@@ -292,6 +311,7 @@ def main() -> int:
         root / "crates/ui-egui/src/theme.rs": (apply_theme, ["fn faces_for_interface_text", "fn interface_char_covered"]),
         root / "crates/ui-egui/src/app/fonts.rs": (apply_fonts, ["faces_for_interface_text"]),
         root / "crates/ui-egui/src/i18n/tests.rs": (apply_tests, ["fn offers_hebrew()"]),
+        root / ".gitattributes": (apply_gitattributes, ["i18n-he/** text eol=lf"]),
     }
     # Everything the right-to-left interface and Hebrew proofing touch, checked against upstream's
     # exact text (`code-overlay.json`) plus the files this fork adds whole (`code/`).

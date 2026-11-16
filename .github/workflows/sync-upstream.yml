@@ -21,6 +21,10 @@ name: Hebrew build (daily upstream sync)
 # The Hebrew catalogs themselves are never touched by the merge: upstream has no `i18n-he/`, so
 # they cannot conflict. The only files that can conflict are the ones the overlay edits, and those
 # are resolved by taking upstream's version and running the overlay again.
+#
+# `.github/workflows/` is the exception: this fork keeps its own, and the merge puts it back before
+# committing. `GITHUB_TOKEN` may not create or update a workflow file — no `permissions:` key grants
+# that, it is GitHub's rule for its own token — and nothing here should need a personal token.
 
 on:
   schedule:
@@ -83,6 +87,10 @@ jobs:
         run: python3 i18n-he/tools/apply_code_overlay.py --check
       - name: Check that the recorded overlay matches the code
         run: python3 i18n-he/tools/record_code_overlay.py --check
+      # Upstream has no `crates/proof-he`, so its `Cargo.lock` never names the crate, and the
+      # Windows package builds with `--locked`: the lockfile is completed here, before a build.
+      - name: Check that Cargo.lock knows this fork's Hebrew proofer
+        run: python3 i18n-he/tools/lock_he.py --check
       - name: Assemble the catalogs a build would embed
         run: |
           set -euo pipefail
@@ -123,12 +131,27 @@ jobs:
           if git merge-base --is-ancestor upstream/main HEAD; then
             echo "nothing new upstream (${upstream})"
           else
+            # The commit this merge goes into: whose `.github/workflows/` is kept, below.
+            before=$(git rev-parse HEAD)
             # The files the overlay edits are the only ones that can conflict: take upstream's
             # version of a conflicted one and apply the overlay again below. Any other conflict is a
             # real one, and fails the job for a person to resolve.
             if ! git merge --no-ff --no-commit upstream/main; then
               overlay=$(python3 i18n-he/tools/apply_code_overlay.py --files | tr '\n' ' ')
               while read -r file; do
+                # A workflow stays this fork's (see the block that restores `.github/workflows/`
+                # before the commit): a conflict there is settled as ours.
+                case "$file" in
+                  .github/workflows/*) git checkout --ours -- "$file" && git add -- "$file" && continue ;;
+                esac
+                # `.gitattributes` and `Cargo.lock` are both sides' files: upstream's version, then
+                # the overlay puts this fork's lines back (`.gitattributes`) and `lock_he.py`
+                # completes the lockfile with the Hebrew proofer (`crates/proof-he` is a member of
+                # this fork only, so upstream's lock never has it — and the Windows package builds
+                # with `--locked`).
+                case "$file" in
+                  .gitattributes|Cargo.lock) git checkout --theirs -- "$file" && git add -- "$file" && continue ;;
+                esac
                 # A path upstream deleted has no version to take (`git checkout --theirs` fails on
                 # it): drop it here too — `crates/proof` became craft-libs' `craft-proof`, and this
                 # fork's Hebrew lives in `crates/proof-he`. A Hebrew change recorded against a file
@@ -139,13 +162,43 @@ jobs:
                   git rm -q -- "$file"
                   continue
                 fi
+                # A file the overlay does not edit carries no Hebrew change of this fork's — a
+                # conflict there is upstream having moved the same code the fork once changed, so
+                # upstream's version is taken and the edit is gone for good (it is upstream's now:
+                # `ribbon/design.rs`'s gallery mirroring, #5750). A Hebrew change that still
+                # depended on it would fail `apply_code_overlay.py` below.
                 case " $overlay " in
                   *" $file "*) git checkout --theirs -- "$file" && git add -- "$file" ;;
-                  *) echo "::error file=$file::upstream's merge conflicts outside the Hebrew overlay"; exit 1 ;;
+                  *) echo "::warning file=$file::not in the Hebrew overlay: upstream's version is taken"; git checkout --theirs -- "$file" && git add -- "$file" ;;
                 esac
               done < <(git diff --name-only --diff-filter=U)
             fi
             python3 i18n-he/tools/apply_code_overlay.py
+            # The lockfile knows this fork's Hebrew proofer, whatever the merge left of it (upstream
+            # has no `crates/proof-he`, so its `Cargo.lock` cannot name the member, and the Windows
+            # package builds with `--locked`).
+            python3 i18n-he/tools/lock_he.py
+            # This fork keeps its own `.github/workflows/`, whole: upstream's version of the folder
+            # goes back to the one this merge started from. A workflow file may only be created or
+            # updated by a token with the `workflows` permission, which `GITHUB_TOKEN` never has — no
+            # `permissions:` key grants it, it is GitHub's own rule for its integration token — so the
+            # merge that carried upstream's new `house-rules.yml` was rejected at the push
+            # ("refusing to allow a GitHub App to create or update workflow … without `workflows`
+            # permission"). A workflow upstream adds arrives as a clean addition, which no conflict
+            # resolution would catch; restoring the folder whole drops that too.
+            #
+            # The cost, taken knowingly: upstream's workflow changes (`house-rules.yml`,
+            # `packaging-lint.yml`'s harden-runner step…) do not reach this fork. Its CI is parked
+            # here anyway (`*.parked`, `linux-release.yml.ym`), and `hebrew-check.yml`,
+            # `sync-upstream.yml` and `packaging-lint.yml` are this fork's own.
+            git rm -r -q -f --cached --ignore-unmatch .github/workflows
+            rm -rf .github/workflows
+            git checkout "$before" -- .github/workflows
+            if [ -n "$(git diff --cached --name-only "$before" -- .github/workflows)" ]; then
+              echo "::error::the merge still changes a workflow; this fork keeps its own .github/workflows/"
+              git diff --cached --name-only "$before" -- .github/workflows
+              exit 1
+            fi
             git add -A
             git commit -m "Merge ${UPSTREAM_REPO}@${upstream} and re-apply the Hebrew overlay"
             git push origin HEAD:main
