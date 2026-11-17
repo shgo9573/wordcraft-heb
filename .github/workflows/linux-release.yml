@@ -22,7 +22,11 @@ name: Hebrew Linux build (AppImage)
 
 on:
   schedule:
-    - cron: "37 4 * * *" # every day at 04:37 UTC, after the 04:17 Windows sync has merged upstream
+    # Four times a day, not once: the Windows sync merges upstream at 04:17, and its push starts no
+    # workflow (a `GITHUB_TOKEN` push never does), so this schedule is what finds the new commit. A
+    # scheduled run can start late, so the first attempt (04:37) may look at the old commit — the
+    # gate makes the later attempts free, and one of them picks the update up the same day.
+    - cron: "37 4,10,16,22 * * *"
   workflow_dispatch:
     inputs:
       force-build:
