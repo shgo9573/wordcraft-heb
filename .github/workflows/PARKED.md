@@ -11,12 +11,13 @@ here end in **`.yml.parked`**, so they do not run — that is the switch.
 | `nix.yml.parked`, `freebsd.yml.parked` | Nix and FreeBSD builds | other platforms |
 | `printing.yml.parked` | the print-engine matrix (Linux/macOS/Windows) | unrelated to the Hebrew interface |
 | `windows-arm64.yml.parked` | a nightly ARM64 MSI, installed and smoke-tested | an extra full Windows build every night; the x64 MSI is the one this fork ships |
-| `linux-release.yml.ym` | the Hebrew Linux build (tar.gz + AppImage) and its release | parked so the daily run only spends minutes on Windows |
 
 Still on:
 
 * **`sync-upstream.yml`** — the daily upstream sync, the Windows x64 MSI + portable zip, and the
-  release (`v<version>-he.win.1`).
+  release (`v<version>-he.win.<n>`); it builds only when the commit has no release yet.
+* **`linux-release.yml`** — the Linux AppImage and its release (`v<version>-he.lin.<n>`), with the
+  same "only when there is an update" check.
 * **`hebrew-check.yml`** — `cargo check`, the Hebrew proofing tests and the interface tests on a PR.
 * **`packaging-lint.yml`** — actionlint, which checks the workflow files themselves (it caught a
   real shellcheck error in `sync-upstream.yml`).
@@ -29,8 +30,7 @@ git commit -m "ci: turn the gate back on" && git push
 ```
 
 Or from the GitHub web UI: Actions › the parked workflow is not listed (it cannot be), so edit the
-file's name there (the pencil is disabled for renames — use the command line above). Do the same for
-`linux-release.yml.ym` → `linux-release.yml` to build Linux packages again.
+file's name there (the pencil is disabled for renames — use the command line above).
 
 ## Note on the parked `ci.yml`
 

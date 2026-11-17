@@ -118,13 +118,34 @@ i18n-he/
 סודות (`WINDOWS_CERTIFICATE`/`WINDOWS_CERTIFICATE_PASSWORD` או `AZURE_*`): הוא מדפיס אזהרה ומשאיר
 את הקבצים כמו שהם, ולכן אין צורך למחוק שום שלב ואין צורך בסודות ענן.
 
+### Linux: AppImage
+
+`.github/workflows/linux-release.yml` בונה את אותה גירסה **ל-Linux** — `AppImage` אחד, בלי התקנה:
+`wordcraft-<גירסה>-linux-x86_64.AppImage` (וכן `.zsync` לעדכון דלתא, ו-`SHA256SUMS.txt`) — ומפרסם
+אותה ב-release משלו, `v<גירסה>-he.lin.<n>`, לצד ה-`v<גירסה>-he.win.<n>` של אותה גירסה. האריזה
+היא `packaging/linux/package.sh` של המאגר המקורי (`--formats appimage`), עם אותם קטלוגים ואותה
+שכבה של ה-Windows.
+
+### שני ה-buildים רצים רק כשיש עדכון
+
+כל אחד משני ה-workflows פותח ב-job זול (שניות, לא דקות) שקורא את הגירסה, את הקומיט ואת
+ה-release האחרון של אותה גירסה: אם ה-release הזה כבר מציין את אותו קומיט („commit: …” בגוף
+ה-release) — אין build. לכן:
+
+- יום שבו המאגר המקורי לא התקדם לא מבזבז דקות.
+- קומיט שכבר נבנה ונפרסם לא נבנה שוב.
+- build שנכשל לא משאיר release, ולכן הריצה הבאה מרימה אותו שוב.
+- הפעלה ידנית (Actions › Run workflow) עם `force-build` בונה בכל מקרה.
+
+מכיוון ששני הצדדים מפרסמים רק בסוף ריצה מוצלחת, ה-AppImage וה-MSI של אותה גירסה מתפרסמים שניהם
+בתוך אותו יום.
+
 ### מה כבוי כדי לחסוך דקות ריצה
 
 `.github/workflows/PARKED.md` מפרט: ה-CI של המאגר המקורי, ה-release הרב-פלטפורמי, SonarCloud,
 Nix, FreeBSD, בדיקות ההדפסה ו-ARM64 — כולם בשמות `*.yml.parked`, ולכן GitHub Actions לא מריץ
-אותם. גם בניית ה-Linux (tar.gz + AppImage) שמורה ב-`linux-release.yml.ym`; כדי להחזיר אותה:
-שינוי השם ל-`linux-release.yml` ודחיפה. `sync-upstream.yml` (סנכרון + Windows),
-`hebrew-check.yml` (בדיקת קומפילציה וטסטים) ו-`packaging-lint.yml` (actionlint) נשארו פעילים.
+אותם. `sync-upstream.yml` (סנכרון + Windows), `linux-release.yml` (AppImage), `hebrew-check.yml`
+(בדיקת קומפילציה וטסטים) ו-`packaging-lint.yml` (actionlint) פעילים.
 
 כך הגירסה כאן אף פעם לא מתיישנת: היא תמיד `main` של המאגר המקורי ועוד עברית, ובנויה מחדש.
 
