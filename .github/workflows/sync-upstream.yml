@@ -276,7 +276,10 @@ jobs:
   build:
     name: Build (Windows x64)
     needs: [catalogs, sync, update]
-    if: needs.update.outputs.build == 'true'
+    # `!cancelled()`, not just the answer: `sync` is skipped on a push, and a job with a skipped
+    # dependency is skipped too unless its condition says otherwise (a real run showed it: the gate
+    # said build, and this job was skipped).
+    if: ${{ !cancelled() && needs.update.outputs.build == 'true' }}
     runs-on: windows-latest
     timeout-minutes: 180
     outputs:
