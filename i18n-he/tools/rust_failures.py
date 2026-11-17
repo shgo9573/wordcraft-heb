@@ -59,7 +59,10 @@ def annotation(error: dict) -> str:
 
 def test_failures(lines: list[str]) -> list[str]:
     """The part of a `cargo test` log that names the failing tests, with the panics around them."""
-    named = [index for index, line in enumerate(lines) if TEST_FAILURE.match(line) or line.strip() == "failures:"]
+    # The blocks worth reporting: a failing test's heading, a panic, and the summary line. A bare
+    # `failures:` list is not one — it sits between them and would cut the block before the panic's
+    # message.
+    named = [index for index, line in enumerate(lines) if TEST_FAILURE.match(line) and line.strip() != "failures:"]
     if not named:
         return []
     out: list[str] = []
@@ -67,15 +70,24 @@ def test_failures(lines: list[str]) -> list[str]:
     for index in named:
         # A panic prints its message and then (with RUST_BACKTRACE) the frames: keep enough of
         # them to see which layout asked for the size.
-        if lines[index].lstrip().startswith("thread '"):
+        if lines[index].startswith("----"):
+            # A failing test's block: from its heading to the next one, so the panic line, its
+            # message (on the line after the location, in a Rust that prints it there) and the
+            # frames in this repository are all in the report.
+            start = index
+            end = index + 1
+            while end < len(lines) and end - index < BACKTRACE_LINES and not lines[end].startswith("----") and not lines[end].startswith("failures:") and not lines[end].startswith("test result:"):
+                end += 1
+        elif lines[index].lstrip().startswith("thread '"):
             # A panic's message, its backtrace and the note after it: all of it, so the frame in
             # this repository is in the report.
             end = index + 1
-            while end < len(lines) and end - index < BACKTRACE_LINES and not lines[end].startswith("----") and not lines[end].startswith("failures:"):
+            while end < len(lines) and end - index < BACKTRACE_LINES and not lines[end].startswith("----") and not lines[end].startswith("failures:") and not lines[end].startswith("test result:"):
                 end += 1
+            start = max(0, index - CONTEXT)
         else:
             end = index + CONTEXT + 1
-        start = max(0, index - CONTEXT)
+            start = max(0, index - CONTEXT)
         if any(start < shown_end and shown_start < end for shown_start, shown_end in shown):
             continue
         shown.add((start, end))
@@ -88,7 +100,7 @@ def markdown(errors: list[dict], lines: list[str], title: str) -> str:
     # A test log first: cargo's own `error: test failed …` line is not the interesting one.
     failures = test_failures(lines)
     if failures:
-        out += [f"{len(failures) // 4} failure block(s) in the log:", ""] + failures
+        out += [f"{failures.count('```') // 2} failure block(s) in the log:", ""] + failures
         tail = [line for line in lines if not NOISE.match(line)][-20:]
         out += ["The log's tail:", "", "```", *[line.rstrip() for line in tail], "```"]
         return "\n".join(out) + "\n"

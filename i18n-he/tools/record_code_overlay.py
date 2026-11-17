@@ -60,6 +60,7 @@ FILES = [
     "crates/ui-egui/src/app/fonts.rs",
     "crates/ui-egui/src/i18n.rs",
     "crates/ui-egui/src/i18n/tests.rs",
+    "crates/ui-egui/src/panes/tests.rs",
     "crates/ui-egui/src/lib.rs",
     "crates/ui-egui/src/mini_toolbar.rs",
     "crates/ui-egui/src/previews.rs",
