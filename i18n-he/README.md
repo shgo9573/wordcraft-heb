@@ -120,7 +120,8 @@ i18n-he/
 
 ### Linux: AppImage
 
-`.github/workflows/linux-release.yml` בונה את אותה גירסה **ל-Linux** — `AppImage` אחד, בלי התקנה:
+`.github/workflows/linux-release.yml` רץ ארבע פעמים ביום (04:37, 10:37, 16:37, 22:37 UTC) ובונה את
+אותה גירסה **ל-Linux** — `AppImage` אחד, בלי התקנה:
 `wordcraft-<גירסה>-linux-x86_64.AppImage` (וכן `.zsync` לעדכון דלתא, ו-`SHA256SUMS.txt`) — ומפרסם
 אותה ב-release משלו, `v<גירסה>-he.lin.<n>`, לצד ה-`v<גירסה>-he.win.<n>` של אותה גירסה. האריזה
 היא `packaging/linux/package.sh` של המאגר המקורי (`--formats appimage`), עם אותם קטלוגים ואותה
