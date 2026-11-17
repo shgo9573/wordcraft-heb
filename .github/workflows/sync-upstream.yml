@@ -15,8 +15,10 @@ name: Hebrew build (daily upstream sync)
 # the files as they are, so no secret is needed here. Windows shows its "unknown publisher"
 # SmartScreen prompt for an unsigned installer: "More info" › "Run anyway".
 #
-# The Linux packages are parked for now, to keep the daily minutes down: see
-# `linux-release.yml.ym` in this folder (rename it back to `linux-release.yml` to build again).
+# Linux has a workflow of its own, `linux-release.yml` (the AppImage). Both workflows build only when
+# a commit has no release yet — this file's `update` job and that file's `check` job decide, in
+# seconds — and each publishes its own release per update: `v<version>-he.win.<n>` here,
+# `v<version>-he.lin.<n>` there.
 #
 # The Hebrew catalogs themselves are never touched by the merge: upstream has no `i18n-he/`, so
 # they cannot conflict. The only files that can conflict are the ones the overlay edits, and those
@@ -189,7 +191,7 @@ jobs:
             #
             # The cost, taken knowingly: upstream's workflow changes (`house-rules.yml`,
             # `packaging-lint.yml`'s harden-runner step…) do not reach this fork. Its CI is parked
-            # here anyway (`*.parked`, `linux-release.yml.ym`), and `hebrew-check.yml`,
+            # here anyway (`*.parked`), and `hebrew-check.yml`, `linux-release.yml`,
             # `sync-upstream.yml` and `packaging-lint.yml` are this fork's own.
             git rm -r -q -f --cached --ignore-unmatch .github/workflows
             rm -rf .github/workflows
@@ -215,15 +217,66 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
 
+  # Seconds, not minutes: is there anything to build? A commit that already has a Windows release of
+  # this version is not built again — the release body names the commit it was built from. So a
+  # `main` that changed only documentation, a pull request, or a day whose commit is already
+  # published costs no Windows minutes; a build that failed leaves no release, and the next run
+  # picks it up. `force-build` on a manual run skips this question.
+  update:
+    name: Is there an update to build?
+    needs: [catalogs, sync]
+    if: |
+      !failure() && !cancelled() && needs.catalogs.result == 'success' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      build: ${{ steps.update.outputs.build }}
+      version: ${{ steps.update.outputs.version }}
+      commit: ${{ steps.update.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: The version, the commit, and whether this commit already has a release
+        id: update
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ inputs.force-build }}
+        run: |
+          set -euo pipefail
+          version=$(awk '
+            /^\[/ { in_pkg = ($0 == "[workspace.package]"); next }
+            in_pkg && $1 == "version" { gsub(/[" ]/, "", $3); print $3; exit }
+          ' Cargo.toml)
+          if [ -z "$version" ]; then
+            echo "::error::could not read [workspace.package] version from Cargo.toml"
+            exit 1
+          fi
+          commit=$(git rev-parse HEAD)
+          build=true
+          if [ "${FORCE:-}" != "true" ]; then
+            # `v0.18.1-he.win.3` sorts by its last field with `sort -t. -k5 -n`.
+            latest=$(gh release list --limit 100 --json tagName --jq '.[].tagName' |
+              grep -E "^v${version}-he\.win\.[0-9]+$" | sort -t. -k5 -n | tail -1 || true)
+            if [ -n "$latest" ] && gh release view "$latest" --json body --jq .body | grep -q "commit: ${commit}"; then
+              echo "::notice::$latest already carries ${commit:0:7}: nothing to build"
+              build=false
+            fi
+          fi
+          echo "WordCraft $version, commit ${commit:0:7}, build=$build" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "build=$build"
+            echo "version=$version"
+            echo "commit=$commit"
+          } >> "$GITHUB_OUTPUT"
+
   # The installer Windows can run: an MSI (per user by default, no admin) and a portable zip, both
   # built by `packaging/windows/package.ps1`. Unsigned unless signing secrets are configured.
   build:
     name: Build (Windows x64)
-    needs: [catalogs, sync]
-    if: |
-      !failure() && !cancelled() && needs.catalogs.result == 'success' &&
-      (needs.sync.outputs.changed == 'true' || github.event_name == 'push' ||
-       github.event_name == 'workflow_dispatch' || inputs.force-build)
+    needs: [catalogs, sync, update]
+    if: needs.update.outputs.build == 'true'
     runs-on: windows-latest
     timeout-minutes: 180
     outputs:
@@ -328,7 +381,8 @@ jobs:
           VERSION: ${{ needs.build.outputs.version }}
         run: |
           set -euo pipefail
-          # A tag of its own: `v<version>-he.1` holds the Linux packages of this version. Each build
+          # A tag of its own: `v<version>-he.lin.<n>` holds this version's Linux AppImage
+          # (`linux-release.yml`), so a Windows tag never has to wait for it, or carry it. Each build
           # of a new commit gets the next number, so a fix reaches a download without waiting for
           # upstream to bump the version — and a build of the commit already published does nothing.
           current=$(git rev-parse HEAD)

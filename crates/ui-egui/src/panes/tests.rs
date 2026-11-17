@@ -346,7 +346,13 @@ fn navigation_tabs_fit_the_narrowest_pane_in_every_language() {
                 // Fonts take effect the frame after they are installed.
                 if !fonts {
                     crate::theme::apply(ui.ctx(), crate::theme::Appearance::Light);
-                    crate::theme::install_fonts_language(ui.ctx(), lang.prefers_hans(), lang.prefers_korean());
+                    // This fork's Hebrew has no embedded interface face (`ui_arabic_fonts` has no
+                    // Hebrew sibling), so the harness takes the document faces the interface text
+                    // needs, exactly as `WordApp::install_ui_fonts` does: without them the first
+                    // Hebrew label is a missing glyph, which kittest turns into a panic.
+                    let names = crate::i18n::Lang::all().map(crate::i18n::Lang::name);
+                    let faces = crate::theme::faces_for_interface_text(lang.catalog_texts().chain(names));
+                    crate::theme::install_fonts_language_extra(ui.ctx(), lang.prefers_hans(), lang.prefers_korean(), false, false, &faces);
                     fonts = true;
                     return;
                 }

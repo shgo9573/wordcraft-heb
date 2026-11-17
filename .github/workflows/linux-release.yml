@@ -1,0 +1,249 @@
+# The Linux build: one **AppImage** per update, and its release.
+#
+# Built only when there is something to build. A commit that already has a Linux release of its own
+# version is not built again: the `check` job reads the newest `v<version>-he.lin.<n>` release's
+# body, which names the commit it was built from, and the build starts only when `main` carries
+# another commit. So the daily schedule costs a few seconds on a day upstream changed nothing, and so
+# does a push that changes nothing to build. A build that failed leaves no release, so the next run
+# picks it up; `workflow_dispatch` has a box to build anyway.
+#
+# The same code and the same interface catalogs as the Windows build in `sync-upstream.yml`: this
+# fork's Hebrew overlay (`i18n-he/`, `crates/proof-he/`) on upstream's `main`. The packaging is
+# upstream's `packaging/linux/package.sh`, unchanged, with `--formats appimage`: it downloads the
+# pinned appimagetool and type2 runtime (both SHA-256 checked) and writes
+# `wordcraft-<version>-linux-x86_64.AppImage`, plus the `.zsync` AppImageUpdate uses when `zsyncmake`
+# is installed (the `zsync` package, below).
+#
+# Published as `v<version>-he.lin.<n>` — beside the Windows release `v<version>-he.win.<n>` of the
+# same update, never inside it: the two platforms build in separate workflows, and a release names
+# one platform. `n` climbs with every new commit, so a fix on a version upstream already shipped
+# still reaches a download.
+name: Hebrew Linux build (AppImage)
+
+on:
+  schedule:
+    - cron: "37 4 * * *" # every day at 04:37 UTC, after the 04:17 Windows sync has merged upstream
+  workflow_dispatch:
+    inputs:
+      force-build:
+        description: "Build even when this commit already has a Linux release"
+        type: boolean
+        default: false
+  # The daily sync pushes its merge here, and a merged pull request is an update too: both start a
+  # build, and the `check` job is what keeps it from building the same commit twice.
+  push:
+    branches: [main]
+    paths:
+      - "i18n-he/**"
+      - "crates/ui-egui/src/**"
+      - "crates/proof-he/**"
+      - "crates/engine/src/**"
+      - "crates/layout/src/**"
+      - "**/Cargo.toml"
+      - ".github/workflows/linux-release.yml"
+
+permissions:
+  contents: write
+
+# One Linux build at a time: the push of a merge and the schedule can land on the same commit, and
+# the second one has to see the first one's release before it decides.
+concurrency:
+  group: hebrew-linux
+  cancel-in-progress: false
+
+env:
+  CRAFT_FONTS_REF: b076417b5880bd4154bd22f00695b1d28c6bea83
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  # Seconds, not minutes: the version, the commit, and whether that commit is already published.
+  check:
+    name: Is there an update to build?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      build: ${{ steps.update.outputs.build }}
+      version: ${{ steps.update.outputs.version }}
+      commit: ${{ steps.update.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: The version, the commit, and whether this commit already has a release
+        id: update
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ inputs.force-build }}
+        run: |
+          set -euo pipefail
+          version=$(awk '
+            /^\[/ { in_pkg = ($0 == "[workspace.package]"); next }
+            in_pkg && $1 == "version" { gsub(/[" ]/, "", $3); print $3; exit }
+          ' Cargo.toml)
+          if [ -z "$version" ]; then
+            echo "::error::could not read [workspace.package] version from Cargo.toml"
+            exit 1
+          fi
+          commit=$(git rev-parse HEAD)
+          build=true
+          if [ "${FORCE:-}" != "true" ]; then
+            # `v0.18.1-he.lin.3` sorts by its last field with `sort -t. -k5 -n`.
+            latest=$(gh release list --limit 100 --json tagName --jq '.[].tagName' |
+              grep -E "^v${version}-he\.lin\.[0-9]+$" | sort -t. -k5 -n | tail -1 || true)
+            if [ -n "$latest" ] && gh release view "$latest" --json body --jq .body | grep -q "commit: ${commit}"; then
+              echo "::notice::$latest already carries ${commit:0:7}: nothing to build"
+              build=false
+            fi
+          fi
+          echo "WordCraft $version, commit ${commit:0:7}, build=$build" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "build=$build"
+            echo "version=$version"
+            echo "commit=$commit"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build (Linux x86_64 AppImage)
+    needs: [check]
+    if: needs.check.outputs.build == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    steps:
+      # The commit the `check` job looked at, not `main` half an hour later.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.check.outputs.commit }}
+      - name: Check the Hebrew catalogs and the code overlay
+        env:
+          EXPECTED_VERSION: ${{ needs.check.outputs.version }}
+        run: |-
+          set -euo pipefail
+          version=$(awk '
+            /^\[/ { in_pkg = ($0 == "[workspace.package]"); next }
+            in_pkg && $1 == "version" { gsub(/[" ]/, "", $3); print $3; exit }
+          ' Cargo.toml)
+          if [ "$version" != "$EXPECTED_VERSION" ]; then
+            echo "::error::checked out $version, but the check job saw $EXPECTED_VERSION"
+            exit 1
+          fi
+          rev=$(tr -d '[:space:]' < craft-i18n.rev)
+          curl -fsSL -o "$RUNNER_TEMP/craft-i18n.tar.gz" "https://codeload.github.com/storytold/craft-i18n/tar.gz/$rev"
+          mkdir -p "$RUNNER_TEMP/craft-i18n"
+          tar -xzf "$RUNNER_TEMP/craft-i18n.tar.gz" -C "$RUNNER_TEMP/craft-i18n" --strip-components=1
+          python3 i18n-he/tools/check.py --craft-i18n "$RUNNER_TEMP/craft-i18n"
+          python3 i18n-he/tools/apply_code_overlay.py --check
+          python3 i18n-he/tools/record_code_overlay.py --check
+          # Upstream's `Cargo.lock` does not know `crates/proof-he`, and `package.sh` builds with
+          # `--locked`.
+          python3 i18n-he/tools/lock_he.py --check
+      - name: Install the Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev \
+            libxi-dev libgtk-3-dev libfontconfig1-dev libfreetype-dev mesa-vulkan-drivers \
+            desktop-file-utils appstream zsync
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: hebrew-linux-x86_64
+      - name: Interface catalogs, with Hebrew laid over craft-i18n
+        run: |-
+          set -euo pipefail
+          python3 i18n-he/tools/assemble.py --craft-i18n "$RUNNER_TEMP/craft-i18n" --out "$RUNNER_TEMP/craft-i18n-he"
+          {
+            echo "CRAFT_I18N_DIR=$RUNNER_TEMP/craft-i18n-he"
+            echo "CRAFT_I18N_REQUIRED=1"
+          } >> "$GITHUB_ENV"
+      - name: The suite's fonts, when they can be fetched (a build without them warns and uses the system's)
+        run: |-
+          set -euo pipefail
+          if curl -fsSL -o "$RUNNER_TEMP/craft-fonts.tar.gz" "https://codeload.github.com/storytold/craft-fonts/tar.gz/${CRAFT_FONTS_REF}"; then
+            mkdir -p "$RUNNER_TEMP/craft-fonts"
+            tar -xzf "$RUNNER_TEMP/craft-fonts.tar.gz" -C "$RUNNER_TEMP/craft-fonts" --strip-components=1
+            echo "CRAFT_FONTS_DIR=$RUNNER_TEMP/craft-fonts" >> "$GITHUB_ENV"
+          else
+            echo "::warning::craft-fonts ${CRAFT_FONTS_REF} could not be fetched; building with the installed fonts"
+          fi
+      - name: Build and package (the AppImage)
+        # `--formats appimage`: the AppImage and, with `zsyncmake` installed, its `.zsync`.
+        run: packaging/linux/package.sh --formats "appimage"
+      - name: What was built
+        run: ls -lh dist/release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wordcraft-${{ needs.check.outputs.version }}-hebrew-linux-x86_64
+          path: dist/release/*
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Publish the Linux release
+    needs: [check, build]
+    if: needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/download-artifact@v4
+        with:
+          name: wordcraft-${{ needs.check.outputs.version }}-hebrew-linux-x86_64
+          path: dist
+      - name: Release an AppImage for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+          COMMIT: ${{ needs.check.outputs.commit }}
+        run: |-
+          set -euo pipefail
+          # Each build of a new commit gets the next number, so a fix reaches a download without
+          # waiting for upstream to bump the version — and a build of the commit already published
+          # does nothing.
+          latest=$(gh release list --limit 100 --json tagName --jq '.[].tagName' |
+            grep -E "^v${VERSION}-he\.lin\.[0-9]+$" | sort -t. -k5 -n | tail -1 || true)
+          n=1
+          if [ -n "$latest" ]; then
+            if gh release view "$latest" --json body --jq .body | grep -q "commit: ${COMMIT}"; then
+              echo "::notice::$latest already carries ${COMMIT:0:7}; today's build is on this run's artifacts"
+              exit 0
+            fi
+            n=$(( ${latest##*.} + 1 ))
+          fi
+          tag="v${VERSION}-he.lin.${n}"
+          echo "publishing $tag for ${COMMIT:0:7}"
+          {
+            sha256sum ./dist/*
+          } > "$RUNNER_TEMP/sums.txt"
+          mv "$RUNNER_TEMP/sums.txt" ./dist/SHA256SUMS.txt
+          cat >"$RUNNER_TEMP/notes.md" <<'NOTES'
+          WordCraft __VERSION__ של המאגר המקורי storytold/wordcraft, עם ממשק בעברית — ל-Linux.
+
+          - **להפעלה:** `wordcraft-__VERSION__-linux-x86_64.AppImage` — קובץ אחד, בלי התקנה:
+            `chmod +x` ואז הפעלה (או „Allow executing” בתפריט של הקובץ). לא נדרש libfuse2.
+          - `SHA256SUMS.txt` לבדיקת שלמות ההורדה.
+          - הממשק: עברית כברירת מחדל, ואנגלית וכל שאר השפות לפי בחירה (File › Options › Interface
+            language). כששפת הממשק עברית כל הממשק מתהפך לימין-שמאל.
+          - הבסיס מתעדכן כל יום מהמאגר המקורי, ו-build חדש נוצר רק כשיש עדכון.
+
+          Built from storytold/wordcraft with the Hebrew interface in `i18n-he/`, commit: COMMIT.
+
+          WordCraft __VERSION__ from storytold/wordcraft, built with the Hebrew interface in
+          `i18n-he/`, for Linux x86_64:
+
+          - **Run it:** `wordcraft-__VERSION__-linux-x86_64.AppImage` — one file, no installation:
+            `chmod +x` then run it. It needs no libfuse2 and none of the desktop's GTK libraries.
+          - `SHA256SUMS.txt` carries the checksums of the downloads.
+
+          The interface opens in **Hebrew** (this fork's default; File ▸ Options ▸ Interface
+          language has English, `Automatic` and every other language, and a choice is kept), and it
+          mirrors right to left while the interface language is Hebrew. Rebuilt automatically from
+          upstream's newest `main`, and only when there is an update to build.
+          NOTES
+          sed -i -e "s/__VERSION__/${VERSION}/g" -e "s/COMMIT/${COMMIT}/g" "$RUNNER_TEMP/notes.md"
+          gh release create "$tag" ./dist/* \
+            --target main \
+            --title "WordCraft ${VERSION} בעברית (Linux)" \
+            --notes-file "$RUNNER_TEMP/notes.md"

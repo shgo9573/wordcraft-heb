@@ -179,6 +179,12 @@
    "old": "        ui.allocate_ui_with_layout(Vec2::new(ui.available_width(), ROW_H), Layout::left_to_right(Align::Center), |ui| {\n"
   }
  ],
+ "crates/ui-egui/src/panes/tests.rs": [
+  {
+   "new": "                    // This fork's Hebrew has no embedded interface face (`ui_arabic_fonts` has no\n                    // Hebrew sibling), so the harness takes the document faces the interface text\n                    // needs, exactly as `WordApp::install_ui_fonts` does: without them the first\n                    // Hebrew label is a missing glyph, which kittest turns into a panic.\n                    let names = crate::i18n::Lang::all().map(crate::i18n::Lang::name);\n                    let faces = crate::theme::faces_for_interface_text(lang.catalog_texts().chain(names));\n                    crate::theme::install_fonts_language_extra(ui.ctx(), lang.prefers_hans(), lang.prefers_korean(), false, false, &faces);\n",
+   "old": "                    crate::theme::install_fonts_language(ui.ctx(), lang.prefers_hans(), lang.prefers_korean());\n"
+  }
+ ],
  "crates/ui-egui/src/previews.rs": [
   {
    "new": "        let mut f: Vec<String> = self.families.as_ref().map(|(_, f)| f.clone()).unwrap_or_default();\n        // A Hebrew interface puts the fonts that draw Hebrew first, so the list opens on fonts that\n        // can show the document. Which those are is a scan of every installed font's character\n        // map: it runs once, in the background, and this asks for its answer every frame until the\n        // answer is there — the list is alphabetical until then, and reorders itself after.\n        if crate::i18n::current().rtl()\n            && let Some(hebrew) = hebrew_families()\n        {\n            hebrew_first(&mut f, &hebrew);\n        }\n        f\n",
