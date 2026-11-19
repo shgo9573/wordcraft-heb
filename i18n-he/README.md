@@ -14,6 +14,7 @@ i18n-he/
   tools/apply_code_overlay.py  החלת שינויי הקוד של עברית על checkout נקי של המאגר המקורי
   tools/record_code_overlay.py רישום מחדש של שינויי הקוד (אחרי עריכת קובץ Rust)
   tools/lock_he.py          השלמת Cargo.lock ב-crate של ההגהה העברית
+  tools/fetch_fonts.py      הורדת הגופנים העבריים שה-build אורז (עם גיבוב מוצמד לכל קובץ)
   code-overlay.json          מה כל שינוי קוד מחליף בקוד המקורי (טקסט מדויק)
   code/                      קבצים חדשים לגמרי (‎crates/proof-he/) — מועתקים כמו שהם
 ```
@@ -52,9 +53,17 @@ i18n-he/
 ## מה מתורגם ומה עוד לא
 
 `python3 i18n-he/tools/check.py --craft-i18n ../craft-i18n` מדפיס כמה שורות יש בכל קובץ
-והאם יש שורות שאפליקציה כבר לא מבקשת. המצב ההתחלתי: כ-880 שורות ב-`wordcraft.tsv` וכ-520
-ב-`common.tsv` — התוויות הקצרות והנפוצות של הממשק (סרגל הכלים, תפריטים, צבעים, יחידות,
-כפתורים). מחרוזות ארוכות של תיבות דו-שיח, הודעות שגיאה ופסקאות הסבר עדיין באנגלית.
+והאם יש שורות שאפליקציה כבר לא מבקשת.
+
+המצב היום: `wordcraft.tsv` 1461 שורות מתוך 2266 (64%), `common.tsv` 689 מתוך 1212 (56%),
+וכיסוי של 100% מהמחרוזות שהממשק מבקש: כל תווית, כל רשומה בתפריט ובסרט, כל כותרת של תיבת
+דו-שיח וכל הודעה שנראית למשתמש. ‏148 שורות „יתומות” ב-`wordcraft.tsv` נשארו מהגירסאות הקודמות
+של הממשק; `check.py` מדווח עליהן בלי להיכשל, ואפשר להשאיר אותן — ה-build לא נוגע בהן.
+
+המונחים עוקבים אחרי הממשק העברי של Microsoft Word במקום שתרגום חופשי: „תיבת דו-שיח”, „כרטיסייה”,
+„סרט”, „קבוצה”, „סגנון”, „גופן”, „פסקה”, „תבליט”, „מספור”, „כיווץ”, „מרכוז”, „יישור”, „הדפסה”,
+„גיליון”, „מסמך ראשי”, „מיזוג דואר”, „שינויים במסלול” וכדומה. מחרוזת חדשה מתורגמת באותו אוצר
+מילים — ראו `GLOSSARY.md` במאגר המקורי למונחים האנגליים.
 
 ## איך מוסיפים או מתקנים תרגום
 
@@ -118,13 +127,24 @@ i18n-he/
 סודות (`WINDOWS_CERTIFICATE`/`WINDOWS_CERTIFICATE_PASSWORD` או `AZURE_*`): הוא מדפיס אזהרה ומשאיר
 את הקבצים כמו שהם, ולכן אין צורך למחוק שום שלב ואין צורך בסודות ענן.
 
-### Linux: AppImage
+### Linux: AppImage ו-`.deb`
 
-`.github/workflows/linux-release.yml` בונה את אותה גירסה **ל-Linux** — `AppImage` אחד, בלי התקנה:
-`wordcraft-<גירסה>-linux-x86_64.AppImage` (וכן `.zsync` לעדכון דלתא, ו-`SHA256SUMS.txt`) — ומפרסם
-אותה ב-release משלו, `v<גירסה>-he.lin.<n>`, לצד ה-`v<גירסה>-he.win.<n>` של אותה גירסה. האריזה
-היא `packaging/linux/package.sh` של המאגר המקורי (`--formats appimage`), עם אותם קטלוגים ואותה
-שכבה של ה-Windows.
+`.github/workflows/linux-release.yml` בונה את אותה גירסה **ל-Linux** ומפרסם אותה ב-release משלו,
+`v<גירסה>-he.lin.<n>`, לצד ה-`v<גירסה>-he.win.<n>` של אותה גירסה. שלושה קבצים:
+
+| קובץ | מה זה | איך מתקינים |
+|---|---|---|
+| `wordcraft-<גירסה>-linux-x86_64.AppImage` | קובץ אחד, בלי התקנה | `chmod +x` והפעלה |
+| `wordcraft-<גירסה>-linux-x86_64.AppImage.zsync` | עדכון דלתא ל-AppImageUpdate | — |
+| `wordcraft-<גירסה>-linux-x86_64.deb` | חבילת Debian (Debian, Ubuntu, Mint, Pop!_OS…) | `sudo apt install ./<הקובץ>` או לחיצה כפולה |
+
+האריזה היא `packaging/linux/package.sh` של המאגר המקורי, ללא שינוי, עם
+`--formats "appimage deb"`: ה-`.deb` נבנה על-ידי
+[nfpm](https://nfpm.goreleaser.com) מתוך `packaging/linux/nfpm.yaml`, מותקן ב-CI עם
+`go install …/nfpm@v2.49.0` (אימות דרך מסד הגיבובים של Go), ומתקין את שני הקבצים
+(`wordcraft`, `wordcraft-cli`), את קובץ ה-`.desktop`, סמלים בכל הגדלים, קובצי MIME ו-AppStream —
+כך ש-WordCraft מופיע בתפריט היישומים ונפתח בלחיצה כפולה על `.docx`. ה-`.deb` ממליץ על
+`espeak-ng` או `speech-dispatcher` (קריאה בקול) ועל ספריות X11/Wayland.
 
 ### שני ה-buildים רצים רק כשיש עדכון
 
@@ -144,10 +164,52 @@ i18n-he/
 
 `.github/workflows/PARKED.md` מפרט: ה-CI של המאגר המקורי, ה-release הרב-פלטפורמי, SonarCloud,
 Nix, FreeBSD, בדיקות ההדפסה ו-ARM64 — כולם בשמות `*.yml.parked`, ולכן GitHub Actions לא מריץ
-אותם. `sync-upstream.yml` (סנכרון + Windows), `linux-release.yml` (AppImage), `hebrew-check.yml`
+אותם. `sync-upstream.yml` (סנכרון + Windows), `linux-release.yml` (AppImage + `.deb`), `hebrew-check.yml`
 (בדיקת קומפילציה וטסטים) ו-`packaging-lint.yml` (actionlint) פעילים.
 
 כך הגירסה כאן אף פעם לא מתיישנת: היא תמיד `main` של המאגר המקורי ועוד עברית, ובנויה מחדש.
+
+## גופנים עבריים
+
+ל-build יש גופנים עבריים משלו. `i18n-he/tools/fetch_fonts.py` מוסיף לתיקיית craft-fonts
+(`CRAFT_FONTS_DIR`) 15 קבצים מ-12 משפחות, וכולם נארזים בתוך הקובץ כמו שאר גופני craft-fonts:
+
+| משפחה | סגנונות |
+|---|---|
+| David Libre | Regular, Medium, Bold |
+| Frank Ruhl Libre | משתנה (משקל) |
+| Miriam Libre | משתנה (משקל) |
+| Noto Serif Hebrew | משתנה (משקל) |
+| Heebo | משתנה |
+| Rubik | משתנה |
+| Assistant | משתנה |
+| Alef | Regular, Bold |
+| Arimo | משתנה |
+| Cousine | Regular |
+| Secular One | Regular |
+| Suez One | Regular |
+
+* כל קובץ מוצמד ל-SHA-256 ולמקור מדויק בגוגל פונטים (ref קבוע), ולכן build לא מוריד גירסה
+  אחרת מזו שנבדקה. `fetch_fonts.py --check --into <craft-fonts>` מוודא גיבוב ושה-`cmap` מכסה
+  עברית (‎אדם) ולטינית; `--list` בודק את הטבלה עצמה בלי רשת.
+* ההורדה רצה בכל build: `.github/workflows/sync-upstream.yml` (Windows),
+  `.github/workflows/linux-release.yml` (Linux) ו-`.github/workflows/hebrew-check.yml`
+  (בדיקת PR). שום קובץ גופן לא נמצא במאגר.
+* הרישיון (OFL) של כל משפחה נארז לצד הקובץ כש-`CRAFT_FONTS_DIR` מוגדר (`OFL-hebrew-<family>.txt`
+  ב-`.deb`, ב-AppImage וב-tar).
+* רשימת הגופנים בתיבת הגופן מציגה את המשפחות האלה, כל שם בגופן של עצמו, עם המילה „שלום” אחריו.
+
+### סדר הרשימה: עברית תחילה, ורק בממשק עברי
+
+`Previews::families()` (`crates/ui-egui/src/previews.rs`) ממיין את הרשימה לפי שם, ואם — ורק אם —
+שפת הממשק היא עברית (`current().code() == "he"`), מעביר לראש את המשפחות שה-`cmap` שלהן מכסה
+עברית. סריקת ה-`cmap` רצה פעם אחת ברקע; עד שהיא מסתיימת הרשימה אלפביתית, ואז היא מסתדרת מעצמה.
+
+התנאי הוא **עברית ולא „ממשק מימין לשמאל”**: ממשק ערבי מתהפך בדיוק כמו עברי, אבל אין לו סיבה
+שהרשימה תיפתח דווקא על גופנים עבריים. טסט
+(`only_a_hebrew_interface_reorders_the_font_list`) מחזיק את זה: כל שפה אחרת — ערבית,
+פרסית ושאר שפות ה-RTL בכללן — מקבלת את הסדר האלפביתי, ורק בממשק עברי הרשימה נפתחת על גופן
+שמצייר עברית.
 
 ## ברירת המחדל: עברית
 
@@ -202,9 +264,9 @@ Commands. חצי החצים שבקצוות הסרגל אינם מצטיירים 
 ## מה עוד חסר
 
 * **תרגום מלא** — ראו „מה מתורגם ומה עוד לא” למעלה.
-* **פונטים**: ל-Inter אין אותיות עבריות, ולכן הממשק שואל גופן עברי מהמערכת (Noto Sans Hebrew,
-  Segoe UI, Arial Hebrew…) כגופן גיבוי — בדיוק כמו שהכיתוב של חלון הקובץ עושה היום. ב-build
-  עם craft-fonts הגופנים של המערכת עדיין נדרשים לעברית.
+* **פונטים**: 12 משפחות עבריות נארזות ב-build (ראו „גופנים עבריים”), ולכן רשימת הגופנים
+  ומסמכים בעברית לא תלויים יותר בגופנים של המערכת. קובץ שמבקש גופן עברי שאינו בין אלה עדיין
+  נופל לגופן של המערכת.
 
 ## רישיון ותרגום נקי
 
