@@ -2,9 +2,11 @@
 """Lay out a `CRAFT_I18N_DIR` that holds craft-i18n's catalogs plus this fork's Hebrew ones.
 
 An app embeds its interface translations from a craft-i18n checkout (`CRAFT_I18N_DIR`, see
-craft-i18n's `docs/integration.md`). Hebrew is not in storytold/craft-i18n yet: it lives in this
-fork, in `i18n-he/locales/he/`. This script copies the checkout's `locales/` **and its
-`language-data/`** into `--out` and overlays the Hebrew files on top, so the build embeds both:
+craft-i18n's `docs/integration.md`). This fork's Hebrew lives in `i18n-he/locales/he/`; craft-i18n
+has a Hebrew catalog of its own too, so the two are merged — this fork's translation wins for a
+string it has, craft-i18n's row stays for every string it does not, and nothing falls back to
+English that either of them translated. This script copies the checkout's `locales/` **and its
+`language-data/`** into `--out` and lays the Hebrew files over them, so the build embeds both:
 
     python3 i18n-he/tools/assemble.py --craft-i18n ../craft-i18n --out target/craft-i18n-he
     export CRAFT_I18N_DIR=$PWD/target/craft-i18n-he CRAFT_I18N_REQUIRED=1
@@ -41,6 +43,57 @@ def copy_locales(locales: Path, out: Path) -> int:
             shutil.copyfile(file, target / file.name)
         copied += 1
     return copied
+
+
+def merge_catalogs(base: Path, overlay: Path, target: Path) -> int:
+    """Write `overlay`'s rows over `base`'s, key by key; returns how many rows the file has.
+
+    craft-i18n ships its own Hebrew now (it did not when this fork's overlay was written). A plain
+    copy would replace its 2,600 rows with this fork's 1,480 and show the difference in English, so
+    the two are merged: for the same (context, English) pair this fork's translation wins — that is
+    where its Word vocabulary lives — and every other row of craft-i18n's stays. The rows are written
+    sorted by English text, as the catalogs here are.
+    """
+    header: list[str] = []
+    rows: dict[tuple[str, str], str] = {}
+    for file in (base, overlay):
+        for line in file.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            if line.startswith("#"):
+                if file is overlay:
+                    header.append(line)
+                continue
+            parts = line.split("\t")
+            if len(parts) < 3:
+                continue
+            rows[(parts[0], parts[1])] = line
+    body = [rows[key] for key in sorted(rows, key=lambda k: (k[1].lower(), k[0]))]
+    target.write_text("\n".join(header + body) + "\n", encoding="utf-8", newline="\n")
+    return len(body)
+
+
+def overlay_locales(overlay: Path, out: Path, craft_i18n: Path | None) -> tuple[int, int]:
+    """Copy the overlay's locale files into `out`; a file craft-i18n has too is merged.
+
+    Returns the number of overlay locales laid out, and of files merged rather than copied. A
+    plain copy would replace craft-i18n's Hebrew, which has the rows this fork has not reached yet.
+    """
+    locales = merged = 0
+    for locale in sorted(p for p in overlay.iterdir() if p.is_dir()):
+        target_dir = out / "locales" / locale.name
+        target_dir.mkdir(parents=True, exist_ok=True)
+        for file in sorted(locale.glob("*.tsv")):
+            target = target_dir / file.name
+            theirs = craft_i18n / "locales" / locale.name / file.name if craft_i18n else None
+            if theirs is not None and theirs.is_file():
+                rows = merge_catalogs(theirs, file, target)
+                print(f"{locale.name}/{file.name}: {rows} row(s) after the merge with craft-i18n's")
+                merged += 1
+            else:
+                shutil.copyfile(file, target)
+        locales += 1
+    return locales, merged
 
 
 def copy_language_data(data: Path, out: Path) -> int:
@@ -87,12 +140,14 @@ def main() -> int:
             print(message, file=sys.stderr)
     else:
         print("note: no --craft-i18n, so only the overlay is embedded (English plus its locales)", file=sys.stderr)
-    overlaid = copy_locales(args.overlay, args.out)
+    # A locale craft-i18n already has is merged rather than replaced: its rows for the strings this
+    # fork has not reached would otherwise fall back to English.
+    overlaid, merged = overlay_locales(args.overlay, args.out, args.craft_i18n if base else None)
 
     if not (args.out / "locales" / "he" / "wordcraft.tsv").exists():
         print(f"the overlay has no he/wordcraft.tsv: {args.overlay}", file=sys.stderr)
         return 1
-    print(f"{args.out}: {base} craft-i18n locale(s) plus {overlaid} overlay locale(s), {data} language-data file(s)")
+    print(f"{args.out}: {base} craft-i18n locale(s) plus {overlaid} overlay locale(s) ({merged} merged), {data} language-data file(s)")
     return 0
 
 

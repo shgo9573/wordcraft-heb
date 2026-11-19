@@ -10,7 +10,6 @@
 # Clean room: every entry was written from the plain meaning of the English text in ordinary
 # computing vocabulary. No other product's localisation, string table or translated UI was
 # consulted or copied; add entries the same way.
-
 	% of all commits	% מכלל הקומיטים
 	(Custom)	(מותאם אישית)
 	(none)	(ללא)
@@ -55,9 +54,9 @@
 	Author	מחבר
 	Auto	אוטומטי
 	Auto ({percent}%)	אוטומטי ({percent}%)
-	AutoSave	שמירה אוטומטית
 	Automatic	אוטומטי
 	Automatically	באופן אוטומטי
+	AutoSave	שמירה אוטומטית
 	Available	זמין
 	Background	רקע
 	Backspace	Backspace
@@ -233,8 +232,8 @@
 	Fill:	מילוי:
 	Filter	סינון
 	Find	חיפוש
-	Find Next	חיפוש הבא
 	Find and Replace	חיפוש והחלפה
+	Find Next	חיפוש הבא
 	Find:	חיפוש:
 	Find…	חיפוש…
 	Finish	סיום
@@ -313,8 +312,8 @@
 	Inside	בפנים
 	Inspect Document	בדיקת מסמך
 	Interface	ממשק
-	Interface Theme	ערכת נושא לממשק
 	Interface language	שפת ממשק
+	Interface Theme	ערכת נושא לממשק
 	Intersect	חיתוך
 	Intersection	חיתוך (Intersection)
 	Invert	היפוך
@@ -322,116 +321,23 @@
 	Italic	נטוי
 	Japanese	יפנית
 	Join	צירוף
-	Justification	יישור מלא
-	Labels	תוויות
-	Last commit	קומיט אחרון
-	Letter	Letter (מכתב)
-	Line delta	דלתא שורות
-	Lines +/−	שורות +/−
-	Lines added	שורות שנוספו
-	Lines deleted	שורות שנמחקו
-	Links	קישורים
-	List	רשימה
-	Location	מיקום
-	Maximum	מקסימום
-	Merge	מיזוג
-	Merged PRs	בקשות מיזוג שמוזגו
-	Model	מודל
-	Models	מודלים
-	Mono	רוחב אחיד
-	Move Down	הזזה למטה
-	Move Up	הזזה למעלה
-	Name (A–Z)	שם (א–ת)
-	New Group	קבוצה חדשה
-	New Style…	סגנון חדש…
-	New document	מסמך חדש
-	New from Template	חדש מתבנית
-	Next Change	השינוי הבא
-	Next Page	העמוד הבא
-	No Color	ללא צבע
-	No limit	ללא הגבלה
-	No matching commands	אין פקודות מתאימות
-	Nonbreaking Space	רווח לא שביר
-	Number	מספר
-	Odd pages only	עמודים אי-זוגיים בלבד
-	Off	כבוי
-	Omit	השמטה
-	On	פועל
-	Other	אחר
-	Outline	מתאר
-	Oval	סגלגל
-	PRs	בקשות מיזוג
-	Page {page} of {pages}	עמוד {page} מתוך {pages}
-	Password	סיסמה
-	Paste Special	הדבקה מיוחדת
-	Pen	עט
-	Play	הפעלה
-	Position:	מיקום:
-	Presets	הגדרות מראש
-	Previous Change	השינוי הקודם
-	Previous Page	העמוד הקודם
-	Pyramid	פירמידה
-	Radial	רדיאלי
-	Real name	שם אמיתי
-	Recent	אחרונים
-	Rectangular	מלבני
-	Relaxed	רפוי
-	Rename Style	שינוי שם סגנון
-	Rename…	שינוי שם…
-	Reset…	איפוס…
-	Reverse the order	היפוך הסדר
-	Rotation:	סיבוב:
-	Rounded Rectangle	מלבן מעוגל
-	Save as Template	שמירה כתבנית
-	Scale	קנה מידה
-	Scripts	סקריפטים
-	Selected pages	עמודים נבחרים
-	Send Backward	שליחה לאחור
-	Settings…	הגדרות…
-	Shape Effects	אפקטי צורה
-	Shapes	צורות
-	Sharpen	חידוד
-	Show	הצג
-	Show rulers	הצגת סרגלי מידה
-	Small	קטן
-	Small Caps	אותיות קטנות גדולות
-	Soft	רך
-	Soften	ריכוך
-	Special	מיוחד
-	Statistics	סטטיסטיקה
-	Status Bar	שורת מצב
-	Stop	עצור
-	Strikethrough	קו חוצה
-	Studio	סטודיו
-	Style	סגנון
-	Style:	סגנון:
-	Styles	סגנונות
-	Tab	טאב
-	Table style	סגנון טבלה
-	Tabloid	Tabloid (לוח)
-	Tabs	טאבים
-	The passwords don't match.	הסיסמאות אינן תואמות.
-	This document has no bookmarks.	למסמך הזה אין סימניות.
-	Tools	כלים
-	Tracking	מעקב
-	Transform	טרנספורמציה
-	Translate	תרגום
-	Underline	קו תחתון
-	W:	ר':
-	Weight	משקל
 	just now	ממש עכשיו
+	Justification	יישור מלא
 	Justify	יישור לשני הצדדים
 	Kerning	מרווח בין אותיות
 	Keywords	מילות מפתח
 	Kind	סוג
 	Korean	קוריאנית
 	Label	תווית
+	Labels	תוויות
 	Landscape	לרוחב
 	Language	שפה
+@id	language.name	עברית
 	Language:	שפה:
 	Large	גדול
 	Lasso	לאסו
 	Last	אחרון
+	Last commit	קומיט אחרון
 	Later	מאוחר יותר
 	Layer	שכבה
 	Layers	שכבות
@@ -443,6 +349,7 @@
 	Length	אורך
 	Length:	אורך:
 	Less	פחות
+	Letter	Letter (מכתב)
 	Level	רמה
 	Levels	רמות
 	Library	ספרייה
@@ -450,21 +357,32 @@
 	Lighten	הבהרה
 	Lightness	בהירות
 	Line	שורה
+	Line delta	דלתא שורות
 	Line spacing	ריווח שורות
 	Linear	לינארי
 	Lines	שורות
+	Lines +/−	שורות +/−
+	Lines added	שורות שנוספו
+	Lines deleted	שורות שנמחקו
 	Link	קישור
+	Links	קישורים
+	List	רשימה
+	Location	מיקום
 	Location:	מיקום:
 	Lock	נעילה
 	Locked	נעול
 	Low	נמוך
+	lowercase	אותיות קטנות
 	Magenta	מג׳נטה
 	Margins	שוליים
 	Mask	מסכה
 	Maximize	הגדלה
+	Maximum	מקסימום
 	Measure	מדידה
 	Medium	בינוני
+	Merge	מיזוג
 	Merge Cells	מיזוג תאים
+	Merged PRs	בקשות מיזוג שמוזגו
 	Metadata	מטא-נתונים
 	Method	שיטה
 	Middle	אמצע
@@ -475,44 +393,72 @@
 	Missing	חסר
 	Mode	מצב
 	Mode:	מצב:
+	Model	מודל
+	Models	מודלים
 	Modern	מודרני
 	Modified	שונה
 	Modify	שינוי
+	Mono	רוחב אחיד
 	More	עוד
 	Move	העברה
+	Move Down	הזזה למטה
+	Move Up	הזזה למעלה
 	Name	שם
+	Name (A–Z)	שם (א–ת)
 	Name:	שם:
 	Navigation	ניווט
 	Never	אף פעם
 	New	חדש
+	New document	מסמך חדש
 	New Document	מסמך חדש
+	New from Template	חדש מתבנית
+	New Group	קבוצה חדשה
+	New Style…	סגנון חדש…
 	New Window	חלון חדש
 	New…	חדש…
 	Next	הבא
+	Next Change	השינוי הבא
+	Next Page	העמוד הבא
 	No	לא
+	No Color	ללא צבע
 	No document	אין מסמך
 	No document open	לא נפתח מסמך
+	No limit	ללא הגבלה
+	No matching commands	אין פקודות מתאימות
+	Nonbreaking Space	רווח לא שביר
 	None	ללא
 	Normal	רגיל
 	Not available	לא זמין
-	OK	אישור
+	Number	מספר
 	Object	אובייקט
+	Odd pages only	עמודים אי-זוגיים בלבד
+	Off	כבוי
+	OK	אישור
+	Omit	השמטה
+	On	פועל
 	Open	פתיחה
 	Options	אפשרויות
 	Options…	אפשרויות…
 	Orange	כתום
 	Orientation	כיוון
 	Original	מקורי
+	Other	אחר
+	Outline	מתאר
 	Output	פלט
 	Outside	בחוץ
+	Oval	סגלגל
 	Page	עמוד
+	Page {page} of {pages}	עמוד {page} מתוך {pages}
 	Pages	עמודים
 	Paper	נייר
 	Paragraph	פסקה
+	Password	סיסמה
 	Paste	הדבקה
+	Paste Special	הדבקה מיוחדת
 	Path	נתיב
 	Pattern	תבנית
 	Pause	השהיה
+	Pen	עט
 	Pencil	עיפרון
 	Percent	אחוז
 	Photo	תמונה
@@ -520,81 +466,114 @@
 	Pink	ורוד
 	Pixel	פיקסל
 	Pixels	פיקסלים
+	Play	הפעלה
 	Point	נקודה
 	Points	נקודות
 	Polygon	מצולע
 	Portrait	לאורך
 	Portuguese	פורטוגזית
 	Position	מיקום
+	Position:	מיקום:
 	Preferences	העדפות
 	Preserve	שמירה
 	Preset	הגדרה קבועה מראש
+	Presets	הגדרות מראש
 	Preview	תצוגה מקדימה
 	Previous	הקודם
+	Previous Change	השינוי הקודם
+	Previous Page	העמוד הקודם
 	Print	הדפסה
 	Printer	מדפסת
 	Printing	הדפסה
 	Profile	פרופיל
 	Properties	מאפיינים
 	Protect	הגנה
+	PRs	בקשות מיזוג
 	Punctuation	פיסוק
 	Purple	סגול
+	Pyramid	פירמידה
 	Quality	איכות
+	Radial	רדיאלי
 	Radius	רדיוס
 	Range	טווח
 	Ready	מוכן
+	Real name	שם אמיתי
+	Recent	אחרונים
 	Recent Colors	צבעים אחרונים
 	Recover	שחזור
 	Rectangle	מלבן
+	Rectangular	מלבני
 	Red	אדום
 	Redo	ביצוע מחדש
 	Refresh	רענון
 	Regular	רגיל
 	Relative	יחסי
+	Relaxed	רפוי
 	Remove	הסרה
 	Remove Background	הסרת רקע
 	Rename	שינוי שם
+	Rename Style	שינוי שם סגנון
+	Rename…	שינוי שם…
 	Repeat	חזרה
 	Replace	החלפה
 	Replace:	החלפה:
 	Reply	השב
 	Report	דוח
 	Reset	איפוס
+	Reset…	איפוס…
 	Resolution	רזולוציה
 	Restore	שחזור
 	Result	תוצאה
 	Reverse	היפוך
+	Reverse the order	היפוך הסדר
 	Review	סקירה
 	Right	ימין
 	Right:	ימין:
 	Rotate	סיבוב
 	Rotation	סיבוב
+	Rotation:	סיבוב:
+	Rounded Rectangle	מלבן מעוגל
 	Rows	שורות
 	Ruler	סרגל
 	Rulers	סרגלים
 	Russian	רוסית
 	Save	שמירה
 	Save As	שמירה בשם
+	Save as Template	שמירה כתבנית
 	Saved	נשמר
+	Scale	קנה מידה
 	Screen	מסך
+	Scripts	סקריפטים
 	Search	חיפוש
 	Security	אבטחה
 	Select	בחירה
 	Select All	בחר הכל
 	Select Objects	בחירת אובייקטים
+	Selected pages	עמודים נבחרים
 	Selection	בחירה
+	Send Backward	שליחה לאחור
 	Services	שירותים
 	Set as Default	הגדר כברירת מחדל
 	Settings	הגדרות
+	Settings…	הגדרות…
 	Shadow	צל
 	Shape	צורה
+	Shape Effects	אפקטי צורה
+	Shapes	צורות
 	Share	שיתוף
+	Sharpen	חידוד
 	Shift	Shift
 	Shortcut	קיצור
 	Shortcuts	קיצורים
+	Show	הצג
 	Show All	הצג הכל
+	Show rulers	הצגת סרגלי מידה
 	Size	גודל
 	Size:	גודל:
+	Small	קטן
+	Small Caps	אותיות קטנות גדולות
+	Soft	רך
+	Soften	ריכוך
 	Sort	מיון
 	Sort by	מיין לפי
 	Source	מקור
@@ -602,6 +581,7 @@
 	Spacing	ריווח
 	Spacing:	ריווח:
 	Spanish	ספרדית
+	Special	מיוחד
 	Speed	מהירות
 	Spelling	איות
 	Split	פיצול
@@ -610,10 +590,18 @@
 	Standard	תקני
 	Star	כוכב
 	Start at:	התחל ב-:
+	Statistics	סטטיסטיקה
 	Status	מצב
+	Status Bar	שורת מצב
+	Stop	עצור
 	Strength	עוצמה
 	Stretch	מתיחה
+	Strikethrough	קו חוצה
 	Stroke	קו
+	Studio	סטודיו
+	Style	סגנון
+	Style:	סגנון:
+	Styles	סגנונות
 	Subject	נושא
 	Subscript	כתב תחתי
 	Subset	תת-קבוצה
@@ -623,32 +611,42 @@
 	Symbol	סימן
 	Symbols	סימנים
 	System	מערכת
+	Tab	טאב
 	Table	טבלה
+	Table style	סגנון טבלה
 	Tables	טבלאות
+	Tabloid	Tabloid (לוח)
+	Tabs	טאבים
 	Target	יעד
 	Templates	תבניות
 	Text	טקסט
 	Text:	טקסט:
 	Texture	מרקם
+	The passwords don't match.	הסיסמאות אינן תואמות.
 	Theme	ערכת נושא
 	Thickness	עובי
+	This document has no bookmarks.	למסמך הזה אין סימניות.
 	Tile	אריח
 	Time	שעה
 	Title	כותרת
 	To	אל
 	Tool	כלי
+	Tools	כלים
 	Top	עליון
 	Top Left	למעלה משמאל
 	Top Right	למעלה מימין
 	Top:	עליון:
 	Total	סך הכל
+	Tracking	מעקב
+	Transform	טרנספורמציה
+	Translate	תרגום
 	Transparency	שקיפות
 	Transparent	שקוף
 	Triangle	משולש
 	Type	סוג
 	Type:	סוג:
 	Typing	הקלדה
-	UPPERCASE	אותיות גדולות
+	Underline	קו תחתון
 	Undo	ביטול פעולה
 	Ungroup	ביטול קיבוץ
 	Union	איחוד
@@ -660,6 +658,7 @@
 	Up	למעלה
 	Update	עדכון
 	Updates	עדכונים
+	UPPERCASE	אותיות גדולות
 	User	משתמש
 	Username	שם משתמש
 	Value	ערך
@@ -673,11 +672,13 @@
 	Violet	סגלגל
 	Visibility	נראות
 	Voice	קול
+	W:	ר':
 	Warnings	אזהרות
 	Watermark	סימן מים
 	Wave	גל
 	Web	אינטרנט
 	Website	אתר אינטרנט
+	Weight	משקל
 	White	לבן
 	Width	רוחב
 	Width and Height	רוחב וגובה
@@ -688,16 +689,13 @@
 	Workspace	סביבת עבודה
 	Yellow	צהוב
 	Yes	כן
+	yesterday	אתמול
 	Your changes will be lost if you don't save them.	השינויים שלך יאבדו אם לא תשמור אותם.
 	Zoom	תקריב
 	Zoom In	הגדלת התקריב
 	Zoom Out	הקטנת התקריב
-	lowercase	אותיות קטנות
-	yesterday	אתמול
-@id	language.name	עברית
-@plural	{n} Layer|{n} Layers	{n} שכבה|{n} שכבות|{n} שכבות|{n} שכבות
 @plural	{n} commit|{n} commits	{n} קומיט|{n} קומיטים|{n} קומיטים|{n} קומיטים
 @plural	{n} item|{n} items	{n} פריט|{n} פריטים|{n} פריטים|{n} פריטים
+@plural	{n} Layer|{n} Layers	{n} שכבה|{n} שכבות|{n} שכבות|{n} שכבות
 @plural	{n} step|{n} steps	{n} שלב|{n} שלבים|{n} שלבים|{n} שלבים
-
 	−Bin	−בינארי
