@@ -80,6 +80,9 @@ FILES = [
 # the changes that must survive the count moving under them, which happens whenever upstream adds a
 # language of its own — a recorded `[LangInfo; 28]` would then find nothing to replace.
 SKIP_IN = {
+    # `apply_code_overlay.py` writes the member line, anchored on the table header: the lines around
+    # it are craft-libs `rev`s that upstream bumps, and a recorded anchor quoting one goes stale.
+    "Cargo.toml": ["wordcraft-proof-he = { path"],
     "crates/ui-egui/src/i18n.rs": ['code: "he"', "pub static LANGUAGES: [LangInfo;", "fn catalog_texts(self)"],
 }
 
@@ -148,9 +151,10 @@ def unfaithful(root: Path, base: str, table: dict[str, list[dict]]) -> list[str]
     already wrote, one that no longer matches) would be found by the daily sync, after a push.
     """
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from apply_code_overlay import apply_fonts, apply_hunks, apply_i18n, apply_tests, apply_theme  # noqa: E402
+    from apply_code_overlay import apply_cargo, apply_fonts, apply_hunks, apply_i18n, apply_tests, apply_theme  # noqa: E402
 
     spelled_out = {
+        "Cargo.toml": apply_cargo,
         "crates/ui-egui/src/i18n.rs": apply_i18n,
         "crates/ui-egui/src/i18n/tests.rs": apply_tests,
         "crates/ui-egui/src/theme.rs": apply_theme,
