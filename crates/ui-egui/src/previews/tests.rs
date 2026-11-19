@@ -461,7 +461,7 @@ fn a_hebrew_interface_lists_the_fonts_that_draw_hebrew_first() {
 /// fonts that draw Hebrew.
 #[test]
 fn only_a_hebrew_interface_reorders_the_font_list() {
-    use crate::i18n::{fixture_lang, set_current, Lang};
+    use crate::i18n::{Lang, fixture_lang, set_current};
     let listed = |lang| {
         set_current(lang);
         Previews::default().families()
