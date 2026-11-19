@@ -11,8 +11,10 @@
 # computing vocabulary. No other product's localisation, string table or translated UI was
 # consulted or copied; add entries the same way.
 
+	% of all commits	% מכלל הקומיטים
 	(Custom)	(מותאם אישית)
 	(none)	(ללא)
+	About	אודות
 	Absolute	מוחלט
 	Accessibility	נגישות
 	Actions	פעולות
@@ -29,27 +31,42 @@
 	Alignment	יישור
 	Alignment:	יישור:
 	All	הכל
+	All Caps	אותיות גדולות
 	All files	כל הקבצים
 	All pages	כל העמודים
+	Alpha	אטימות
 	Alt	Alt
 	Always	תמיד
 	Amount	כמות
 	Angle	זווית
+	Animation	אנימציה
 	Any	כלשהו
 	Appearance	מראה
 	Application	יישום
+	Apply	החל
+	Apply Character Style	החלת סגנון תו
 	Apply to:	החל על:
+	Area	שטח
 	Arrange	סידור
+	Arrow	חץ
+	Arrows	חצים
 	Ascending	סדר עולה
 	Assign	הקצאה
+	Author	מחבר
 	Auto	אוטומטי
+	Auto ({percent}%)	אוטומטי ({percent}%)
+	AutoSave	שמירה אוטומטית
 	Automatic	אוטומטי
 	Automatically	באופן אוטומטי
 	Available	זמין
 	Background	רקע
 	Backspace	Backspace
+	Bar	עמודה
 	Baseline	קו בסיס
 	Basic	בסיסי
+	Basic Latin	לטינית בסיסית
+	Binary assets added	נוספו נכסים בינאריים
+	Binary assets removed	הוסרו נכסים בינאריים
 	Black	שחור
 	Blue	כחול
 	Bold	מודגש
@@ -59,12 +76,16 @@
 	Bottom Left	למטה משמאל
 	Bottom Right	למטה מימין
 	Bottom:	תחתון:
+	Break Link	ניתוק קישור
+	Bring Forward	הבאה קדימה
 	Browse…	עיון…
 	Bullet	תבליט
 	Cancel	ביטול
 	Caption	כיתוב
 	Cascade	מפל
 	Category:	קטגוריה:
+	Cell Size	גודל תא
+	Center	מרכז
 	Centered	ממורכז
 	Centimeters	סנטימטרים
 	Change	שינוי
@@ -73,30 +94,41 @@
 	Character	תו
 	Characters	תווים
 	Check for Updates	בדיקת עדכונים
+	Circle	עיגול
 	City	עיר
+	Clear	נקה
+	Clear All	ניקוי הכול
 	Clipboard	לוח
 	Close	סגירה
 	Cmd	Cmd
+	Collapse	כיווץ
 	Collate	סידור עותקים
 	Color	צבע
 	Color:	צבע:
 	Colors	צבעים
+	Colors:	צבעים:
 	Colour	צבע
 	Column width	רוחב עמודה
 	Columns	עמודות
 	Columns:	עמודות:
+	Combine	מיזוג צורות
 	Command	פקודה
 	Commands:	פקודות:
 	Comment	הערה
 	Comments	הערות
+	Commits	קומיטים
+	Company	חברה
 	Compare	השוואה
+	Comparison	השוואה
 	Compatibility	תאימות
 	Compression	דחיסה
 	Contains	מכיל
 	Continue	המשך
 	Contrast	ניגודיות
+	Contributors	תורמים
 	Convert	המרה
 	Convert to Shape	המרה לצורה
+	Copies	עותקים
 	Copy	העתקה
 	Copyright	זכויות יוצרים
 	Corner	פינה
@@ -104,6 +136,7 @@
 	Correction	תיקון
 	Country	מדינה
 	Create	יצירה
+	Crop	חיתוך
 	Ctrl	Ctrl
 	Current	נוכחי
 	Current page	עמוד נוכחי
@@ -118,8 +151,10 @@
 	Date and Time	תאריך ושעה
 	Date format	תבנית תאריך
 	Dates	תאריכים
+	Decrease Font Size	הקטנת גופן
 	Default	ברירת מחדל
 	Delete	מחיקה
+	Delete Style	מחיקת סגנון
 	Deleted	נמחק
 	Depth	עומק
 	Descending	סדר יורד
@@ -128,11 +163,13 @@
 	Destination	יעד
 	Details	פרטים
 	Diagonal	אלכסוני
+	Diamond	מעוין
 	Difference	הבדל
 	Digits	ספרות
 	Direction	כיוון
 	Direction:	כיוון:
 	Discard	השלכה
+	Discord	Discord
 	Display	תצוגה
 	Display name	שם תצוגה
 	Distance	מרחק
@@ -149,12 +186,14 @@
 	Double-click	לחיצה כפולה
 	Down	מטה
 	Download	הורדה
+	Draft	טיוטה
 	Draw	ציור
 	Duplicate	שכפול
 	Dutch	הולנדית
 	Dynamic	דינמי
 	Edge	קצה
 	Edit	עריכה
+	Editing	עריכה
 	Edit…	עריכה…
 	Effect	אפקט
 	Effects	אפקטים
@@ -163,20 +202,31 @@
 	Em Dash	מקף ארוך
 	Em Space	רווח em
 	Embed	הטמעה
+	Emboss	הבלטה (Emboss)
+	En Dash	קו מפריד קצר
+	En Space	רווח en
 	Enable	הפעלה
 	Enter	Enter
+	Envelope DL	מעטפה DL
 	Erase	מחיקה
+	Eraser	מחק
 	Error	שגיאה
+	Even pages only	עמודים זוגיים בלבד
 	Exact	מדויק
+	Example: {sample}	דוגמה: {sample}
 	Exclusion	החרגה
 	Exit	יציאה
+	Expand	הרחבה
 	Export	ייצוא
 	Export PDF	ייצוא PDF
 	Export to	ייצוא אל
+	Exported {path}	יוצא {path}
 	Expression	ביטוי
 	Extract	חילוץ
 	Field	שדה
+	Field properties	מאפייני שדה
 	Fields	שדות
+	Fields:	שדות:
 	File	קובץ
 	Files	קבצים
 	Fill	מילוי
@@ -189,6 +239,8 @@
 	Find…	חיפוש…
 	Finish	סיום
 	First	ראשון
+	First commit	קומיט ראשון
+	Fit	התאמה
 	Fixed	קבוע
 	Flip	היפוך
 	Flip Horizontal	היפוך אופקי
@@ -198,6 +250,8 @@
 	Font	גופן
 	Font Size	גודל גופן
 	Font size	גודל גופן
+	Font:	גופן:
+	Fonts	גופנים
 	Format	עיצוב
 	Format:	עיצוב:
 	Fractions	שברים
@@ -208,10 +262,14 @@
 	Full	מלא
 	Full Screen	מסך מלא
 	Functions	פונקציות
+	Gamma	גאמה
 	General	כללי
 	Generate	יצירה
+	Geometry	גיאומטריה
 	German	גרמנית
+	Glow	זוהר
 	Good	טוב
+	Gradient	מעבר צבע
 	Graphic	גרפיקה
 	Graphics	גרפיקה
 	Gray	אפור
@@ -226,6 +284,7 @@
 	Height	גובה
 	Height:	גובה:
 	Help	עזרה
+	Hexagon	משושה
 	Hidden	מוסתר
 	Hidden text	טקסט מוסתר
 	Hide	הסתר
@@ -246,18 +305,120 @@
 	Import	ייבוא
 	Import…	ייבוא…
 	Inches	אינצ׳ים
+	Increase Font Size	הגדלת גופן
 	Index	מפתח
+	Inflate	ניפוח
 	Info	מידע
 	Insert	הוספה
 	Inside	בפנים
+	Inspect Document	בדיקת מסמך
+	Interface	ממשק
 	Interface Theme	ערכת נושא לממשק
 	Interface language	שפת ממשק
 	Intersect	חיתוך
+	Intersection	חיתוך (Intersection)
 	Invert	היפוך
 	Italian	איטלקית
 	Italic	נטוי
 	Japanese	יפנית
 	Join	צירוף
+	Justification	יישור מלא
+	Labels	תוויות
+	Last commit	קומיט אחרון
+	Letter	Letter (מכתב)
+	Line delta	דלתא שורות
+	Lines +/−	שורות +/−
+	Lines added	שורות שנוספו
+	Lines deleted	שורות שנמחקו
+	Links	קישורים
+	List	רשימה
+	Location	מיקום
+	Maximum	מקסימום
+	Merge	מיזוג
+	Merged PRs	בקשות מיזוג שמוזגו
+	Model	מודל
+	Models	מודלים
+	Mono	רוחב אחיד
+	Move Down	הזזה למטה
+	Move Up	הזזה למעלה
+	Name (A–Z)	שם (א–ת)
+	New Group	קבוצה חדשה
+	New Style…	סגנון חדש…
+	New document	מסמך חדש
+	New from Template	חדש מתבנית
+	Next Change	השינוי הבא
+	Next Page	העמוד הבא
+	No Color	ללא צבע
+	No limit	ללא הגבלה
+	No matching commands	אין פקודות מתאימות
+	Nonbreaking Space	רווח לא שביר
+	Number	מספר
+	Odd pages only	עמודים אי-זוגיים בלבד
+	Off	כבוי
+	Omit	השמטה
+	On	פועל
+	Other	אחר
+	Outline	מתאר
+	Oval	סגלגל
+	PRs	בקשות מיזוג
+	Page {page} of {pages}	עמוד {page} מתוך {pages}
+	Password	סיסמה
+	Paste Special	הדבקה מיוחדת
+	Pen	עט
+	Play	הפעלה
+	Position:	מיקום:
+	Presets	הגדרות מראש
+	Previous Change	השינוי הקודם
+	Previous Page	העמוד הקודם
+	Pyramid	פירמידה
+	Radial	רדיאלי
+	Real name	שם אמיתי
+	Recent	אחרונים
+	Rectangular	מלבני
+	Relaxed	רפוי
+	Rename Style	שינוי שם סגנון
+	Rename…	שינוי שם…
+	Reset…	איפוס…
+	Reverse the order	היפוך הסדר
+	Rotation:	סיבוב:
+	Rounded Rectangle	מלבן מעוגל
+	Save as Template	שמירה כתבנית
+	Scale	קנה מידה
+	Scripts	סקריפטים
+	Selected pages	עמודים נבחרים
+	Send Backward	שליחה לאחור
+	Settings…	הגדרות…
+	Shape Effects	אפקטי צורה
+	Shapes	צורות
+	Sharpen	חידוד
+	Show	הצג
+	Show rulers	הצגת סרגלי מידה
+	Small	קטן
+	Small Caps	אותיות קטנות גדולות
+	Soft	רך
+	Soften	ריכוך
+	Special	מיוחד
+	Statistics	סטטיסטיקה
+	Status Bar	שורת מצב
+	Stop	עצור
+	Strikethrough	קו חוצה
+	Studio	סטודיו
+	Style	סגנון
+	Style:	סגנון:
+	Styles	סגנונות
+	Tab	טאב
+	Table style	סגנון טבלה
+	Tabloid	Tabloid (לוח)
+	Tabs	טאבים
+	The passwords don't match.	הסיסמאות אינן תואמות.
+	This document has no bookmarks.	למסמך הזה אין סימניות.
+	Tools	כלים
+	Tracking	מעקב
+	Transform	טרנספורמציה
+	Translate	תרגום
+	Underline	קו תחתון
+	W:	ר':
+	Weight	משקל
 	just now	ממש עכשיו
 	Justify	יישור לשני הצדדים
 	Kerning	מרווח בין אותיות
@@ -538,3 +699,5 @@
 @plural	{n} commit|{n} commits	{n} קומיט|{n} קומיטים|{n} קומיטים|{n} קומיטים
 @plural	{n} item|{n} items	{n} פריט|{n} פריטים|{n} פריטים|{n} פריטים
 @plural	{n} step|{n} steps	{n} שלב|{n} שלבים|{n} שלבים|{n} שלבים
+
+	−Bin	−בינארי

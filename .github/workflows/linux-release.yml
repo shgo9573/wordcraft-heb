@@ -1,4 +1,4 @@
-# The Linux build: one **AppImage** per update, and its release.
+# The Linux build: an **AppImage** and a **.deb** per update, and their release.
 #
 # Built only when there is something to build. A commit that already has a Linux release of its own
 # version is not built again: the `check` job reads the newest `v<version>-he.lin.<n>` release's
@@ -8,17 +8,23 @@
 # picks it up; `workflow_dispatch` has a box to build anyway.
 #
 # The same code and the same interface catalogs as the Windows build in `sync-upstream.yml`: this
-# fork's Hebrew overlay (`i18n-he/`, `crates/proof-he/`) on upstream's `main`. The packaging is
-# upstream's `packaging/linux/package.sh`, unchanged, with `--formats appimage`: it downloads the
-# pinned appimagetool and type2 runtime (both SHA-256 checked) and writes
-# `wordcraft-<version>-linux-x86_64.AppImage`, plus the `.zsync` AppImageUpdate uses when `zsyncmake`
-# is installed (the `zsync` package, below).
+# fork's Hebrew overlay (`i18n-he/`, `crates/proof-he/`, the Hebrew fonts `fetch_fonts.py` adds to
+# the embedded craft-fonts set) on upstream's `main`. The packaging is upstream's
+# `packaging/linux/package.sh`, unchanged, with `--formats "appimage deb"`:
+#
+#   wordcraft-<version>-linux-x86_64.AppImage        one file, no installation
+#   wordcraft-<version>-linux-x86_64.AppImage.zsync  AppImageUpdate's delta updates
+#   wordcraft-<version>-linux-x86_64.deb             Debian, Ubuntu, Mint, Pop!_OS …
+#
+# The AppImage half downloads the pinned appimagetool and type2 runtime (both SHA-256 checked); the
+# `.deb` is made by nfpm from `packaging/linux/nfpm.yaml`, installed below at a pinned version
+# through `go install` (the Go module proxy's checksum database is what checks it).
 #
 # Published as `v<version>-he.lin.<n>` — beside the Windows release `v<version>-he.win.<n>` of the
 # same update, never inside it: the two platforms build in separate workflows, and a release names
 # one platform. `n` climbs with every new commit, so a fix on a version upstream already shipped
 # still reaches a download.
-name: Hebrew Linux build (AppImage)
+name: Hebrew Linux build (AppImage + .deb)
 
 on:
   schedule:
@@ -170,9 +176,37 @@ jobs:
           else
             echo "::warning::craft-fonts ${CRAFT_FONTS_REF} could not be fetched; building with the installed fonts"
           fi
-      - name: Build and package (the AppImage)
-        # `--formats appimage`: the AppImage and, with `zsyncmake` installed, its `.zsync`.
-        run: packaging/linux/package.sh --formats "appimage"
+      # The Hebrew fonts this fork adds (David Libre, Frank Ruhl Libre, Heebo, Rubik …) go into the
+      # craft-fonts set the build embeds: every build fetches them at their pinned hashes, nothing
+      # of theirs is committed. Without craft-fonts they cannot be embedded, and the step says so.
+      - name: The Hebrew fonts beside craft-fonts' own
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |-
+          set -euo pipefail
+          if [ -z "${CRAFT_FONTS_DIR:-}" ]; then
+            echo "::warning::no craft-fonts checkout, so the Hebrew fonts are not embedded either"
+            exit 0
+          fi
+          python3 i18n-he/tools/fetch_fonts.py --into "$CRAFT_FONTS_DIR"
+      # nfpm makes the .deb out of the same staged tree the AppImage is made from. `go install
+      # …@v2.49.0` pins the version, and Go's module checksum database is what verifies the
+      # download (the release tarball cannot be hash-pinned here without shipping the hash of a
+      # file nobody reviewed).
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+          cache: false
+      - name: nfpm (the .deb)
+        run: |
+          set -euo pipefail
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.49.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          "$(go env GOPATH)/bin/nfpm" --version
+      - name: Build and package (the AppImage and the .deb)
+        # `--formats "appimage deb"`: the AppImage (and, with `zsyncmake` installed, its `.zsync`)
+        # and the Debian package nfpm makes from `packaging/linux/nfpm.yaml`.
+        run: packaging/linux/package.sh --formats "appimage deb"
       - name: What was built
         run: ls -lh dist/release
       - uses: actions/upload-artifact@v4
@@ -227,6 +261,9 @@ jobs:
 
           - **להפעלה:** `wordcraft-__VERSION__-linux-x86_64.AppImage` — קובץ אחד, בלי התקנה:
             `chmod +x` ואז הפעלה (או „Allow executing” בתפריט של הקובץ). לא נדרש libfuse2.
+          - **להתקנה (Debian, Ubuntu, Mint, Pop!_OS):** `wordcraft-__VERSION__-linux-x86_64.deb` —
+            התקנה בלחיצה כפולה או `sudo apt install ./wordcraft-__VERSION__-linux-x86_64.deb`;
+            מוסיף את WordCraft לתפריט היישומים, לארכיוני ‎.docx ולסוגי מסמכים נוספים.
           - `SHA256SUMS.txt` לבדיקת שלמות ההורדה.
           - הממשק: עברית כברירת מחדל, ואנגלית וכל שאר השפות לפי בחירה (File › Options › Interface
             language). כששפת הממשק עברית כל הממשק מתהפך לימין-שמאל.
@@ -239,6 +276,9 @@ jobs:
 
           - **Run it:** `wordcraft-__VERSION__-linux-x86_64.AppImage` — one file, no installation:
             `chmod +x` then run it. It needs no libfuse2 and none of the desktop's GTK libraries.
+          - **Install it (Debian, Ubuntu, Mint, Pop!_OS):** `wordcraft-__VERSION__-linux-x86_64.deb`
+            — double-click, or `sudo apt install ./wordcraft-__VERSION__-linux-x86_64.deb`. It adds
+            WordCraft to the applications menu and as the opener for .docx and the other types.
           - `SHA256SUMS.txt` carries the checksums of the downloads.
 
           The interface opens in **Hebrew** (this fork's default; File ▸ Options ▸ Interface

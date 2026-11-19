@@ -108,6 +108,21 @@ jobs:
           else
             echo "::warning::craft-fonts ${CRAFT_FONTS_REF} could not be fetched; checking with the installed fonts"
           fi
+      # The Hebrew fonts the Windows and Linux builds embed (`i18n-he/tools/fetch_fonts.py`): here
+      # they are fetched into the craft-fonts checkout and every hash and the Hebrew coverage of
+      # every file are checked, so a pin that went stale fails the pull request rather than a build.
+      - name: The Hebrew fonts, fetched into craft-fonts and checked
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |-
+          set -euo pipefail
+          if [ -z "${CRAFT_FONTS_DIR:-}" ]; then
+            echo "::warning::no craft-fonts checkout; checking only the font table"
+            python3 i18n-he/tools/fetch_fonts.py --list > /dev/null
+            exit 0
+          fi
+          python3 i18n-he/tools/fetch_fonts.py --into "$CRAFT_FONTS_DIR"
+          python3 i18n-he/tools/fetch_fonts.py --check --into "$CRAFT_FONTS_DIR"
       # One step per command, each leaving its log behind, and a final step that quotes the log on
       # the pull request: that way a failure is readable without opening the run's log page.
       - name: cargo check over the workspace

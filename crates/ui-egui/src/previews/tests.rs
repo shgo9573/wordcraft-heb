@@ -456,6 +456,39 @@ fn a_hebrew_interface_lists_the_fonts_that_draw_hebrew_first() {
     assert_eq!(families, ["David", "Narkisim", "Arial", "FrankRuehl"], "the Hebrew fonts first, each group as the list had it");
 }
 
+/// The reordering is Hebrew's alone: an interface that mirrors but is not Hebrew — Arabic — and
+/// every other language get the plain alphabetical list, and only a Hebrew interface opens on the
+/// fonts that draw Hebrew.
+#[test]
+fn only_a_hebrew_interface_reorders_the_font_list() {
+    use crate::i18n::{Lang, fixture_lang, set_current};
+    let listed = |lang| {
+        set_current(lang);
+        Previews::default().families()
+    };
+    let alphabetical = |families: &[String]| families.windows(2).all(|w| w[0].to_lowercase() <= w[1].to_lowercase());
+    let english = listed(Lang::EN);
+    assert!(alphabetical(&english), "English: the list is alphabetical: {english:?}");
+    assert!(english.len() > 1, "the list has something to order: {english:?}");
+    // Arabic mirrors the interface exactly as Hebrew does, and must still not move a family.
+    let arabic = listed(fixture_lang("ar", "مرحبا"));
+    assert!(alphabetical(&arabic), "Arabic: the list is alphabetical: {arabic:?}");
+    // Whatever this machine has installed, no language but Hebrew may move a family.
+    for lang in Lang::all().filter(|l| l.code() != "he") {
+        let families = listed(lang);
+        assert!(alphabetical(&families), "{}: the list is alphabetical: {families:?}", lang.code());
+    }
+    // A Hebrew interface moves the families that draw Hebrew to the front — once the background
+    // scan of the installed fonts' character maps has answered, which it may not have yet.
+    if let Some(hebrew) = hebrew_families()
+        && let Some(first) = english.iter().find(|f| hebrew.contains(&f.to_lowercase()))
+    {
+        let hebrew_list = listed(fixture_lang("he", "שלום"));
+        assert_eq!(hebrew_list.first(), Some(first), "Hebrew: the list opens on a font that draws Hebrew: {hebrew_list:?}");
+    }
+    set_current(Lang::EN);
+}
+
 /// The Hebrew word after a name comes from the face itself, so the list shows its Hebrew letters,
 /// and only a Hebrew interface adds it. `render_text_line` draws the glyphs in the order it is
 /// given, so the entry spells the word backwards.

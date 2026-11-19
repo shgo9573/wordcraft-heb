@@ -93,6 +93,11 @@ jobs:
       # Windows package builds with `--locked`: the lockfile is completed here, before a build.
       - name: Check that Cargo.lock knows this fork's Hebrew proofer
         run: python3 i18n-he/tools/lock_he.py --check
+      # The Hebrew fonts a build embeds (`fetch_fonts.py`): a table that still lists every file
+      # with its pinned hash and its licence. Fetching them is the build's job (they go into the
+      # craft-fonts checkout there); this only keeps the table honest in the repository.
+      - name: Check the list of Hebrew fonts
+        run: python3 i18n-he/tools/fetch_fonts.py --list > /dev/null
       - name: Assemble the catalogs a build would embed
         run: |
           set -euo pipefail
@@ -330,6 +335,21 @@ jobs:
           } catch {
             Write-Output "::warning::craft-fonts $($env:CRAFT_FONTS_REF) could not be fetched; building with the system's fonts"
           }
+      # The Hebrew fonts this fork adds (David Libre, Frank Ruhl Libre, Heebo, Rubik …) go into the
+      # craft-fonts set the build embeds: every build fetches them at their pinned hashes, nothing
+      # of theirs is committed. Without craft-fonts they cannot be embedded, and the step says so.
+      - name: The Hebrew fonts beside craft-fonts' own
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not $env:CRAFT_FONTS_DIR) {
+            Write-Output '::warning::no craft-fonts checkout, so the Hebrew fonts are not embedded either'
+            exit 0
+          }
+          python i18n-he/tools/fetch_fonts.py --into $env:CRAFT_FONTS_DIR
+          if ($LASTEXITCODE -ne 0) { throw 'fetch_fonts.py failed' }
       - name: Version
         shell: pwsh
         id: version

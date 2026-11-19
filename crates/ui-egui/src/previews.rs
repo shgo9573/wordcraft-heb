@@ -204,10 +204,13 @@ impl Previews {
         }
         let mut f: Vec<String> = self.families.as_ref().map(|(_, f)| f.clone()).unwrap_or_default();
         // A Hebrew interface puts the fonts that draw Hebrew first, so the list opens on fonts that
-        // can show the document. Which those are is a scan of every installed font's character
-        // map: it runs once, in the background, and this asks for its answer every frame until the
-        // answer is there — the list is alphabetical until then, and reorders itself after.
-        if crate::i18n::current().rtl()
+        // can show the document. Only Hebrew: the interface mirrors for Arabic too, but that is a
+        // different script, and reordering a list the reader did not ask for in an Arabic interface
+        // would put Arabic-capable fonts last. Which families draw Hebrew is a scan of every
+        // installed font's character map: it runs once, in the background, and this asks for its
+        // answer every frame until the answer is there — the list is alphabetical until then, and
+        // reorders itself after.
+        if crate::i18n::current().code() == "he"
             && let Some(hebrew) = hebrew_families()
         {
             hebrew_first(&mut f, &hebrew);
@@ -481,11 +484,14 @@ fn hebrew_families() -> Option<std::sync::Arc<std::collections::HashSet<String>>
 /// interface, in a face that draws it — the Hebrew word, so the entry shows the letterforms the
 /// font gives Hebrew and not just its Latin name.
 ///
+/// Only a Hebrew interface: an Arabic one mirrors as well, and a Hebrew word in a face picked for
+/// Arabic says nothing about the text the reader is writing.
+///
 /// The word is spelled backwards here: [`wordcraft_render::render_text_line`] draws the glyphs in
 /// the order it is handed them, right-to-left runs included, so read from the right it says
 /// „שלום”. (A face without the letters gets the name alone, in the fallback face.)
-fn entry_text(face: &wordcraft_fonts::FontFace, name: &str, rtl: bool) -> String {
-    if !rtl || !HEBREW_SAMPLE.chars().all(|c| face.covers(c)) {
+fn entry_text(face: &wordcraft_fonts::FontFace, name: &str, hebrew: bool) -> String {
+    if !hebrew || !HEBREW_SAMPLE.chars().all(|c| face.covers(c)) {
         return name.to_string();
     }
     format!("{name}  {}", HEBREW_SAMPLE.chars().rev().collect::<String>())
@@ -504,7 +510,7 @@ pub fn font_entry_image(name: &str, ppp: f32) -> egui::ColorImage {
     // Rendered taller than the row and cut back to the drawn text: faces with tall line metrics
     // (Arabic, CJK) put their baseline well below a Latin face's, and a fixed 22 pt strip showed
     // only the top of their names.
-    let text = entry_text(&face, name, crate::i18n::current().rtl());
+    let text = entry_text(&face, name, crate::i18n::current().code() == "he");
     let img = wordcraft_render::render_text_line(&face, &text, 13.0, 244.0, FONT_PREVIEW_RENDER_H, 2.0, ppp);
     let img = egui::ColorImage::from_rgba_unmultiplied([img.width as usize, img.height as usize], &img.to_straight());
     center_rows_on_ink(&img, (FONT_PREVIEW_H * ppp).round() as usize)
