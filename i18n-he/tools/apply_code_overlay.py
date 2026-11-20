@@ -101,18 +101,40 @@ DOC_BLOCK = """//! # Hebrew (this fork)
 
 DOC_ANCHOR = "//! # Adding a language\n"
 
-FONTS_ANCHOR = "            let mut faces = self.canvas.ime_faces.clone();\n"
+# The Hebrew proofer is a crate of its own, and the workspace has to know it. Anchored on the table
+# header rather than on a line of upstream's: every line around it is a craft-libs `rev`, which
+# upstream bumps on its own schedule, and a recorded change that quotes one goes stale with it.
+CARGO_ANCHOR = "[workspace.dependencies]\n"
 
-FONTS_LINES = '''            // Interface text in a script the interface faces leave out (Hebrew, Arabic, Thai …)
-            // borrows a document face, as the caption does: the Hebrew menus, dialogs and the
-            // language picker would otherwise draw as boxes. Looked at again only when the fonts
-            // are installed, that is when the language changes.
-            //
-            // Every language's own name, not just this one's: File ▸ Options lists them all, so a
-            // Hebrew interface (the default) shows „עברית” in that list before Hebrew is the
-            // current language — and after switching away from it.
-            let names = i18n::Lang::all().map(i18n::Lang::name);
-            faces.extend(theme::faces_for_interface_text(lang.catalog_texts().chain(names)));
+CARGO_LINES = '''# This fork's Hebrew proofing — spelling, suggestions and grammar — beside craft-proof, which has
+# every other language (its `ProofLang` has no Hebrew). See `crates/proof-he`.
+wordcraft-proof-he = { path = "crates/proof-he" }
+'''
+
+
+def apply_cargo(source: str) -> tuple[str, list[str]]:
+    if 'wordcraft-proof-he = { path = "crates/proof-he" }' in source:
+        return source, []
+    if CARGO_ANCHOR not in source:
+        raise SystemExit("error: Cargo.toml has no `[workspace.dependencies]`")
+    return source.replace(CARGO_ANCHOR, CARGO_ANCHOR + CARGO_LINES, 1), ["Cargo.toml: the Hebrew proofer is a workspace member"]
+
+
+FONTS_ANCHOR = "        let mut faces = self.canvas.ime_faces.clone();\n"
+
+# Upstream's `apply_ui_fonts` builds the face list without the language it installs for (it is
+# called from the composition path as well, where there is no language to hand), so the Hebrew
+# faces come from the interface language the app is drawing in.
+FONTS_LINES = '''        // Interface text in a script the interface faces leave out (Hebrew, Arabic, Thai …)
+        // borrows a document face, as the caption does: the Hebrew menus, dialogs and the
+        // language picker would otherwise draw as boxes. Looked at again only when the fonts
+        // are installed, that is when the language changes.
+        //
+        // Every language's own name, not just this one's: File ▸ Options lists them all, so a
+        // Hebrew interface (the default) shows „עברית” in that list before Hebrew is the
+        // current language — and after switching away from it.
+        let names = i18n::Lang::all().map(i18n::Lang::name);
+        faces.extend(theme::faces_for_interface_text(crate::i18n::current().catalog_texts().chain(names)));
 '''
 
 
@@ -305,8 +327,9 @@ def main() -> int:
     parser.add_argument("--files", action="store_true", help="print the files the overlay writes, one per line")
     args = parser.parse_args()
 
-    # The four changes the Hebrew catalog alone needs, spelled out above.
+    # The changes the Hebrew catalog alone needs, spelled out above.
     targets = {
+        root / "Cargo.toml": (apply_cargo, ['wordcraft-proof-he = { path = "crates/proof-he" }']),
         root / "crates/ui-egui/src/i18n.rs": (apply_i18n, ["pub fn catalog_texts", 'code: "he"']),
         root / "crates/ui-egui/src/theme.rs": (apply_theme, ["fn faces_for_interface_text", "fn interface_char_covered"]),
         root / "crates/ui-egui/src/app/fonts.rs": (apply_fonts, ["faces_for_interface_text"]),
