@@ -36,9 +36,9 @@ pub mod control;
 pub mod credits;
 pub mod crop;
 // i18n-he: dictation — Voice › Dictate on a local speech service (see `i18n-he/`).
-pub mod dictate;
 pub mod desktop_theme;
 pub mod dialogs;
+pub mod dictate;
 pub mod documents;
 pub mod equation_tab;
 /// The built-in file browser, for desktops without a system file dialog (#576).
