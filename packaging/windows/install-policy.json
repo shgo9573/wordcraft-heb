@@ -5,6 +5,11 @@
   "sources": [
     "wordcraft.wxs"
   ],
+  "bundle": {
+    "source": "wordcraft-bundle.wxs",
+    "upgradeCode": "7B1E4C1D-2E52-4F6A-9C3B-1F0D5A8E4C77",
+    "extension": "BootstrapperApplications"
+  },
   "icon": "assets/app-icon/wordcraft.ico",
   "localization": [],
   "extensions": [

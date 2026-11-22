@@ -1,4 +1,4 @@
-<# Check the real packaging script without compiling, signing or installing: one MSI, policy-checked before it is signed. #>
+<# Check the real packaging script without compiling, signing or installing: one MSI, policy-checked before it is signed, and the Setup.exe built around it. #>
 $ErrorActionPreference = 'Stop'
 $tokens = $null; $errors = $null
 $script = Join-Path $PSScriptRoot 'package.ps1'
@@ -32,5 +32,21 @@ $text = $ast.Extent.Text
 $marker = $text.IndexOf("Join-Path `$Portable 'portable.txt'")
 if ($marker -lt 0) { throw 'The portable zip must carry portable.txt: the marker that keeps the profile beside the app.' }
 if ($marker -gt $text.IndexOf('Compress-Archive')) { throw 'portable.txt must be written before the portable zip is compressed.' }
-Write-Output 'PASS the WordCraft MSI is policy-checked before it is signed, and the portable zip is portable.'
+# The .exe is the installer people download: it must be built from the MSI that passed the policy
+# check (not from a stale one), and signed by the same path as the MSI.
+$bundle = @($commands | Where-Object {
+  $_.InvocationOperator.ToString() -eq 'Ampersand' -and
+    @($_.CommandElements | Where-Object { $_.Extent.Text -match 'wix build' }).Count -gt 0 -and
+    @($_.CommandElements | Where-Object { $_.Extent.Text -match 'wordcraft-bundle.wxs' }).Count -gt 0
+})
+if ($bundle.Count -ne 1) { throw 'Expected the Setup.exe bundle to be built exactly once.' }
+if ($bundle[0].Extent.StartOffset -lt $checks[0].Extent.StartOffset) { throw 'The Setup.exe must be built from the MSI after it passed the policy check.' }
+$setupSigns = @($commands | Where-Object {
+  $_.InvocationOperator.ToString() -eq 'Ampersand' -and
+    @($_.CommandElements | Where-Object { $_.Extent.Text -match 'sign.ps1' }).Count -gt 0 -and
+    $_.CommandElements[-1].Extent.Text -eq '$Setup'
+})
+if ($setupSigns.Count -ne 1) { throw 'Expected the Setup.exe to be signed exactly once.' }
+if ($text.IndexOf('Compress-Archive') -lt $bundle[0].Extent.StartOffset) { throw 'The portable zip is built before the installer; the Setup.exe comes first in the release.' }
+Write-Output 'PASS the WordCraft MSI is policy-checked before it is signed, the Setup.exe is built from it, and the portable zip is portable.'
 

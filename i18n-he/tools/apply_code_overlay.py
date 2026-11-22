@@ -52,6 +52,10 @@ fn offers_hebrew() -> bool {
 
 TESTS_HELPER_ANCHOR = "/// The translations in `code`'s embedded WordCraft catalog, plural forms apart: the fonts must"
 
+# Upstream's own doc comment over `the_languages_offered_are_the_embedded_ones_of_the_list`
+# (upstream #7101): the same place `offers_hebrew` goes when the first anchor is gone.
+TESTS_HELPER_ANCHOR_2 = "/// WordCraft offers exactly the languages in `LANGUAGES` when craft-i18n is embedded, and English"
+
 TESTS_AVAILABLE = '    assert!(r["available"].as_array().is_some_and(|a| a.len() == LANGUAGES.len()));'
 
 TESTS_AVAILABLE_PATCHED = '    assert!(r["available"].as_array().is_some_and(|a| a.len() == LANGUAGES.len() - usize::from(!offers_hebrew())));'
@@ -176,6 +180,24 @@ def apply_i18n(source: str) -> tuple[str, list[str]]:
     return source, notes
 
 
+# Upstream's theme module is one file until #7101 and `theme.rs` + `theme/legacy.rs` after it. The
+# document faces this fork asks for the interface belong beside `faces_for_preedit`, wherever that
+# is: the anchor decides the file, so a sync across the split keeps working.
+THEME_FILES = ["crates/ui-egui/src/theme.rs", "crates/ui-egui/src/theme/legacy.rs"]
+
+
+def theme_file(root: Path) -> Path:
+    """The file holding `faces_for_preedit`: where the interface fallback's helpers go."""
+    for relative in THEME_FILES:
+        path = root / relative
+        if path.is_file() and THEME_ANCHOR in path.read_text(encoding="utf-8"):
+            return path
+    raise SystemExit(
+        "error: no theme file has the anchor for the interface fallback "
+        f"({THEME_ANCHOR!r}): looked in {', '.join(THEME_FILES)}"
+    )
+
+
 def apply_theme(source: str) -> tuple[str, list[str]]:
     if "fn faces_for_interface_text" in source:
         return source, []
@@ -189,9 +211,10 @@ def apply_tests(source: str) -> tuple[str, list[str]]:
     if "fn offers_hebrew()" in source:
         return source, []
     notes: list[str] = []
-    if TESTS_HELPER_ANCHOR not in source:
+    helper = next((a for a in (TESTS_HELPER_ANCHOR, TESTS_HELPER_ANCHOR_2) if a in source), None)
+    if helper is None:
         raise SystemExit("error: i18n/tests.rs has no anchor for `offers_hebrew`")
-    source = source.replace(TESTS_HELPER_ANCHOR, TESTS_HELPER + TESTS_HELPER_ANCHOR, 1)
+    source = source.replace(helper, TESTS_HELPER + helper, 1)
     if TESTS_AVAILABLE not in source:
         raise SystemExit("error: i18n/tests.rs has no `available` length assertion")
     source = source.replace(TESTS_AVAILABLE, TESTS_AVAILABLE_PATCHED, 1)
@@ -203,10 +226,20 @@ def apply_tests(source: str) -> tuple[str, list[str]]:
 
 
 def apply_fonts(source: str) -> tuple[str, list[str]]:
+    """The interface's faces borrow the document faces Hebrew needs — as far as it still applies.
+
+    Upstream #7101 moved the interface's font installation onto the craft framework's own stack
+    (`ui_fonts`/`OnDemandFonts`), and the line this fork appends to is gone with it: there is no
+    list here any more to borrow a face for. That is reported as a note, not a failure — a daily
+    sync must not stop on it — and the missing Hebrew menus of that layout are the next thing this
+    fork's README lists as outstanding.
+    """
     if "faces_for_interface_text" in source:
         return source, []
     if FONTS_ANCHOR not in source:
-        raise SystemExit("error: app/fonts.rs has no `let mut faces = self.canvas.ime_faces.clone();`")
+        print("warning: app/fonts.rs has no line to borrow document faces for the interface text "
+              "(the interface's fonts moved to craft; Hebrew interface text may need a system face)")
+        return source, []
     return source.replace(FONTS_ANCHOR, FONTS_ANCHOR + FONTS_LINES, 1), ["app/fonts.rs: borrow document faces for the interface text"]
 
 
@@ -299,12 +332,23 @@ def apply_generic(root: Path, path: Path, hunks: list[dict]) -> tuple[str, list[
     return apply_hunks(path.read_text(encoding="utf-8"), hunks, name)
 
 
+def voice_patch_file(relative: Path) -> bool:
+    """A file `i18n-he/tools/dictate_patch.py` copies, not this overlay.
+
+    Voice › Dictate is a patch of its own, applied after the overlay and allowed to fail, so this
+    overlay neither copies its module nor misses it when the days' build goes without it.
+    """
+    return relative == Path("crates/ui-egui/src/dictate.rs")
+
+
 def copy_new_files(root: Path, code: Path, check: bool, missing: list[str]) -> list[str]:
     """The files this fork adds whole: `code/crates/...` mirrors the tree's `crates/...`."""
     notes: list[str] = []
     added = sorted(p for p in code.rglob("*") if p.suffix == ".rs" or p.name == "Cargo.toml")
     for source in added:
         relative = source.relative_to(code)
+        if voice_patch_file(relative):
+            continue
         target = root / relative
         if check:
             if not target.exists():
@@ -331,8 +375,10 @@ def main() -> int:
     targets = {
         root / "Cargo.toml": (apply_cargo, ['wordcraft-proof-he = { path = "crates/proof-he" }']),
         root / "crates/ui-egui/src/i18n.rs": (apply_i18n, ["pub fn catalog_texts", 'code: "he"']),
-        root / "crates/ui-egui/src/theme.rs": (apply_theme, ["fn faces_for_interface_text", "fn interface_char_covered"]),
-        root / "crates/ui-egui/src/app/fonts.rs": (apply_fonts, ["faces_for_interface_text"]),
+        theme_file(root): (apply_theme, ["fn faces_for_interface_text", "fn interface_char_covered"]),
+        # `apply_fonts` reports when the line it appends to is gone (upstream #7101), so this file
+        # has no marker `--check` can insist on.
+        root / "crates/ui-egui/src/app/fonts.rs": (apply_fonts, []),
         root / "crates/ui-egui/src/i18n/tests.rs": (apply_tests, ["fn offers_hebrew()"]),
         root / ".gitattributes": (apply_gitattributes, ["i18n-he/** text eol=lf"]),
     }

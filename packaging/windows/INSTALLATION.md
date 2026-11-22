@@ -1,5 +1,17 @@
 # Windows installation policy checks
 
+## What ships
+
+| File | What it is |
+| --- | --- |
+| `wordcraft-<version>-windows-<arch>-Setup.exe` | **The installer.** A WiX bundle (`wordcraft-bundle.wxs`) with the MSI inside it: double-click, installs for the current account with no administrator rights, licence → progress → "Launch WordCraft". Unsigned unless signing secrets are configured. |
+| `wordcraft-<version>-windows-<arch>.msi` | The package the `.exe` wraps, shipped beside it for `msiexec` deployments and for installing for every user (`ALLUSERS=1`). It is the record of what is installed — files, shortcuts, associations, scope rules below. |
+| `wordcraft-<version>-windows-<arch>-portable.zip` | No installation: unpack, run, everything stays in `WordCraft-data` beside the exe. |
+
+The `.exe` carries its MSI compressed, so installing needs no network and no second file. It is
+built from the MSI *after* that MSI passed the policy check and was signed, and is itself signed by
+the same `sign.ps1` path; `test-packaging-script.ps1` holds both properties.
+
 New installations default to the current account under `Programs\ArtCraft\<App>`.
 The first setup page offers installation for everyone. Scope is selected before duplicate
 checks and directory costing. An update uses the existing context's remembered exact folder;

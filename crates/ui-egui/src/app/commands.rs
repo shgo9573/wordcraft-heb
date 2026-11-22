@@ -914,6 +914,16 @@ impl WordApp {
                 }
                 json!({"displayServer": self.ui.display_server.code()})
             }
+            // i18n-he: dictation — records through a local speech service and types what it hears at
+            // the caret; a second call stops it, and `ui.dictateCancel` cancels too.
+            "tools.dictate" => match self.dictate() {
+                Ok(v) => v,
+                Err(e) => return Some(Err(e)),
+            },
+            "ui.dictateCancel" if self.dictation.running() => {
+                self.stop_dictating();
+                json!({"listening": false})
+            }
             // Shape Format › Text › Create Link: the next click on an empty text box links the
             // selected box to it (`shape.link` with that box as the target); Esc cancels.
             // Picture Format › Size › Crop: crop mode on the selected picture, or off (`crop`).
@@ -1144,6 +1154,10 @@ fn add_saved(r: &mut Value, saved: Option<Result<(), String>>) {
 /// Everything else needs a document, `ui.*` included: only the interface commands listed here
 /// (tabs, Backstage, dialogs, appearance, opening files) work without one.
 pub(crate) fn works_without_document(id: &str) -> bool {
+    // i18n-he: dictation: Dictate is offered in every window, and its own `enabled` decides.
+    if id == "tools.dictate" {
+        return true;
+    }
     matches!(
         id,
         "file.new"

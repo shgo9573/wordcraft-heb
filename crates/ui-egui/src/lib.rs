@@ -35,6 +35,8 @@ pub mod content_controls;
 pub mod control;
 pub mod credits;
 pub mod crop;
+// i18n-he: dictation — Voice › Dictate on a local speech service (see `i18n-he/`).
+pub mod dictate;
 pub mod desktop_theme;
 pub mod dialogs;
 pub mod documents;
@@ -721,6 +723,8 @@ pub struct WordApp {
     /// Focus (#1678): the ribbon is dropped down from the Focus bar, over the page.
     pub(crate) focus_ribbon: bool,
     pub(crate) updates_rt: updates_ui::Runtime,
+    /// i18n-he: dictation — the run, and the sentences it hears.
+    pub(crate) dictation: crate::dictate::Dictation,
     /// The documents (by id) the missing-fonts download box has been considered for
     /// ([`font_download::tick`]), in every window.
     pub(crate) font_notice_seen: Vec<u64>,

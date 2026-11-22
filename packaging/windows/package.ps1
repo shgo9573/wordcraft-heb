@@ -4,20 +4,24 @@
 
 .DESCRIPTION
   Produces, in $env:DIST (default: dist/release):
-    wordcraft-<version>-windows-<arch>.msi            installer (WiX v5), one dual-scope package: for the
-                                                      current user by default, no admin rights (#39);
-                                                      "Everyone on this computer" installs per machine
-    wordcraft-<version>-windows-<arch>-portable.zip   wordcraft.exe + wordcraft-cli.exe
+    wordcraft-<version>-windows-<arch>-Setup.exe    the installer people download: one .exe, no
+                                                   admin rights (it wraps the MSI below)
+    wordcraft-<version>-windows-<arch>.msi          the MSI inside it, also shipped on its own for
+                                                   deployments (per user by default, #39; ALLUSERS=1
+                                                   installs per machine)
+    wordcraft-<version>-windows-<arch>-portable.zip wordcraft.exe + wordcraft-cli.exe
 
-  The binaries link the C runtime statically (+crt-static), so neither the MSI nor the portable
-  zip needs the Visual C++ redistributable. Signing is delegated to sign.ps1 (skipped with a
-  warning when no signing secrets are set).
+  The binaries link the C runtime statically (+crt-static), so neither the installer nor the
+  portable zip needs the Visual C++ redistributable. Signing is delegated to sign.ps1 (skipped with
+  a warning when no signing secrets are set).
 
   Needs: Rust (MSVC toolchain + the target), the Windows SDK (rc.exe, signtool.exe),
-  and WiX v5 with its UI and Util extensions (installer dialogs, "Launch WordCraft" on finish):
+  and WiX v5 with its UI, Util and BootstrapperApplications extensions (installer dialogs, the
+  bundle around the MSI, "Launch WordCraft" on finish):
     dotnet tool install --global wix --version 5.0.2
     wix extension add -g WixToolset.UI.wixext/5.0.2
     wix extension add -g WixToolset.Util.wixext/5.0.2
+    wix extension add -g WixToolset.BootstrapperApplications.wixext/5.0.2
 
 .EXAMPLE
   pwsh packaging/windows/package.ps1 -Arch x64
@@ -164,6 +168,21 @@ if ($LASTEXITCODE -ne 0) { throw "Compiled installer policy failed for $Msi." }
 Remove-Item -Force -ErrorAction SilentlyContinue ([IO.Path]::ChangeExtension($Msi, '.wixpdb'))
 & (Join-Path $PSScriptRoot 'sign.ps1') $Msi
 
+# ---- Setup.exe -----------------------------------------------------------------------------------
+# The one file people double-click (wordcraft-bundle.wxs): a WiX bundle around the MSI built and
+# signed above, carrying it inside so it installs with no download and no second file. It is the
+# installer this fork ships; the MSI stays beside it for deployments that run msiexec themselves.
+$Setup = Join-Path $Dist "wordcraft-$Version-windows-$Arch-Setup.exe"
+Invoke-Native 'wix build (the Setup.exe bundle)' {
+  wix build (Join-Path $PSScriptRoot 'wordcraft-bundle.wxs') -arch $Arch `
+    -ext WixToolset.BootstrapperApplications.wixext `
+    -d "Version=$MsiVersion" -d "MsiPath=$Msi" `
+    -d "LicenseRtf=$LicenseRtf" -d "IconPath=$(Join-Path $Root 'assets\app-icon\wordcraft.ico')" `
+    -o $Setup
+}
+Remove-Item -Force -ErrorAction SilentlyContinue ([IO.Path]::ChangeExtension($Setup, '.wixpdb'))
+& (Join-Path $PSScriptRoot 'sign.ps1') $Setup
+
 # ---- portable zip ------------------------------------------------------------------------------
 $Portable = Join-Path $TargetDir "windows-package\wordcraft-$Version-windows-$Arch-portable"
 Remove-Item -Recurse -Force $Portable -ErrorAction SilentlyContinue
@@ -219,4 +238,4 @@ if ($Arch -ne 'arm64' -or $HostArch -eq 'arm64') {
 } else {
   Write-Output "skipping wordcraft-cli --version: an $Arch build doesn't run on this $HostArch machine"
 }
-Get-Item $Msi, $Zip | Format-Table Name, Length
+Get-Item $Setup, $Msi, $Zip | Format-Table Name, Length

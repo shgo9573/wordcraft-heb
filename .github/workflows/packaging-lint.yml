@@ -1,5 +1,6 @@
-# Quick static checks for the release pipeline (seconds, no Rust build): workflow syntax,
-# packaging shell/PowerShell scripts, and the Linux desktop/AppStream/Flatpak metadata.
+# Quick static checks for the release pipeline: workflow syntax, packaging shell/PowerShell scripts,
+# and the Linux desktop/AppStream/Flatpak metadata. The Windows installer is an .exe (a WiX bundle
+# over the MSI), so `packaging/windows/test-packaging-script.ps1` runs here too.
 name: Packaging lint
 
 on:
@@ -45,3 +46,8 @@ jobs:
       - name: Build and check non-executable installer fixtures
         shell: pwsh
         run: ./packaging/windows/test-install-policy.ps1 -OutputDirectory (Join-Path $env:RUNNER_TEMP 'craft-install-policy-tests')
+      # The packaging script itself, read without compiling: an MSI policy-checked before signing,
+      # the Setup.exe built from that MSI, and a portable zip that carries `portable.txt`.
+      - name: The packaging script packages what the release promises
+        shell: pwsh
+        run: ./packaging/windows/test-packaging-script.ps1

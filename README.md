@@ -271,11 +271,13 @@ closer pagination fidelity, a stability sweep and native printing. Details and e
 
 | Build | Installer | Portable |
 |---|---|---|
-| x64 (64-bit Intel/AMD) | `wordcraft-<ver>-windows-x64.msi` | `wordcraft-<ver>-windows-x64-portable.zip` |
-| arm64 (Snapdragon and other ARM PCs) | `wordcraft-<ver>-windows-arm64.msi` | `wordcraft-<ver>-windows-arm64-portable.zip` |
-| x86 (32-bit) | `wordcraft-<ver>-windows-x86.msi` | `wordcraft-<ver>-windows-x86-portable.zip` |
+| x64 (64-bit Intel/AMD) | `wordcraft-<ver>-windows-x64-Setup.exe` | `wordcraft-<ver>-windows-x64-portable.zip` |
+| arm64 (Snapdragon and other ARM PCs) | `wordcraft-<ver>-windows-arm64-Setup.exe` | `wordcraft-<ver>-windows-arm64-portable.zip` |
+| x86 (32-bit) | `wordcraft-<ver>-windows-x86-Setup.exe` | `wordcraft-<ver>-windows-x86-portable.zip` |
 
-The installer is one dual-scope package. By default it installs for your account only,
+The installer is a single `.exe`: double-click it, no unzipping and no separate download. It wraps
+the `.msi` of the same name, which is shipped beside it for deployments that run `msiexec`
+themselves. The MSI is one dual-scope package. By default it installs for your account only,
 into `%LOCALAPPDATA%\Programs\ArtCraft\WordCraft`, and needs no administrator rights; choosing
 "Everyone on this computer" on the first page installs into `C:\Program Files\ArtCraft\WordCraft` (`Program Files (x86)` for the 32-bit build)
 and asks for an administrator. Install only one copy: a copy for another scope is refused, so

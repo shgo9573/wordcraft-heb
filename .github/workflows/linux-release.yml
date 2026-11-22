@@ -147,6 +147,16 @@ jobs:
           # Upstream's `Cargo.lock` does not know `crates/proof-he`, and `package.sh` builds with
           # `--locked`.
           python3 i18n-he/tools/lock_he.py --check
+      # Voice › Dictate (a patch of its own, `i18n-he/tools/dictate_patch.py`): a release that has
+      # already been decided is not stopped by it — when the patch no longer fits, the build goes
+      # without it and the log says so.
+      - name: Put the dictation patch in place
+        run: |
+          if ! python3 i18n-he/tools/dictate_patch.py --apply; then
+            echo "::warning::the dictation patch no longer applies; building without it"
+            python3 i18n-he/tools/dictate_patch.py --remove || true
+          fi
+          python3 i18n-he/tools/lock_he.py
       - name: Install the Linux build dependencies
         run: |
           sudo apt-get update

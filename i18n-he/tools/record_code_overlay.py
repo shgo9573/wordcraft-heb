@@ -192,6 +192,10 @@ def missing_from_tree(root: Path, table: dict[str, list[dict]]) -> list[str]:
     added = sorted(p for p in code.rglob("*") if p.suffix == ".rs" or p.name == "Cargo.toml")
     for copy in added:
         relative = copy.relative_to(code)
+        # Voice › Dictate's module is `dictate_patch.py`'s to copy, and its own `--check` says
+        # whether it is in place (see `apply_code_overlay.py`'s `voice_patch_file`).
+        if relative == Path("crates/ui-egui/src/dictate.rs"):
+            continue
         target = root / relative
         if not target.exists():
             problems.append(f"{relative}: missing (copy it from {copy.relative_to(root)})")
@@ -208,6 +212,17 @@ def main() -> int:
     args = parser.parse_args()
 
     target = root / "i18n-he/code-overlay.json"
+    # Voice › Dictate is a patch of its own (`i18n-he/tools/dictate_patch.py`), applied after this
+    # table: recording it here would make the overlay add it a second time, and make the daily
+    # sync's removal of it leave half of it behind.
+    marked = [path for path in FILES if "i18n-he: dictation" in (root / path).read_text(encoding="utf-8")]
+    if marked and not args.check:
+        raise SystemExit(
+            "error: the dictation patch is in the tree ("
+            + ", ".join(marked)
+            + "): remove it with `python3 i18n-he/tools/dictate_patch.py --remove` before recording, "
+            "and put it back afterwards"
+        )
     if args.check:
         problems = missing_from_tree(root, json.loads(target.read_text(encoding="utf-8")))
         for line in problems:
