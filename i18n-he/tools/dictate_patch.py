@@ -37,10 +37,12 @@ MODULE = "crates/ui-egui/src/dictate.rs"
 EDITS: list[dict] = [
     {
         "file": "crates/ui-egui/src/lib.rs",
-        "after": "pub mod crop;\n",
+        # One line, between `dialogs` and `documents` where the alphabetised module list keeps it,
+        # and with its comment on the same line: `cargo fmt` re-sorts a module list and would carry
+        # a comment of its own to the old place, leaving the patch half-applied on the next run.
+        "after": "pub mod dialogs;\n",
         "lines": [
-            f"// {MARKER} — Voice › Dictate on a local speech service (see `i18n-he/`).\n",
-            "pub mod dictate;\n",
+            f"pub mod dictate; // {MARKER} — Voice › Dictate on a local speech service (see `i18n-he/`).\n",
         ],
     },
     {
@@ -178,10 +180,17 @@ def applied(source: str, edit: dict) -> bool:
         return any(applied(source, choice) for choice in edit["any_of"])
     if "replace" in edit:
         return all(new in source for _, new in edit["replace"])
+    inserted = "".join(edit["lines"])
+    # `rustfmt` re-sorts the module list and the imports, and it may move a line an edit added to
+    # another `pub mod` (`dictate` sits between `desktop_theme` and `dialogs`, not after `crop`):
+    # the block being there is what matters, not where it sits. An edit that *replaces* text is
+    # checked by its text below.
+    if inserted in source:
+        return True
     if "after" in edit:
         anchor = edit["after"]
         at = source.find(anchor)
-        return at >= 0 and source.startswith("".join(edit["lines"]), at + len(anchor))
+        return at >= 0 and source.startswith(inserted, at + len(anchor))
     if "before" in edit:
         anchor = edit["before"]
         at = source.find(anchor)
@@ -268,6 +277,24 @@ def remove(root: Path) -> int:
             continue
         source = path.read_text(encoding="utf-8")
         before = source
+        for edit in EDITS:
+            if edit["file"] != file:
+                continue
+            # An insertion goes by its exact text, wherever it ended up; `rustfmt` may have carried
+            # the comment that introduced it somewhere else in the file, so the comment goes too.
+            if "replace" not in edit and "any_of" not in edit:
+                block = "".join(edit["lines"])
+                if block in source:
+                    source = source.replace(block, "", 1)
+                    continue
+                # `rustfmt` may have moved a line an insertion added to another place in the file
+                # (the module list is alphabetised, `pub mod dictate` went between `dialogs` and
+                # `documents`). Only lines that are unique in the file go that way: a generic line
+                # of an inserted block (a closing brace) would otherwise take someone else's.
+                for line in edit["lines"]:
+                    if source.count(line) == 1:
+                        source = source.replace(line, "", 1)
+                continue
         source = source.replace(COMMAND_ARM, "").replace(COMMAND_COMMENT, "")
         for edit in EDITS:
             if edit["file"] != file:

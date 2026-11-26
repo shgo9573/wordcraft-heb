@@ -84,7 +84,14 @@ impl Dictation {
 
 /// One HTTP/1.1 request to a loopback service, and the reader over its body. The bodies are
 /// line-delimited JSON, so the reply is not read whole — `Connection: close` ends it.
-fn request(addr: &str, method: &str, path: &str, headers: &[(&str, &str)], body: &str, read_timeout: Duration) -> Result<(u16, BufReader<TcpStream>), String> {
+fn request(
+    addr: &str,
+    method: &str,
+    path: &str,
+    headers: &[(&str, &str)],
+    body: &str,
+    read_timeout: Duration,
+) -> Result<(u16, BufReader<TcpStream>), String> {
     let sock: SocketAddr = addr.parse().map_err(|_| format!("bad address {addr}"))?;
     let stream = TcpStream::connect_timeout(&sock, Duration::from_millis(700)).map_err(|e| e.to_string())?;
     stream.set_read_timeout(Some(read_timeout)).map_err(|e| e.to_string())?;
@@ -131,7 +138,8 @@ fn otzaria_ready() -> bool {
 
 /// Whether KolScribe runs here.
 fn kols_ready() -> bool {
-    request(KOLSCRIBE, "GET", "/api/plugin/hello", &[("X-Hlt-Client", "wordcraft")], "", Duration::from_secs(2)).is_ok_and(|(status, _)| status == 200)
+    request(KOLSCRIBE, "GET", "/api/plugin/hello", &[("X-Hlt-Client", "wordcraft")], "", Duration::from_secs(2))
+        .is_ok_and(|(status, _)| status == 200)
 }
 
 /// Which service a dictation would use, asking each in turn: `None` when neither runs.
@@ -288,7 +296,14 @@ fn run_kols(tx: &std::sync::mpsc::Sender<Event>) -> Option<String> {
 fn stop_service(service: &str) {
     let _ = match service {
         "otzaria" => request(OTZARIA_VOICE, "POST", "/stop", &[("X-Otzaria-Voice", "1")], "", Duration::from_secs(3)),
-        "kols" => request(KOLSCRIBE, "POST", "/api/plugin/command", &[("X-Hlt-Client", "wordcraft")], &json!({ "command": "live-stop" }).to_string(), Duration::from_secs(3)),
+        "kols" => request(
+            KOLSCRIBE,
+            "POST",
+            "/api/plugin/command",
+            &[("X-Hlt-Client", "wordcraft")],
+            &json!({ "command": "live-stop" }).to_string(),
+            Duration::from_secs(3),
+        ),
         _ => return,
     };
 }
