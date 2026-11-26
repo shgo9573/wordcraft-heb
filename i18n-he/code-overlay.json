@@ -1,30 +1,74 @@
 {
- "apps/wordcraft/src/main.rs": [
-  {
-   "after": "        app.apply_prefs(ui);\n    }\n",
-   "insert": "    // This fork's default: Hebrew, for a new profile and for one that never chose a language.\n    // A choice in File ▸ Options ▸ Interface language, `Automatic` included, is kept.\n    app.ui.adopt_default_language();\n"
-  }
- ],
  "crates/control-key/src/lib.rs": [
   {
    "after": "use std::path::{Path, PathBuf};\n\n",
-   "insert": "/// A file next to the executable that makes its folder the profile folder: the portable build\n/// ships one (`packaging/windows/package.ps1`), so a copy of the app carries its settings, user\n/// dictionary, fonts and recovery copies on a stick or in a synced folder.\npub const PORTABLE_MARKER: &str = \"portable.txt\";\n\n/// Where a portable copy keeps its profile: `<exe folder>/WordCraft-data`, beside the app rather\n/// than in `%APPDATA%`. Deleting this folder resets the app without touching the executable.\npub const PORTABLE_DATA: &str = \"WordCraft-data\";\n\n"
+   "insert": "/// A file next to the executable that makes its folder the profile folder: the portable build\n/// ships one (`packaging/windows/package.ps1`), so a copy of the app carries its settings, user\n/// dictionary, fonts and recovery copies on a stick or in a synced folder.\npub const PORTABLE_MARKER: &str = \"portable.txt\";\n\n/// Where a portable copy keeps its profile: `<exe folder>/WordCraft-data`, beside the app rather\n/// than in `%APPDATA%`. Deleting this folder resets the app without touching the executable.\npub const PORTABLE_DATA: &str = \"WordCraft-data\";\n\n",
+   "layouts": [
+    "ui_state"
+   ]
   },
   {
+   "layouts": [
+    "ui_state"
+   ],
    "new": "/// `WORDCRAFT_PROFILE_DIR` overrides the entire folder for isolated runs, and a portable copy\n/// keeps its own beside the executable ([`portable_dir`]).\n",
    "old": "/// `WORDCRAFT_PROFILE_DIR` overrides the entire folder for isolated runs.\n"
   },
   {
    "after": "        return Some(PathBuf::from(path));\n",
-   "insert": "    }\n    if let Some(dir) = std::env::current_exe().ok().as_deref().and_then(portable_dir) {\n        return Some(dir);\n"
+   "insert": "    }\n    if let Some(dir) = std::env::current_exe().ok().as_deref().and_then(portable_dir) {\n        return Some(dir);\n",
+   "layouts": [
+    "ui_state"
+   ]
   },
   {
    "after": "            .map(|c| c.join(\"wordcraft\"))\n    }\n",
-   "insert": "}\n\n/// The profile folder of a portable copy: `<exe folder>/WordCraft-data` when `<exe folder>` holds\n/// [`PORTABLE_MARKER`], `None` otherwise. `exe` is the path of the running executable (a parameter\n/// so the rule is testable).\n///\n/// A folder that cannot be written to — the zip unpacked into `Program Files`, a read-only share,\n/// a CD — gives `None` too: settings that cannot be saved are worse than settings saved in the\n/// usual place.\npub fn portable_dir(exe: &Path) -> Option<PathBuf> {\n    let dir = exe.parent()?;\n    if !dir.join(PORTABLE_MARKER).is_file() {\n        return None;\n    }\n    let data = dir.join(PORTABLE_DATA);\n    std::fs::create_dir_all(&data).ok()?;\n    let probe = data.join(\".write-test\");\n    std::fs::write(&probe, b\"ok\").ok()?;\n    let _ = std::fs::remove_file(&probe);\n    Some(data)\n"
+   "insert": "}\n\n/// The profile folder of a portable copy: `<exe folder>/WordCraft-data` when `<exe folder>` holds\n/// [`PORTABLE_MARKER`], `None` otherwise. `exe` is the path of the running executable (a parameter\n/// so the rule is testable).\n///\n/// A folder that cannot be written to — the zip unpacked into `Program Files`, a read-only share,\n/// a CD — gives `None` too: settings that cannot be saved are worse than settings saved in the\n/// usual place.\npub fn portable_dir(exe: &Path) -> Option<PathBuf> {\n    let dir = exe.parent()?;\n    if !dir.join(PORTABLE_MARKER).is_file() {\n        return None;\n    }\n    let data = dir.join(PORTABLE_DATA);\n    std::fs::create_dir_all(&data).ok()?;\n    let probe = data.join(\".write-test\");\n    std::fs::write(&probe, b\"ok\").ok()?;\n    let _ = std::fs::remove_file(&probe);\n    Some(data)\n",
+   "layouts": [
+    "ui_state"
+   ]
   },
   {
    "after": "            assert!(name == \"wordcraft\" || name == \"WordCraft\", \"{}\", d.display());\n        }\n    }\n",
-   "insert": "\n    /// A temp folder standing in for the folder a portable copy sits in.\n    fn temp_app_folder(tag: &str) -> PathBuf {\n        let dir = std::env::temp_dir().join(format!(\"wordcraft-portable-{tag}-{}\", std::process::id()));\n        let _ = std::fs::remove_dir_all(&dir);\n        std::fs::create_dir_all(&dir).unwrap();\n        dir\n    }\n\n    #[test]\n    fn a_portable_copy_keeps_its_profile_beside_the_exe() {\n        let dir = temp_app_folder(\"marked\");\n        let exe = dir.join(\"wordcraft.exe\");\n        std::fs::write(&exe, b\"\").unwrap();\n        // No marker: the usual profile folder, wherever the app happens to be.\n        assert_eq!(portable_dir(&exe), None);\n        assert!(!dir.join(PORTABLE_DATA).exists(), \"and nothing is created beside it\");\n        std::fs::write(dir.join(PORTABLE_MARKER), b\"portable\").unwrap();\n        let data = portable_dir(&exe).expect(\"the marker makes the folder portable\");\n        assert_eq!(data, dir.join(PORTABLE_DATA));\n        assert!(data.is_dir(), \"and the profile folder exists\");\n        assert!(!data.join(\".write-test\").exists(), \"the write test leaves nothing behind\");\n        let _ = std::fs::remove_dir_all(&dir);\n    }\n"
+   "insert": "\n    /// A temp folder standing in for the folder a portable copy sits in.\n    fn temp_app_folder(tag: &str) -> PathBuf {\n        let dir = std::env::temp_dir().join(format!(\"wordcraft-portable-{tag}-{}\", std::process::id()));\n        let _ = std::fs::remove_dir_all(&dir);\n        std::fs::create_dir_all(&dir).unwrap();\n        dir\n    }\n\n    #[test]\n    fn a_portable_copy_keeps_its_profile_beside_the_exe() {\n        let dir = temp_app_folder(\"marked\");\n        let exe = dir.join(\"wordcraft.exe\");\n        std::fs::write(&exe, b\"\").unwrap();\n        // No marker: the usual profile folder, wherever the app happens to be.\n        assert_eq!(portable_dir(&exe), None);\n        assert!(!dir.join(PORTABLE_DATA).exists(), \"and nothing is created beside it\");\n        std::fs::write(dir.join(PORTABLE_MARKER), b\"portable\").unwrap();\n        let data = portable_dir(&exe).expect(\"the marker makes the folder portable\");\n        assert_eq!(data, dir.join(PORTABLE_DATA));\n        assert!(data.is_dir(), \"and the profile folder exists\");\n        assert!(!data.join(\".write-test\").exists(), \"the write test leaves nothing behind\");\n        let _ = std::fs::remove_dir_all(&dir);\n    }\n",
+   "layouts": [
+    "ui_state"
+   ]
+  },
+  {
+   "after": "use std::path::{Path, PathBuf};\n\n",
+   "insert": "/// A file next to the executable that makes its folder the profile folder: the portable build\n/// ships one (`packaging/windows/package.ps1`), so a copy of the app carries its settings, user\n/// dictionary, fonts and recovery copies on a stick or in a synced folder.\npub const PORTABLE_MARKER: &str = \"portable.txt\";\n\n/// Where a portable copy keeps its profile: `<exe folder>/WordCraft-data`, beside the app rather\n/// than in `%APPDATA%`. Deleting this folder resets the app without touching the executable.\npub const PORTABLE_DATA: &str = \"WordCraft-data\";\n\n",
+   "layouts": [
+    "prefs"
+   ]
+  },
+  {
+   "after": "/// overrides the entire folder for isolated runs otherwise.\n",
+   "insert": "/// `WORDCRAFT_PROFILE_DIR` overrides the entire folder for isolated runs, and a portable copy\n/// keeps its own beside the executable ([`portable_dir`]).\n",
+   "layouts": [
+    "prefs"
+   ]
+  },
+  {
+   "after": "        return Some(PathBuf::from(path));\n",
+   "insert": "    }\n    if let Some(dir) = std::env::current_exe().ok().as_deref().and_then(portable_dir) {\n        return Some(dir);\n",
+   "layouts": [
+    "prefs"
+   ]
+  },
+  {
+   "after": "            .map(|c| c.join(\"wordcraft\"))\n    }\n",
+   "insert": "}\n\n/// The profile folder of a portable copy: `<exe folder>/WordCraft-data` when `<exe folder>` holds\n/// [`PORTABLE_MARKER`], `None` otherwise. `exe` is the path of the running executable (a parameter\n/// so the rule is testable).\n///\n/// A folder that cannot be written to — the zip unpacked into `Program Files`, a read-only share,\n/// a CD — gives `None` too: settings that cannot be saved are worse than settings saved in the\n/// usual place.\npub fn portable_dir(exe: &Path) -> Option<PathBuf> {\n    let dir = exe.parent()?;\n    if !dir.join(PORTABLE_MARKER).is_file() {\n        return None;\n    }\n    let data = dir.join(PORTABLE_DATA);\n    std::fs::create_dir_all(&data).ok()?;\n    let probe = data.join(\".write-test\");\n    std::fs::write(&probe, b\"ok\").ok()?;\n    let _ = std::fs::remove_file(&probe);\n    Some(data)\n",
+   "layouts": [
+    "prefs"
+   ]
+  },
+  {
+   "after": "    #[test]\n    fn key_file_per_instance() {\n",
+   "insert": "\n    /// A temp folder standing in for the folder a portable copy sits in.\n    fn temp_app_folder(tag: &str) -> PathBuf {\n        let dir = std::env::temp_dir().join(format!(\"wordcraft-portable-{tag}-{}\", std::process::id()));\n        let _ = std::fs::remove_dir_all(&dir);\n        std::fs::create_dir_all(&dir).unwrap();\n        dir\n    }\n\n    #[test]\n    fn a_portable_copy_keeps_its_profile_beside_the_exe() {\n        let dir = temp_app_folder(\"marked\");\n        let exe = dir.join(\"wordcraft.exe\");\n        std::fs::write(&exe, b\"\").unwrap();\n        // No marker: the usual profile folder, wherever the app happens to be.\n        assert_eq!(portable_dir(&exe), None);\n        assert!(!dir.join(PORTABLE_DATA).exists(), \"and nothing is created beside it\");\n        std::fs::write(dir.join(PORTABLE_MARKER), b\"portable\").unwrap();\n        let data = portable_dir(&exe).expect(\"the marker makes the folder portable\");\n        assert_eq!(data, dir.join(PORTABLE_DATA));\n        assert!(data.is_dir(), \"and the profile folder exists\");\n        assert!(!data.join(\".write-test\").exists(), \"the write test leaves nothing behind\");\n        let _ = std::fs::remove_dir_all(&dir);\n    }\n",
+   "layouts": [
+    "prefs"
+   ]
   }
  ],
  "crates/engine/Cargo.toml": [
@@ -75,36 +119,18 @@
    "insert": "# This fork's Hebrew proofer (see `crates/proof-he`): the interface reports whether the\n# caret's language is checked, and Hebrew's is.\nwordcraft-proof-he = { workspace = true }\n"
   }
  ],
- "crates/ui-egui/src/app.rs": [
-  {
-   "after": "            fonts_system_arabic: false,\n",
-   "insert": "            fonts_lang: \"\",\n"
-  }
- ],
  "crates/ui-egui/src/app/commands.rs": [
   {
-   "new": "                        Some(code) => {\n                            self.ui.language = code.to_string();\n                            // A choice, `auto` included: kept across launches, where a profile that\n                            // never chose opens in Hebrew ([`UiState::adopt_default_language`]).\n                            self.ui.language_chosen = true;\n                        }\n",
+   "new": "                        Some(code) => {\n                            self.ui.language = code.to_string();\n                            // A choice, `auto` included: kept across launches, where a profile that\n                            // never chose opens in Hebrew (`WordApp::apply_prefs`, `i18n::DEFAULT_LANGUAGE`).\n                            self.ui.language_chosen = true;\n                        }\n",
+   "new_legacy": "                        Some(code) => {\n                            self.ui.language = code.to_string();\n                            // A choice, `auto` included: kept across launches, where a profile that\n                            // never chose opens in Hebrew ([`UiState::adopt_default_language`]).\n                            self.ui.language_chosen = true;\n                        }\n",
    "old": "                        Some(code) => self.ui.language = code.to_string(),\n"
-  }
- ],
- "crates/ui-egui/src/app/fonts.rs": [
-  {
-   "after": "        if !self.styled\n",
-   "insert": "            || lang.code() != self.fonts_lang\n"
-  },
-  {
-   "after": "            self.fonts_system_arabic = system_arabic;\n",
-   "insert": "            self.fonts_lang = lang.code();\n"
-  },
-  {
-   "after": "        let mut faces = self.canvas.ime_faces.clone();\n",
-   "insert": "        // Interface text in a script the interface faces leave out (Hebrew, Arabic, Thai …)\n        // borrows a document face, as the caption does: the Hebrew menus, dialogs and the\n        // language picker would otherwise draw as boxes. Looked at again only when the fonts\n        // are installed, that is when the language changes.\n        //\n        // Every language's own name, not just this one's: File ▸ Options lists them all, so a\n        // Hebrew interface (the default) shows „עברית” in that list before Hebrew is the\n        // current language — and after switching away from it.\n        let names = i18n::Lang::all().map(i18n::Lang::name);\n        faces.extend(theme::faces_for_interface_text(crate::i18n::current().catalog_texts().chain(names)));\n"
   }
  ],
  "crates/ui-egui/src/i18n.rs": [
   {
    "after": "//! catalog for it, and English otherwise. File ▸ Options ▸ Interface language picks one by hand.\n//!\n",
-   "insert": "//! This fork opens in Hebrew instead ([`DEFAULT_LANGUAGE`]): a profile that never chose an\n//! interface language — every profile saved by a version before this one, which wrote `auto` and\n//! nothing else — shows Hebrew, and Hebrew is one row of the Options language list like any other.\n//! Choosing a language there, `Automatic` included, is kept. The app asks for it at startup\n//! (`UiState::adopt_default_language`), so tests and the shared state keep their English labels.\n//!\n"
+   "insert": "//! This fork opens in Hebrew instead ([`DEFAULT_LANGUAGE`]): a profile that never chose an\n//! interface language — every profile saved by a version before this one, which wrote `auto` and\n//! nothing else — shows Hebrew, and Hebrew is one row of the Options language list like any other.\n//! Choosing a language there, `Automatic` included, is kept. The app applies it to a settings\n//! file that never chose one as it loads it (`WordApp::apply_prefs`), so the shared state keeps\n//! the English labels the tests read.\n//!\n",
+   "insert_legacy": "//! This fork opens in Hebrew instead ([`DEFAULT_LANGUAGE`]): a profile that never chose an\n//! interface language — every profile saved by a version before this one, which wrote `auto` and\n//! nothing else — shows Hebrew, and Hebrew is one row of the Options language list like any other.\n//! Choosing a language there, `Automatic` included, is kept. The app asks for it at startup\n//! (`UiState::adopt_default_language`), so tests and the shared state keep their English labels.\n//!\n"
   },
   {
    "after": "//! English only.\n",
@@ -112,7 +138,8 @@
   },
   {
    "after": "pub const AUTO: &str = \"auto\";\n\n",
-   "insert": "/// The interface language this fork opens in: Hebrew. A new profile, and every profile that never\n/// chose a language, shows Hebrew — which is what this fork exists for. File ▸ Options ▸ Interface\n/// language lists every other language beside it, `Automatic` (the system's language) among them,\n/// and a choice there is what the app keeps from then on\n/// ([`UiState::adopt_default_language`](crate::UiState)).\npub const DEFAULT_LANGUAGE: &str = \"he\";\n\n"
+   "insert": "//! This fork opens in Hebrew instead ([`DEFAULT_LANGUAGE`]): a profile that never chose an\n//! interface language — every profile saved by a version before this one, which wrote `auto` and\n//! nothing else — shows Hebrew, and Hebrew is one row of the Options language list like any other.\n//! Choosing a language there, `Automatic` included, is kept. The app applies it to a settings\n//! file that never chose one as it loads it (`WordApp::apply_prefs`), so the shared state keeps\n//! the English labels the tests read.\n//!\n",
+   "insert_legacy": "/// The interface language this fork opens in: Hebrew. A new profile, and every profile that never\n/// chose a language, shows Hebrew — which is what this fork exists for. File ▸ Options ▸ Interface\n/// language lists every other language beside it, `Automatic` (the system's language) among them,\n/// and a choice there is what the app keeps from then on\n/// ([`UiState::adopt_default_language`](crate::UiState)).\npub const DEFAULT_LANGUAGE: &str = \"he\";\n\n"
   },
   {
    "new": "const RTL_LANGUAGES: [&str; 2] = [\"ar\", \"he\"];\n",
@@ -130,7 +157,8 @@
   },
   {
    "after": "    assert_eq!(app.run(\"ui.language\", serde_json::json!({})).unwrap()[\"language\"], AUTO);\n",
-   "insert": "}\n\n/// This fork opens in Hebrew, and Hebrew is one row of File ▸ Options ▸ Interface language like\n/// every other language. A profile that never chose a language moves to it; a choice (`Automatic`\n/// included) is kept.\n#[test]\nfn this_fork_opens_in_hebrew_and_offers_hebrew_in_the_language_list() {\n    needs_catalogs!();\n    if !offers_hebrew() {\n        return;\n    }\n    assert_eq!(DEFAULT_LANGUAGE, \"he\");\n    let he = lang(DEFAULT_LANGUAGE);\n    assert!(he.rtl(), \"Hebrew mirrors the interface\");\n    assert_eq!(he.name(), \"עברית\", \"the picker shows it under its own name\");\n    assert!(Lang::for_picker().iter().any(|l| l.code() == DEFAULT_LANGUAGE), \"Hebrew is in the picker\");\n\n    // `ui.json` from a version before `languageChosen`: `auto` was written on the first run\n    // whether or not anyone had chosen, so such a profile opens in Hebrew.\n    let mut old: crate::UiState = crate::UiState::from_json(br#\"{\"tab\":\"Home\",\"language\":\"auto\"}\"#).unwrap();\n    assert!(!old.language_chosen);\n    old.adopt_default_language();\n    assert_eq!(old.language, DEFAULT_LANGUAGE);\n    assert_eq!(Lang::from_pref(&old.language), he);\n\n    // A choice is kept, and choosing `Automatic` records one, so `auto` survives a restart.\n    let mut chosen: crate::UiState = crate::UiState::from_json(br#\"{\"language\":\"auto\",\"languageChosen\":true}\"#).unwrap();\n    chosen.adopt_default_language();\n    assert_eq!(chosen.language, AUTO, \"the user's Automatic stays automatic\");\n    let mut app = crate::WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::new()), Default::default());\n    assert!(!app.ui.language_chosen, \"a new window has not chosen a language\");\n    app.run(\"ui.language\", serde_json::json!({\"value\": \"auto\"})).unwrap();\n    assert!(app.ui.language_chosen, \"picking Automatic is a choice\");\n    let restored: crate::UiState = serde_json::from_str(&serde_json::to_string(&app.ui).unwrap()).unwrap();\n    assert_eq!(restored.language, AUTO);\n"
+   "insert": "/// This fork opens in Hebrew, and Hebrew is one row of File ▸ Options ▸ Interface language like\n/// every other language. A settings file that never chose a language moves to it; a choice\n/// (`Automatic` included) is kept.\n#[test]\nfn this_fork_opens_in_hebrew_and_offers_hebrew_in_the_language_list() {\n    needs_catalogs!();\n    if !offers_hebrew() {\n        return;\n    }\n    assert_eq!(DEFAULT_LANGUAGE, \"he\");\n    let he = lang(DEFAULT_LANGUAGE);\n    assert!(he.rtl(), \"Hebrew mirrors the interface\");\n    assert_eq!(he.name(), \"עברית\", \"the picker shows it under its own name\");\n    assert!(Lang::for_picker().iter().any(|l| l.code() == DEFAULT_LANGUAGE), \"Hebrew is in the picker\");\n\n    // A settings file from a version before `languageChosen`: `auto` was written on the first run\n    // whether or not anyone had chosen, so such a profile opens in Hebrew.\n    let old = \"{\\\"tab\\\":\\\"Home\\\",\\\"language\\\":\\\"auto\\\"}\";\n    let mut app = crate::WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::new()), Default::default());\n    app.apply_prefs(serde_json::from_str(old).unwrap());\n    assert_eq!(app.ui.language, DEFAULT_LANGUAGE);\n    assert_eq!(Lang::from_pref(&app.ui.language), he);\n\n    // A choice is kept, and choosing `Automatic` records one, so `auto` survives a restart.\n    let chosen = \"{\\\"language\\\":\\\"auto\\\",\\\"languageChosen\\\":true}\";\n    let mut fresh = crate::WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::new()), Default::default());\n    fresh.apply_prefs(serde_json::from_str(chosen).unwrap());\n    assert_eq!(fresh.ui.language, AUTO, \"the user's Automatic stays automatic\");\n    assert!(!app.ui.language_chosen, \"a new window has not chosen a language\");\n    app.run(\"ui.language\", serde_json::json!({\"value\": \"auto\"})).unwrap();\n    assert!(app.ui.language_chosen, \"picking Automatic is a choice\");\n    let restored: crate::prefs::Prefs = serde_json::from_str(&serde_json::to_string(&app.ui).unwrap()).unwrap();\n    assert_eq!(restored.language, AUTO);\n    apply_language(Lang::EN);\n}\n",
+   "insert_legacy": "}\n\n/// This fork opens in Hebrew, and Hebrew is one row of File ▸ Options ▸ Interface language like\n/// every other language. A profile that never chose a language moves to it; a choice (`Automatic`\n/// included) is kept.\n#[test]\nfn this_fork_opens_in_hebrew_and_offers_hebrew_in_the_language_list() {\n    needs_catalogs!();\n    if !offers_hebrew() {\n        return;\n    }\n    assert_eq!(DEFAULT_LANGUAGE, \"he\");\n    let he = lang(DEFAULT_LANGUAGE);\n    assert!(he.rtl(), \"Hebrew mirrors the interface\");\n    assert_eq!(he.name(), \"עברית\", \"the picker shows it under its own name\");\n    assert!(Lang::for_picker().iter().any(|l| l.code() == DEFAULT_LANGUAGE), \"Hebrew is in the picker\");\n\n    // `ui.json` from a version before `languageChosen`: `auto` was written on the first run\n    // whether or not anyone had chosen, so such a profile opens in Hebrew.\n    let mut old: crate::UiState = crate::UiState::from_json(br#\"{\"tab\":\"Home\",\"language\":\"auto\"}\"#).unwrap();\n    assert!(!old.language_chosen);\n    old.adopt_default_language();\n    assert_eq!(old.language, DEFAULT_LANGUAGE);\n    assert_eq!(Lang::from_pref(&old.language), he);\n\n    // A choice is kept, and choosing `Automatic` records one, so `auto` survives a restart.\n    let mut chosen: crate::UiState = crate::UiState::from_json(br#\"{\"language\":\"auto\",\"languageChosen\":true}\"#).unwrap();\n    chosen.adopt_default_language();\n    assert_eq!(chosen.language, AUTO, \"the user's Automatic stays automatic\");\n    let mut app = crate::WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::new()), Default::default());\n    assert!(!app.ui.language_chosen, \"a new window has not chosen a language\");\n    app.run(\"ui.language\", serde_json::json!({\"value\": \"auto\"})).unwrap();\n    assert!(app.ui.language_chosen, \"picking Automatic is a choice\");\n    let restored: crate::UiState = serde_json::from_str(&serde_json::to_string(&app.ui).unwrap()).unwrap();\n    assert_eq!(restored.language, AUTO);\n"
   },
   {
    "new": "    assert_eq!(with, [(\"pt-br\", \"pt-BR\"), (\"pl\", \"pl-PL\"), (\"cs\", \"cs-CZ\"), (\"tr\", \"tr-TR\"), (\"it\", \"it-IT\"), (\"he\", \"he-IL\")]);\n",
@@ -145,68 +173,43 @@
    "old": "    assert!(Lang::all().filter(|l| l.rtl()).eq([ar]), \"Arabic is the only right-to-left language\");\n"
   }
  ],
- "crates/ui-egui/src/lib.rs": [
-  {
-   "after": "    /// Interface language: `auto` (follow the system) or a code from [`i18n::LANGUAGES`].\n",
-   "insert": "    /// A profile that never chose one opens in [`i18n::DEFAULT_LANGUAGE`]\n    /// ([`UiState::adopt_default_language`]).\n"
-  },
-  {
-   "after": "    pub language: String,\n",
-   "insert": "    /// Has an interface language been chosen (File ▸ Options ▸ Interface language, or the\n    /// `ui.language` command)? `false` in a `ui.json` written before this setting, whose\n    /// `language` is `auto` whether or not anyone wanted the system's language — so that file\n    /// opens in Hebrew instead ([`UiState::adopt_default_language`]).\n    pub language_chosen: bool,\n"
-  },
-  {
-   "after": "            language: i18n::AUTO.into(),\n",
-   "insert": "            language_chosen: false,\n"
-  },
-  {
-   "after": "        Some(options::lenient(&v))\n",
-   "insert": "    }\n\n    /// This fork opens in Hebrew: a profile that has never chosen an interface language gets\n    /// [`i18n::DEFAULT_LANGUAGE`] here, when the app loads its preferences.\n    ///\n    /// Versions before [`UiState::language_chosen`] wrote `auto` on the first run whether or not\n    /// anyone had chosen anything, so `auto` on its own cannot mean \"the system's language\": a\n    /// profile without the flag is one that never chose, and it moves to Hebrew. A choice made in\n    /// File ▸ Options ▸ Interface language, `Automatic` included, sets the flag (the `ui.language`\n    /// command), and is kept.\n    ///\n    /// Not part of [`UiState::default`] or [`UiState::from_json`]: the interface is one thing for\n    /// this fork's app and another for its tests (which read the English labels) and for the other\n    /// front ends that share this state, so the app asks for it, in `load_prefs`.\n    pub fn adopt_default_language(&mut self) {\n        if !self.language_chosen && self.language.eq_ignore_ascii_case(i18n::AUTO) {\n            self.language = i18n::DEFAULT_LANGUAGE.to_string();\n        }\n"
-  },
-  {
-   "after": "    fonts_system_arabic: bool,\n",
-   "insert": "    /// The interface language whose script the installed UI fonts' borrowed faces cover (`\"\"`\n    /// before the first install): switching to Hebrew installs a Hebrew face even though the CJK\n    /// settings do not change.\n    fonts_lang: &'static str,\n"
-  }
- ],
- "crates/ui-egui/src/mini_toolbar.rs": [
-  {
-   "new": "        // A Hebrew interface turns each row around, the way the ribbon's rows are.\n        let layout = crate::rtl::row_layout(ui, Align::Center);\n        ui.allocate_ui_with_layout(Vec2::new(ui.available_width(), ROW_H), layout, |ui| {\n",
-   "old": "        ui.allocate_ui_with_layout(Vec2::new(ui.available_width(), ROW_H), Layout::left_to_right(Align::Center), |ui| {\n"
-  }
- ],
- "crates/ui-egui/src/panes/tests.rs": [
-  {
-   "new": "                    // This fork's Hebrew has no embedded interface face (`ui_arabic_fonts` has no\n                    // Hebrew sibling), so the harness takes the document faces the interface text\n                    // needs, exactly as `WordApp::install_ui_fonts` does: without them the first\n                    // Hebrew label is a missing glyph, which kittest turns into a panic.\n                    let names = crate::i18n::Lang::all().map(crate::i18n::Lang::name);\n                    let faces = crate::theme::faces_for_interface_text(lang.catalog_texts().chain(names));\n                    crate::theme::install_fonts_language_extra(ui.ctx(), lang.prefers_hans(), lang.prefers_korean(), false, false, &faces);\n",
-   "old": "                    crate::theme::install_fonts_language(ui.ctx(), lang.prefers_hans(), lang.prefers_korean());\n"
-  }
- ],
  "crates/ui-egui/src/previews.rs": [
   {
+   "layouts": [
+    "ui_state"
+   ],
    "new": "        let mut f: Vec<String> = self.families.as_ref().map(|(_, f)| f.clone()).unwrap_or_default();\n        // A Hebrew interface puts the fonts that draw Hebrew first, so the list opens on fonts that\n        // can show the document. Only Hebrew: the interface mirrors for Arabic too, but that is a\n        // different script, and reordering a list the reader did not ask for in an Arabic interface\n        // would put Arabic-capable fonts last. Which families draw Hebrew is a scan of every\n        // installed font's character map: it runs once, in the background, and this asks for its\n        // answer every frame until the answer is there — the list is alphabetical until then, and\n        // reorders itself after.\n        if crate::i18n::current().code() == \"he\"\n            && let Some(hebrew) = hebrew_families()\n        {\n            hebrew_first(&mut f, &hebrew);\n        }\n        f\n",
    "old": "        self.families.as_ref().map(|(_, f)| f.clone()).unwrap_or_default()\n"
   },
   {
-   "after": "        *p = egui::Color32::from_white_alpha(u8::try_from(ink).unwrap_or(u8::MAX));\n    }\n}\n\n",
-   "insert": "/// A Hebrew word a font-list entry shows after the family's name, drawn in that face (see\n/// [`entry_text`]): the list is then a row of Hebrew letterforms, not just names.\nconst HEBREW_SAMPLE: &str = \"שלום\";\n\n/// [`Previews::families`]' order in a Hebrew interface: the families that draw [`HEBREW_SAMPLE`]\n/// first, then the others, each group in the alphabetical order the list already has.\nfn hebrew_first(families: &mut [String], hebrew: &std::collections::HashSet<String>) {\n    families.sort_by_key(|name| !hebrew.contains(&name.to_lowercase()));\n}\n\n/// The families whose faces draw Hebrew — the first ones in a Hebrew interface's font list.\n///\n/// The answer is a scan over every installed family (each one's character map, read from its file),\n/// so it is made once, on a background thread the first call starts: `None` while the scan runs,\n/// and `None` for good on wasm, which has neither the thread nor an installed list. Nothing waits\n/// for it; the list keeps its alphabetical order until the scan is done.\nfn hebrew_families() -> Option<std::sync::Arc<std::collections::HashSet<String>>> {\n    #[cfg(target_arch = \"wasm32\")]\n    {\n        None\n    }\n    #[cfg(not(target_arch = \"wasm32\"))]\n    {\n        use std::collections::HashSet;\n        use std::sync::{Arc, Mutex, Once, OnceLock};\n\n        static SCAN: OnceLock<Mutex<Option<Arc<HashSet<String>>>>> = OnceLock::new();\n        static START: Once = Once::new();\n        let answer = SCAN.get_or_init(|| Mutex::new(None));\n        START.call_once(|| {\n            // A failed spawn leaves the list alphabetical.\n            let _ = std::thread::Builder::new().name(\"hebrew-fonts\".into()).spawn(move || {\n                let db = wordcraft_fonts::FontDb::global();\n                let draws_hebrew = |family: &str| db.preview_face(family).is_some_and(|face| HEBREW_SAMPLE.chars().all(|c| face.covers(c)));\n                let hebrew: HashSet<String> = db.families().into_iter().filter(|f| draws_hebrew(f)).map(|f| f.to_lowercase()).collect();\n                *answer.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Arc::new(hebrew));\n            });\n        });\n        answer.lock().unwrap_or_else(std::sync::PoisonError::into_inner).clone()\n    }\n}\n\n/// The text one font-list entry is drawn with: the family's name, and after it — in a Hebrew\n/// interface, in a face that draws it — the Hebrew word, so the entry shows the letterforms the\n/// font gives Hebrew and not just its Latin name.\n///\n/// Only a Hebrew interface: an Arabic one mirrors as well, and a Hebrew word in a face picked for\n/// Arabic says nothing about the text the reader is writing.\n///\n/// The word is spelled backwards here: [`wordcraft_render::render_text_line`] draws the glyphs in\n/// the order it is handed them, right-to-left runs included, so read from the right it says\n/// „שלום”. (A face without the letters gets the name alone, in the fallback face.)\nfn entry_text(face: &wordcraft_fonts::FontFace, name: &str, hebrew: bool) -> String {\n    if !hebrew || !HEBREW_SAMPLE.chars().all(|c| face.covers(c)) {\n        return name.to_string();\n    }\n    format!(\"{name}  {}\", HEBREW_SAMPLE.chars().rev().collect::<String>())\n}\n\n"
-  },
-  {
-   "new": "    let text = entry_text(&face, name, crate::i18n::current().code() == \"he\");\n    let img = wordcraft_render::render_text_line(&face, &text, 13.0, 244.0, FONT_PREVIEW_RENDER_H, 2.0, ppp);\n",
-   "old": "    let img = wordcraft_render::render_text_line(&face, name, 13.0, 244.0, FONT_PREVIEW_RENDER_H, 2.0, ppp);\n"
-  }
- ],
- "crates/ui-egui/src/previews/tests.rs": [
-  {
-   "after": "        assert_eq!(images, 1, \"{theme:?}: the entry draws its rendered name\");\n    }\n}\n\n",
-   "insert": "/// A Hebrew interface's font list opens on the fonts that draw Hebrew: the two groups keep the\n/// alphabetical order the list has.\n#[test]\nfn a_hebrew_interface_lists_the_fonts_that_draw_hebrew_first() {\n    let mut families: Vec<String> = [\"Arial\", \"David\", \"FrankRuehl\", \"Narkisim\"].iter().map(|f| f.to_string()).collect();\n    let hebrew: std::collections::HashSet<String> = [\"david\", \"narkisim\"].iter().map(|f| f.to_string()).collect();\n    hebrew_first(&mut families, &hebrew);\n    assert_eq!(families, [\"David\", \"Narkisim\", \"Arial\", \"FrankRuehl\"], \"the Hebrew fonts first, each group as the list had it\");\n}\n\n/// The reordering is Hebrew's alone: an interface that mirrors but is not Hebrew — Arabic — and\n/// every other language get the plain alphabetical list, and only a Hebrew interface opens on the\n/// fonts that draw Hebrew.\n#[test]\nfn only_a_hebrew_interface_reorders_the_font_list() {\n    use crate::i18n::{Lang, fixture_lang, set_current};\n    let listed = |lang| {\n        set_current(lang);\n        Previews::default().families()\n    };\n    let alphabetical = |families: &[String]| families.windows(2).all(|w| w[0].to_lowercase() <= w[1].to_lowercase());\n    let english = listed(Lang::EN);\n    assert!(alphabetical(&english), \"English: the list is alphabetical: {english:?}\");\n    assert!(english.len() > 1, \"the list has something to order: {english:?}\");\n    // Arabic mirrors the interface exactly as Hebrew does, and must still not move a family.\n    let arabic = listed(fixture_lang(\"ar\", \"مرحبا\"));\n    assert!(alphabetical(&arabic), \"Arabic: the list is alphabetical: {arabic:?}\");\n    // Whatever this machine has installed, no language but Hebrew may move a family.\n    for lang in Lang::all().filter(|l| l.code() != \"he\") {\n        let families = listed(lang);\n        assert!(alphabetical(&families), \"{}: the list is alphabetical: {families:?}\", lang.code());\n    }\n    // A Hebrew interface moves the families that draw Hebrew to the front — once the background\n    // scan of the installed fonts' character maps has answered, which it may not have yet.\n    if let Some(hebrew) = hebrew_families()\n        && let Some(first) = english.iter().find(|f| hebrew.contains(&f.to_lowercase()))\n    {\n        let hebrew_list = listed(fixture_lang(\"he\", \"שלום\"));\n        assert_eq!(hebrew_list.first(), Some(first), \"Hebrew: the list opens on a font that draws Hebrew: {hebrew_list:?}\");\n    }\n    set_current(Lang::EN);\n}\n\n/// The Hebrew word after a name comes from the face itself, so the list shows its Hebrew letters,\n/// and only a Hebrew interface adds it. `render_text_line` draws the glyphs in the order it is\n/// given, so the entry spells the word backwards.\n#[test]\nfn a_font_entry_shows_a_hebrew_word_only_in_hebrew() {\n    let db = wordcraft_fonts::FontDb::global();\n    let latin = db.face(\"Source Sans 3\", \"Regular\");\n    assert_eq!(entry_text(&latin, \"Source Sans 3\", true), \"Source Sans 3\", \"a face without Hebrew keeps its name alone\");\n    assert_eq!(entry_text(&latin, \"Source Sans 3\", false), \"Source Sans 3\");\n    // A face that does draw Hebrew; a machine with no such font installed skips this half.\n    if let Some(face) = db.fallback_for('ש', u32::MAX) {\n        assert_eq!(entry_text(&face, \"David\", true), format!(\"David  {}\", HEBREW_SAMPLE.chars().rev().collect::<String>()));\n        assert_eq!(entry_text(&face, \"David\", false), \"David\", \"an English interface shows the name alone\");\n    }\n}\n\n"
+   "after": "        *p = Color32::from_white_alpha(u8::try_from(ink).unwrap_or(u8::MAX));\n    }\n}\n\n",
+   "insert": "/// The word that says whether a family draws Hebrew (`שלום`): read from every installed family's\n/// character map, once, to put the fonts that can show it first in a Hebrew interface's list.\nconst HEBREW_SAMPLE: &str = \"שלום\";\n\n/// [`Previews::families`]' order in a Hebrew interface: the families that draw [`HEBREW_SAMPLE`]\n/// first, then the others, each group in the alphabetical order the list already has.\nfn hebrew_first(families: &mut [String], hebrew: &std::collections::HashSet<String>) {\n    families.sort_by_key(|name| !hebrew.contains(&name.to_lowercase()));\n}\n\n/// The families whose faces draw Hebrew — the first ones in a Hebrew interface's font list.\n///\n/// The answer is a scan over every installed family (each one's character map, read from its file),\n/// so it is made once, on a background thread the first call starts: `None` while the scan runs,\n/// and `None` for good on wasm, which has neither the thread nor an installed list. Nothing waits\n/// for it; the list keeps its alphabetical order until the scan is done.\nfn hebrew_families() -> Option<std::sync::Arc<std::collections::HashSet<String>>> {\n    #[cfg(target_arch = \"wasm32\")]\n    {\n        None\n    }\n    #[cfg(not(target_arch = \"wasm32\"))]\n    {\n        use std::collections::HashSet;\n        use std::sync::{Arc, Mutex, Once, OnceLock};\n\n        static SCAN: OnceLock<Mutex<Option<Arc<HashSet<String>>>>> = OnceLock::new();\n        static START: Once = Once::new();\n        let answer = SCAN.get_or_init(|| Mutex::new(None));\n        START.call_once(|| {\n            // A failed spawn leaves the list alphabetical.\n            let _ = std::thread::Builder::new().name(\"hebrew-fonts\".into()).spawn(move || {\n                let db = wordcraft_fonts::FontDb::global();\n                let draws_hebrew = |family: &str| db.preview_face(family).is_some_and(|face| HEBREW_SAMPLE.chars().all(|c| face.covers(c)));\n                let hebrew: HashSet<String> = db.families().into_iter().filter(|f| draws_hebrew(f)).map(|f| f.to_lowercase()).collect();\n                *answer.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Arc::new(hebrew));\n            });\n        });\n        answer.lock().unwrap_or_else(std::sync::PoisonError::into_inner).clone()\n    }\n}\n\n",
+   "layouts": [
+    "prefs"
+   ]
   }
  ],
  "crates/ui-egui/src/ribbon/home.rs": [
   {
+   "layouts": [
+    "ui_state"
+   ],
    "new": "                // These buttons, and the pair of text directions after them, are where mirrored\n                // order alone reads wrong: a Hebrew row would start (at the right) with the\n                // flush-left icon and end with the flush-right one. The icons face the way the text\n                // does, so the row keeps the paragraph's reading order — in a Hebrew one it starts\n                // with Align Right, and the directions start with right-to-left.\n                let mut aligns = [\n                    (\"alignLeft\", \"Align Left\", \"para.alignLeft\", align == A::Left),\n                    (\"alignCenter\", \"Center\", \"para.alignCenter\", align == A::Center),\n                    (\"alignRight\", \"Align Right\", \"para.alignRight\", align == A::Right),\n                    (\"justify\", \"Justify\", \"para.justify\", align == A::Justify),\n                ];\n                let mut directions =\n                    [(\"textLtr\", \"Left-to-Right Text Direction\", \"para.ltr\", !rtl), (\"textRtl\", \"Right-to-Left Text Direction\", \"para.rtl\", rtl)];\n                if crate::rtl::on() {\n                    // The row is drawn from its right edge in a Hebrew interface, so the first\n                    // button here is the rightmost one: the flush-right icon must come first and the\n                    // flush-left one after Center, and Justify — which faces nowhere — stays last.\n                    aligns.swap(0, 2);\n                    directions.reverse();\n                }\n                for (icon, tip, cmd, on) in aligns {\n                    small(ui, app, icon, None, tip, crate::widgets::ButtonAction::new(cmd, json!({}), on));\n                }\n",
    "old": "                small(ui, app, \"alignLeft\", None, \"Align Left\", crate::widgets::ButtonAction::new(\"para.alignLeft\", json!({}), align == A::Left));\n                small(ui, app, \"alignCenter\", None, \"Center\", crate::widgets::ButtonAction::new(\"para.alignCenter\", json!({}), align == A::Center));\n                small(ui, app, \"alignRight\", None, \"Align Right\", crate::widgets::ButtonAction::new(\"para.alignRight\", json!({}), align == A::Right));\n                small(ui, app, \"justify\", None, \"Justify\", crate::widgets::ButtonAction::new(\"para.justify\", json!({}), align == A::Justify));\n"
   },
   {
+   "layouts": [
+    "ui_state"
+   ],
    "new": "                for (icon, tip, cmd, on) in directions {\n                    small(ui, app, icon, None, tip, crate::widgets::ButtonAction::new(cmd, json!({}), on));\n                }\n",
    "old": "                small(ui, app, \"textLtr\", None, \"Left-to-Right Text Direction\", crate::widgets::ButtonAction::new(\"para.ltr\", json!({}), !rtl));\n                small(ui, app, \"textRtl\", None, \"Right-to-Left Text Direction\", crate::widgets::ButtonAction::new(\"para.rtl\", json!({}), rtl));\n"
+  },
+  {
+   "layouts": [
+    "prefs"
+   ],
+   "new": "                    // The interface's direction mirrors every row (`RootEnv::direction`), so this one is\n                    // drawn from its right edge in Hebrew: the first button here is the rightmost,\n                    // and the icons must face the way the text does. Align Right comes first (Align\n                    // Left third, after Center), Justify — which faces nowhere — stays last, and the\n                    // pair of directions follows the same rule.\n                    let mut aligns = [\n                        (\"alignLeft\", \"Align Left\", \"para.alignLeft\", align == Align::Left),\n                        (\"alignCenter\", \"Center\", \"para.alignCenter\", align == Align::Center),\n                        (\"alignRight\", \"Align Right\", \"para.alignRight\", align == Align::Right),\n                        (\"justify\", \"Justify\", \"para.justify\", align == Align::Justify),\n                    ];\n                    let mut directions =\n                        [(\"textLtr\", \"Left-to-Right Text Direction\", \"para.ltr\", !rtl), (\"textRtl\", \"Right-to-Left Text Direction\", \"para.rtl\", rtl)];\n                    if crate::i18n::current().rtl() {\n                        aligns.swap(0, 2);\n                        directions.reverse();\n                    }\n                    for (icon, tip, id, on) in aligns.into_iter().chain(directions) {\n                        ToggleButton::command(CommandRef::new(id))\n                            .icon(crate::icons::id(icon))\n                            .icon_only()\n                            .selected(on)\n                            .tooltip(tl!(tip).to_string())\n                            .show(ui);\n                    }\n",
+   "old": "                    for (icon, tip, id, on) in [\n                        (\"alignLeft\", \"Align Left\", \"para.alignLeft\", align == Align::Left),\n                        (\"alignCenter\", \"Center\", \"para.alignCenter\", align == Align::Center),\n                        (\"alignRight\", \"Align Right\", \"para.alignRight\", align == Align::Right),\n                        (\"justify\", \"Justify\", \"para.justify\", align == Align::Justify),\n                        (\"textLtr\", \"Left-to-Right Text Direction\", \"para.ltr\", !rtl),\n                        (\"textRtl\", \"Right-to-Left Text Direction\", \"para.rtl\", rtl),\n                    ] {\n                        ToggleButton::command(CommandRef::new(id))\n                            .icon(crate::icons::id(icon))\n                            .icon_only()\n                            .selected(on)\n                            .tooltip(tl!(tip).to_string())\n                            .show(ui);\n                    }\n"
   }
  ],
  "crates/ui-egui/src/ribbon/language.rs": [
@@ -227,62 +230,27 @@
    "old": "    wordcraft_engine::proof::has_dictionary(caret_lang_tag(app).as_deref())\n"
   }
  ],
- "crates/ui-egui/src/ribbon/tests.rs": [
-  {
-   "after": "    assert!(!contextual_tabs(&app.session).contains(&\"Chart Design\"));\n}\n\n",
-   "insert": "/// A Hebrew ribbon starts its row at the window's right edge and runs left, the mirror of the\n/// English one: Home › Clipboard is the rightmost group, and Font is drawn to its left.\n#[test]\nfn a_hebrew_ribbon_starts_at_the_right() {\n    let mut app = WordApp::new(Session::new(wordcraft_engine::sample::sample_document()), crate::Services::default());\n    app.run(\"ui.tab\", json!({\"tab\": \"Home\"})).unwrap();\n    let width = 2560.0;\n    let mut h = egui_kittest::Harness::builder().with_size(vec2(width, 900.0)).build_ui_state(\n        |ui, app: &mut WordApp| {\n            let ctx = ui.ctx().clone();\n            app.logic(&ctx);\n            app.ui(ui);\n        },\n        app,\n    );\n    let mut boxes = std::collections::HashMap::new();\n    for lang in [\"en\", \"he\"] {\n        h.state_mut().run(\"ui.language\", json!({\"value\": lang})).unwrap();\n        h.run_steps(4);\n        crate::widgets::GROUP_RECTS.with(|g| g.borrow_mut().clear());\n        h.run_steps(1);\n        // The last frame's boxes: a step may draw more than one.\n        let found: std::collections::HashMap<String, egui::Rect> = crate::widgets::GROUP_RECTS.with(|g| g.borrow().iter().cloned().collect());\n        boxes.insert(lang, found);\n    }\n    let (Some(en), Some(he)) = (boxes.get(\"en\"), boxes.get(\"he\")) else { panic!(\"both ribbons drew groups: {boxes:?}\") };\n    let (Some(en_clipboard), Some(en_font)) = (en.get(\"Clipboard\"), en.get(\"Font\")) else {\n        panic!(\"the English Home tab shows Clipboard and Font: {en:?}\")\n    };\n    let (Some(he_clipboard), Some(he_font)) = (he.get(\"Clipboard\"), he.get(\"Font\")) else {\n        panic!(\"the Hebrew Home tab shows Clipboard and Font: {he:?}\")\n    };\n    assert!(en_clipboard.min.x < en_font.min.x, \"English runs left to right: {en_clipboard:?} {en_font:?}\");\n    assert!(he_clipboard.max.x > width - 40.0, \"the Hebrew row starts at the right edge: {he_clipboard:?}\");\n    assert!(he_font.max.x <= he_clipboard.min.x + 0.5, \"Font is drawn to the left of Clipboard: {he_clipboard:?} {he_font:?}\");\n}\n\n/// The alignment buttons and the text directions are the one row whose order does not simply\n/// reverse in a Hebrew interface: their icons face the way the text does, so the row keeps the\n/// paragraph's reading order and starts, on the right, with Align Right and right-to-left.\n#[test]\nfn a_hebrew_alignment_row_starts_with_align_right() {\n    let mut app = WordApp::new(Session::new(wordcraft_engine::sample::sample_document()), crate::Services::default());\n    app.run(\"ui.tab\", json!({\"tab\": \"Home\"})).unwrap();\n    let mut h = egui_kittest::Harness::builder().with_size(vec2(2560.0, 900.0)).build_ui_state(\n        |ui, app: &mut WordApp| {\n            let ctx = ui.ctx().clone();\n            app.logic(&ctx);\n            app.ui(ui);\n        },\n        app,\n    );\n    let mut rows = std::collections::HashMap::new();\n    for lang in [\"en\", \"he\"] {\n        h.state_mut().run(\"ui.language\", json!({\"value\": lang})).unwrap();\n        h.run_steps(4);\n        crate::widgets::BUTTON_RECTS.with(|b| b.borrow_mut().clear());\n        h.run_steps(1);\n        // The last frame's boxes: a step may draw more than one.\n        let found: std::collections::HashMap<String, egui::Rect> = crate::widgets::BUTTON_RECTS.with(|b| b.borrow().iter().cloned().collect());\n        rows.insert(lang, found);\n    }\n    let (Some(en), Some(he)) = (rows.get(\"en\"), rows.get(\"he\")) else { panic!(\"both ribbons drew buttons: {rows:?}\") };\n    // The boxes are keyed by the command a button runs (`small` records the `ButtonAction`'s id).\n    let (align_left, center, align_right, justify) = (\"para.alignLeft\", \"para.alignCenter\", \"para.alignRight\", \"para.justify\");\n    let (text_ltr, text_rtl) = (\"para.ltr\", \"para.rtl\");\n    for (name, boxes) in [(\"en\", en), (\"he\", he)] {\n        for id in [align_left, center, align_right, justify, text_ltr, text_rtl] {\n            assert!(boxes.contains_key(id), \"the {name} Home tab shows {id}: {:?}\", boxes.keys());\n        }\n    }\n    // English: left, center, right, justify — then left-to-right, right-to-left.\n    assert!(en[align_left].min.x < en[center].min.x);\n    assert!(en[center].min.x < en[align_right].min.x);\n    assert!(en[align_right].min.x < en[justify].min.x);\n    assert!(en[text_ltr].min.x < en[text_rtl].min.x);\n    // Hebrew: the row runs right to left and keeps the paragraph's order, so Align Right is the\n    // rightmost of the four and the directions start with right-to-left.\n    assert!(he[align_right].min.x > he[center].min.x, \"Align Right is right of Center: {:?} {:?}\", he[align_right], he[center]);\n    assert!(he[center].min.x > he[align_left].min.x, \"Center is right of Align Left: {:?} {:?}\", he[center], he[align_left]);\n    assert!(he[align_left].min.x > he[justify].min.x, \"Align Left is right of Justify: {:?} {:?}\", he[align_left], he[justify]);\n    assert!(he[text_rtl].min.x > he[text_ltr].min.x, \"the directions start with right-to-left: {:?} {:?}\", he[text_rtl], he[text_ltr]);\n}\n\n"
-  },
-  {
-   "after": "    let mut tall = Vec::new();\n",
-   "insert": "    // A frame that panics names itself: the language and tab it was drawing, what the panic said\n    // and where in this crate it came from. A report of a failed run keeps the first line of a\n    // failure and little else, so all of it goes on that one line.\n    let drawing = std::sync::Arc::new(std::sync::Mutex::new(String::new()));\n    let previous = std::sync::Arc::new(std::sync::Mutex::new(Some(std::panic::take_hook())));\n    {\n        let (drawing, previous) = (drawing.clone(), previous.clone());\n        std::panic::set_hook(Box::new(move |info| {\n            let context = drawing.lock().map(|c| c.clone()).unwrap_or_default();\n            eprintln!(\"PANIC while drawing {context}: {} — {}\", panic_message(info.payload()), drawn_by(8));\n            if let Some(previous) = previous.lock().unwrap().as_ref() {\n                previous(info);\n            }\n        }));\n    }\n    /// What a caught panic said, as text.\n    fn panic_message(panic: &(dyn std::any::Any + Send)) -> String {\n        if let Some(m) = panic.downcast_ref::<&str>() {\n            (*m).to_string()\n        } else if let Some(m) = panic.downcast_ref::<String>() {\n            m.clone()\n        } else {\n            \"a panic without a message\".to_string()\n        }\n    }\n    /// The frames `limit` of the stack that belong to this crate, innermost first, as one line.\n    fn drawn_by(limit: usize) -> String {\n        let trace = std::backtrace::Backtrace::force_capture().to_string();\n        let frames: Vec<&str> = trace\n            .lines()\n            .map(str::trim)\n            .filter(|line| line.contains(\"wordcraft\") || line.contains(\"ui_egui\") || line.contains(\"ribbon\"))\n            .take(limit)\n            .collect();\n        if frames.is_empty() { \"no frames of ours on the stack\".to_string() } else { frames.join(\" <- \") }\n    }\n"
-  },
-  {
-   "after": "        for tab in TABS.iter().filter(|t| **t != \"File\") {\n",
-   "insert": "            if let Ok(mut context) = drawing.lock() {\n                context.clear();\n                context.push_str(&format!(\"{} › {tab}\", lang.code()));\n            }\n"
-  },
-  {
-   "new": "            // A frame that panics is recorded and the rest are still drawn: the window onto the\n            // fault is worth more than the first tab that hits it.\n            let frame = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {\n                h.run_steps(2);\n                crate::widgets::TALL_GROUPS.with(|g| g.borrow_mut().clear());\n                h.run_steps(1);\n                crate::widgets::TALL_GROUPS.with(|g| g.take())\n            }));\n            match frame {\n                Ok(found) => tall.extend(found.into_iter().map(|g| format!(\"{} {tab} › {g}\", lang.code()))),\n                Err(panic) => tall.push(format!(\"{} {tab} › did not draw: {}\", lang.code(), panic_message(&*panic))),\n            }\n",
-   "old": "            h.run_steps(2);\n            crate::widgets::TALL_GROUPS.with(|g| g.borrow_mut().clear());\n            h.run_steps(1);\n            let found = crate::widgets::TALL_GROUPS.with(|g| g.take());\n            tall.extend(found.into_iter().map(|g| format!(\"{} {tab} › {g}\", lang.code())));\n"
-  },
-  {
-   "after": "    tall.dedup();\n",
-   "insert": "    // The hook outlives the test that set it: put back the one the harness brought.\n    if let Some(previous) = previous.lock().unwrap().take() {\n        std::panic::set_hook(previous);\n    }\n"
-  }
- ],
- "crates/ui-egui/src/widgets.rs": [
-  {
-   "after": "}\n\n#[cfg(test)]\n",
-   "insert": "thread_local! {\n    /// Where each group of the ribbon was drawn, by its title and its place on the tab: a Hebrew\n    /// interface must start the row at the right edge (see [`groups::group_titled`]).\n    pub(crate) static GROUP_RECTS: std::cell::RefCell<Vec<(String, egui::Rect)>> = const { std::cell::RefCell::new(Vec::new()) };\n}\n\n#[cfg(test)]\nthread_local! {\n    /// Where each small button of the ribbon was drawn, by the command it runs: a row whose icons\n    /// face the text (the alignments, the text directions) keeps its reading order in a Hebrew\n    /// interface, so its boxes say which button came first.\n    pub(crate) static BUTTON_RECTS: std::cell::RefCell<Vec<(String, egui::Rect)>> = const { std::cell::RefCell::new(Vec::new()) };\n}\n\n#[cfg(test)]\n"
-  }
- ],
- "crates/ui-egui/src/widgets/buttons.rs": [
-  {
-   "new": "    // A right-to-left row reads from the right, so the drop-down marker comes before the text.\n    let rtl = crate::rtl::flows(ui);\n    ui.painter().galley(pos2(if marker && rtl { x + extra } else { x }, y), galley, color);\n",
-   "old": "    ui.painter().galley(pos2(x, y), galley, color);\n"
-  },
-  {
-   "new": "        let marker_x = if rtl { x } else { x + size.x + 3.0 };\n        let c = pos2(marker_x + DROPDOWN / 2.0, y + size.y / 2.0);\n",
-   "old": "        let c = pos2(x + size.x + 3.0 + DROPDOWN / 2.0, y + size.y / 2.0);\n"
-  },
-  {
-   "after": "    let text_w = label.map(|l| ui.ctx().fonts_mut(|f| f.layout_no_wrap(l.to_string(), regular(11.5), t.text).size().x) + 6.0).unwrap_or(0.0);\n    let (r, resp) = ui.allocate_exact_size(vec2(24.0 + text_w, 22.0), Sense::click());\n",
-   "insert": "    #[cfg(test)]\n    super::BUTTON_RECTS.with(|b| b.borrow_mut().push((id.to_string(), r)));\n"
-  }
- ],
- "crates/ui-egui/src/widgets/groups.rs": [
-  {
-   "after": "        let r = inner.response.rect;\n",
-   "insert": "        // Where this group was drawn: a Hebrew interface must start the row at the right edge (the\n        // test in `ribbon/tests.rs` reads it).\n        #[cfg(test)]\n        super::GROUP_RECTS.with(|g| {\n            let box_ = Rect::from_min_max(pos2(r.min.x, start.y), pos2(r.max.x, start.y + CONTENT_H + LABEL_H));\n            g.borrow_mut().push((id_title.to_string(), box_));\n        });\n"
-  }
- ],
  "crates/ui-egui/src/window_ui.rs": [
   {
    "after": "            fonts_system_arabic: _,\n",
-   "insert": "            fonts_lang: _,\n"
+   "insert": "            fonts_lang: _,\n",
+   "layouts": [
+    "ui_state"
+   ]
   },
   {
    "after": "            language: _,\n",
-   "insert": "            language_chosen: _,\n"
+   "insert": "            language_chosen: _,\n",
+   "layouts": [
+    "ui_state"
+   ]
+  },
+  {
+   "after": "            language: _,\n",
+   "insert": "            language_chosen: _,\n",
+   "layouts": [
+    "prefs"
+   ]
   }
  ]
 }

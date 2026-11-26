@@ -18,8 +18,11 @@ holds the files this fork adds whole — Hebrew proofing, `crates/proof-he/`, wh
 `craft-proof` has no language for. `--check` also reports when a copy in `code/` has drifted from
 the file it mirrors.
 
-Exit 1 when a change could not be applied: upstream has moved the code the change hangs on, and a
-person has to look.
+A change whose base text this tree no longer has is reported as a warning and skipped: a merge
+that restructures a file (the UI ported onto craft, #7101) leaves recorded changes that cannot land,
+and the sync prunes them from the table (`record_code_overlay.py --prune`) while it still applies the
+ones that can. An entry written for one layout of the UI says so (`"layouts": ["prefs"]` or
+`["ui_state"]`), so one table serves a merge across the change.
 """
 
 from __future__ import annotations
@@ -36,7 +39,7 @@ from code_match import applied, candidates, has_code  # noqa: E402  (the sibling
 HE_ROW = '''    // Hebrew, right to left; `he`, `he-IL` and `he_IL.UTF-8` resolve here. Its catalog is this
     // fork's (`i18n-he/`, laid over craft-i18n by `i18n-he/tools/assemble.py`), not
     // storytold/craft-i18n's: it is embedded whenever that overlay is in `CRAFT_I18N_DIR`. The
-    // interface mirrors right to left ([`RTL_LANGUAGES`], `crate::rtl`), and WordCraft proofs
+    // interface mirrors right to left ([`RTL_LANGUAGES`]), and WordCraft proofs
     // Hebrew (`wordcraft_proof_he`), so new documents are written in Hebrew.
     LangInfo { code: "he", prefer_hans: false, editing_lang: Some("he-IL") },
 '''
@@ -243,6 +246,96 @@ def apply_fonts(source: str) -> tuple[str, list[str]]:
     return source.replace(FONTS_ANCHOR, FONTS_ANCHOR + FONTS_LINES, 1), ["app/fonts.rs: borrow document faces for the interface text"]
 
 
+# ---------------------------------------------------------------------------------------------
+# The layout upstream has after #7101 (the UI ported onto the craft framework): `UiState` became
+# `Prefs`, the app loads it in `WordApp::apply_prefs` (`crates/ui-egui/src/app/prefs.rs`) instead of
+# in `apps/wordcraft/src/main.rs`, and the module that spells the fallback faces out changed.
+# Each change below is written for that layout only, and is a no-op on the older one.
+# ---------------------------------------------------------------------------------------------
+
+DEFAULT_LANGUAGE_DOC = """/// The interface language this fork opens in: Hebrew. A new profile, and every settings file that
+/// never chose a language, shows Hebrew — which is what this fork exists for. File ▸ Options ▸
+/// Interface language lists every other language beside it, `Automatic` (the system's language)
+/// among them, and a choice there is what the app keeps from then on.
+pub const DEFAULT_LANGUAGE: &str = "he";
+
+"""
+
+# `Prefs` is built by `serde` with `#[serde(default)]`, so a new field needs only its own default,
+# and an old `ui.json` reads as "never chose a language".
+PREFS_FIELDS = """    /// Has an interface language been chosen (File ▸ Options ▸ Interface language, or the
+    /// `ui.language` command)? `false` for a settings file written before this field, whose
+    /// `language` is `auto` whether or not anyone wanted the system's language — so it opens in
+    /// Hebrew (see [`WordApp::apply_prefs`]).
+    pub language_chosen: bool,
+"""
+
+PREFS_ADOPT = """        // This fork opens in Hebrew: a settings file that never chose an interface language
+        // moves to it here, when the app loads its preferences (`i18n::DEFAULT_LANGUAGE`).
+        if !self.ui.language_chosen && self.ui.language.eq_ignore_ascii_case(crate::i18n::AUTO) {
+            self.ui.language = crate::i18n::DEFAULT_LANGUAGE.to_string();
+        }
+"""
+
+
+def apply_prefs(source: str) -> tuple[str, list[str]]:
+    """Hebrew as the language a settings file that never chose one opens in.
+
+    On the `Prefs` layout the field is declared in `crates/ui-egui/src/prefs.rs` and the default it
+    needs comes from `#[serde(default)]` (`PREFS_FIELDS`); the choice is made in `apply_prefs`,
+    which the app runs for every settings file it opens (`with_settings`, the host's own load). The
+    older `UiState` layout gets both from `apps/wordcraft/src/main.rs` and
+    `crates/ui-egui/src/lib.rs` instead (`code-overlay.json`), and this does nothing there.
+    """
+    notes: list[str] = []
+    anchor = "    pub language: String,\n"
+    if "language_chosen" not in source and anchor in source:
+        source = source.replace(anchor, anchor + PREFS_FIELDS, 1)
+        notes.append("prefs.rs: `language_chosen` (did anyone choose an interface language?)")
+    # `Prefs::default` is one struct literal, every field named: the new one has to be there too.
+    initial = "            language: i18n::AUTO.into(),\n"
+    if "            language_chosen: false,\n" not in source and initial in source:
+        source = source.replace(initial, initial + "            language_chosen: false,\n", 1)
+        notes.append("prefs.rs: its default (no language chosen)")
+    return source, notes
+
+
+def apply_apply_prefs(source: str) -> tuple[str, list[str]]:
+    """Hebrew for a settings file that never chose a language, in `WordApp::apply_prefs`."""
+    if "DEFAULT_LANGUAGE" in source:
+        return source, []
+    anchor = "    pub fn apply_prefs(&mut self, ui: Prefs) {\n"
+    if anchor not in source:
+        return source, []
+    body = "        self.ui = ui;\n"
+    at = source.find(anchor)
+    end = source.find(body, at)
+    if end < 0:
+        return source, []
+    end += len(body)
+    return source[:end] + PREFS_ADOPT + source[end:], ["app/prefs.rs: a profile that never chose opens in Hebrew"]
+
+
+def apply_default_language(source: str) -> tuple[str, list[str]]:
+    """`DEFAULT_LANGUAGE`, `Lang::rtl`'s Hebrew row, and the right-to-left list, on either layout."""
+    notes: list[str] = []
+    if "pub const DEFAULT_LANGUAGE" not in source:
+        anchor = 'pub const AUTO: &str = "auto";\n'
+        if anchor in source:
+            source = source.replace(anchor, anchor + DEFAULT_LANGUAGE_DOC, 1)
+            notes.append("i18n.rs: `DEFAULT_LANGUAGE` (Hebrew)")
+    if 'const RTL_LANGUAGES: [&str; 2] = ["ar", "he"];' not in source:
+        for old, new in (
+            ('const RTL_LANGUAGES: [&str; 1] = ["ar"];', 'const RTL_LANGUAGES: [&str; 2] = ["ar", "he"];'),
+            ('const RTL_LANGUAGES: &[&str] = &["ar"];', 'const RTL_LANGUAGES: &[&str] = &["ar", "he"];'),
+        ):
+            if old in source:
+                source = source.replace(old, new, 1)
+                notes.append("i18n.rs: Hebrew is right to left (`RTL_LANGUAGES`)")
+                break
+    return source, notes
+
+
 GITATTRIBUTES_LINES = """# The Hebrew catalogs are TAB-separated: LF everywhere, so a Windows checkout writes the same bytes.
 i18n-he/** text eol=lf
 """
@@ -270,6 +363,50 @@ def locate(source: str, text: str, name: str, what: str, anchor: bool = False) -
     return where[0] if where else None
 
 
+def _skipped(name: str, hunk: dict, why: str) -> None:
+    """A change this layout cannot take: said once, in the log, and the sync goes on."""
+    wanted = (hunk.get("insert") or hunk.get("new") or hunk.get("old") or "").strip().splitlines()
+    print(f"warning: {name}: skipped a Hebrew change ({why}): {wanted[0][:70] if wanted else '?'}")
+
+
+# The type the older layout spelled its UI state with. Upstream #7101 replaced it with `Prefs`
+# (`crates/ui-egui/src/prefs.rs`), and a table entry written for a layout says so:
+#
+#   "layouts": ["prefs"]       only where the tree has `Prefs` (after #7101)
+#   "layouts": ["ui_state"]    only where it has `UiState` (before it)
+#
+# An entry without the key fits both. A hunk may carry `insert_legacy` or `new_legacy` instead: the
+# same change written for the older layout, chosen per tree.
+LEGACY_MARKER = "UiState"
+
+
+def for_layout(hunks: list[dict], legacy: bool) -> list[dict]:
+    """The hunks written for the layout this tree is in (`legacy` = it still has [`LEGACY_MARKER`])."""
+    here = "ui_state" if legacy else "prefs"
+    chosen: list[dict] = []
+    for hunk in hunks:
+        if "layouts" in hunk:
+            if here not in hunk["layouts"]:
+                continue
+            hunk = {k: v for k, v in hunk.items() if k != "layouts"}
+        if not legacy and "insert_legacy" in hunk:
+            hunk = {k: v for k, v in hunk.items() if k != "insert_legacy"}
+        elif not legacy and "new_legacy" in hunk:
+            hunk = {k: v for k, v in hunk.items() if k != "new_legacy"}
+        elif legacy and "insert_legacy" in hunk:
+            hunk = {**{k: v for k, v in hunk.items() if k not in ("insert", "insert_legacy")}, "insert": hunk["insert_legacy"]}
+        elif legacy and "new_legacy" in hunk:
+            hunk = {**{k: v for k, v in hunk.items() if k not in ("new", "new_legacy")}, "new": hunk["new_legacy"]}
+        chosen.append(hunk)
+    return chosen
+
+
+def has_legacy_layout(root: Path) -> bool:
+    """Does the tree still declare [`LEGACY_MARKER`] (`crates/ui-egui/src/lib.rs` before #7101)?"""
+    lib = root / "crates/ui-egui/src/lib.rs"
+    return lib.exists() and "pub struct UiState" in lib.read_text(encoding="utf-8")
+
+
 def apply_hunks(source: str, hunks: list[dict], name: str) -> tuple[str, list[str]]:
     """The edits `code-overlay.json` lists for a file, idempotently.
 
@@ -284,7 +421,8 @@ def apply_hunks(source: str, hunks: list[dict], name: str) -> tuple[str, list[st
         if "insert" in hunk:
             found = locate(source, hunk["after"], name, "follows", anchor=True)
             if found is None:
-                raise SystemExit(f"error: {name} no longer has the line a Hebrew change follows:\n{hunk['after']}")
+                _skipped(name, hunk, "the line it follows is gone")
+                continue
             _, end = found
             # Right after the anchor line; a code match stops at its last character, before the
             # line break the anchor's text had.
@@ -303,7 +441,8 @@ def apply_hunks(source: str, hunks: list[dict], name: str) -> tuple[str, list[st
         else:
             found = locate(source, hunk["old"], name, "replaces")
             if found is None:
-                raise SystemExit(f"error: {name} no longer has the text a Hebrew change replaces:\n{hunk['old']}")
+                _skipped(name, hunk, "the text it replaces is gone")
+                continue
             start, end = found
             source = source[:start] + _keep_break(source, end, hunk["new"]) + source[end:]
         first = next((line.strip() for line in hunk.get("insert", hunk.get("new", "")).splitlines() if line.strip()), "")
@@ -329,7 +468,14 @@ def _drop_line(source: str, start: int, end: int) -> str:
 
 def apply_generic(root: Path, path: Path, hunks: list[dict]) -> tuple[str, list[str]]:
     name = str(path.relative_to(root))
-    return apply_hunks(path.read_text(encoding="utf-8"), hunks, name)
+    if not path.exists():
+        # Upstream removed the file (its code moved or went away). The recorded changes cannot land
+        # there any more; `prune_code_overlay.py` drops them from the table, and until it runs the
+        # sync reports the file once rather than stopping on it.
+        print(f"warning: {name}: upstream removed this file; its {len(hunks)} recorded Hebrew change(s) are stale")
+        return "", []
+    source = path.read_text(encoding="utf-8")
+    return apply_hunks(source, for_layout(hunks, has_legacy_layout(root)), name)
 
 
 def voice_patch_file(relative: Path) -> bool:
@@ -374,14 +520,27 @@ def main() -> int:
     # The changes the Hebrew catalog alone needs, spelled out above.
     targets = {
         root / "Cargo.toml": (apply_cargo, ['wordcraft-proof-he = { path = "crates/proof-he" }']),
-        root / "crates/ui-egui/src/i18n.rs": (apply_i18n, ["pub fn catalog_texts", 'code: "he"']),
+        root / "crates/ui-egui/src/i18n.rs": (apply_i18n, []),
         theme_file(root): (apply_theme, ["fn faces_for_interface_text", "fn interface_char_covered"]),
+        # The `Prefs` layout upstream took in #7101: the same two changes, in the files that layout
+        # declares and loads the state in. On the older layout `code-overlay.json` has them (the
+        # `UiState` field and `apps/wordcraft/src/main.rs`), so this step is skipped there.
+        root / "crates/ui-egui/src/prefs.rs": (apply_prefs, ["language_chosen"]),
+        root / "crates/ui-egui/src/app/prefs.rs": (apply_apply_prefs, ["DEFAULT_LANGUAGE"]),
         # `apply_fonts` reports when the line it appends to is gone (upstream #7101), so this file
         # has no marker `--check` can insist on.
         root / "crates/ui-egui/src/app/fonts.rs": (apply_fonts, []),
         root / "crates/ui-egui/src/i18n/tests.rs": (apply_tests, ["fn offers_hebrew()"]),
         root / ".gitattributes": (apply_gitattributes, ["i18n-he/** text eol=lf"]),
     }
+    # The `Prefs` files exist only after upstream #7101: on the older layout the same two changes
+    # live in `apps/wordcraft/src/main.rs` and `crates/ui-egui/src/lib.rs` (`code-overlay.json`).
+    targets = {path: step for path, step in targets.items() if path.exists()}
+    # `app/prefs.rs` writes the `Prefs` half of the default language; on the `UiState` layout the
+    # check for it is `apps/wordcraft/src/main.rs`'s recorded change, so this marker is asked for
+    # only where `Prefs` is the state type.
+    if has_legacy_layout(root):
+        targets.pop(root / "crates/ui-egui/src/app/prefs.rs", None)
     # Everything the right-to-left interface and Hebrew proofing touch, checked against upstream's
     # exact text (`code-overlay.json`) plus the files this fork adds whole (`code/`).
     hunks: dict[str, list[dict]] = json.loads((root / "i18n-he/code-overlay.json").read_text(encoding="utf-8"))
@@ -399,12 +558,14 @@ def main() -> int:
 
     missing: list[str] = []
     if args.check:
-        for path, (_, markers) in targets.items():
-            source = path.read_text(encoding="utf-8")
+        for path, (apply, markers) in targets.items():
+            # What the file would hold once the overlay ran, so a step that has to spell its change
+            # out (`apply_i18n`) is checked by its markers like the ones that only insert text.
+            source = apply(path.read_text(encoding="utf-8"))[0]
             missing += [f"{path.relative_to(root)}: no `{m}`" for m in markers if m not in source]
         for path, patch in generics.items():
             source = path.read_text(encoding="utf-8") if path.exists() else ""
-            for hunk in patch:
+            for hunk in for_layout(patch, has_legacy_layout(root)) if path.exists() else patch:
                 if not applied(source, hunk):
                     wanted = hunk.get("insert", hunk.get("new", hunk.get("old", "")))
                     missing.append(f"{path.relative_to(root)}: no `{wanted.strip().splitlines()[0][:70]}`")
@@ -420,12 +581,18 @@ def main() -> int:
     for path, (apply, _) in targets.items():
         source = path.read_text(encoding="utf-8")
         patched, notes = apply(source)
+        if path == root / "crates/ui-egui/src/i18n.rs":
+            patched, more = apply_default_language(patched)
+            notes += more
         if patched != source:
             path.write_text(patched, encoding="utf-8", newline="\n")
             changed += 1
         for note in notes:
             print(note)
     for path, patch in generics.items():
+        if not path.exists():
+            apply_generic(root, path, patch)
+            continue
         source = path.read_text(encoding="utf-8")
         patched, notes = apply_generic(root, path, patch)
         if patched != source:
