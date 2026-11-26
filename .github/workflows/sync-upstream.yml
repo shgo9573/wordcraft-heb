@@ -310,6 +310,7 @@ jobs:
     timeout-minutes: 180
     outputs:
       version: ${{ steps.version.outputs.version }}
+      setup: ${{ steps.built.outputs.setup }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -389,11 +390,25 @@ jobs:
         shell: pwsh
         run: packaging/windows/package.ps1 -Arch x64
       - name: What was built
+        id: built
         shell: pwsh
-        run: Get-ChildItem dist/release | Format-Table Name, Length
+        # `package.ps1` reports a Setup.exe it could not build and carries on: the MSI and the
+        # portable zip are each installable on their own. Record which of the three exist so the
+        # notes below can name the right download instead of promising an .exe that is not there.
+        run: |
+          Get-ChildItem dist/release | Format-Table Name, Length
+          $setup = (Get-ChildItem dist/release -Filter '*-Setup.exe' -ErrorAction SilentlyContinue).Count -gt 0
+          "setup=$($setup.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          if (-not $setup) {
+            "::warning title=No Setup.exe in this release::The bundle failed to build; the MSI and the portable zip are the downloads."
+            "Setup.exe was not built; the MSI and the portable zip are the downloads." |
+              Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: wordcraft-${{ steps.version.outputs.version }}-hebrew-windows-x64
+          # Not `*-Setup.exe`: the pattern is optional here, and `if-no-files-found` asks only that
+          # the artifact is not empty. The MSI is always built; the .exe is a bonus when WiX can.
           path: |
             dist/release/*-Setup.exe
             dist/release/*.msi
@@ -425,6 +440,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.build.outputs.version }}
+          SETUP: ${{ needs.build.outputs.setup }}
         run: |
           set -euo pipefail
           # A tag of its own: `v<version>-he.lin.<n>` holds this version's Linux AppImage
@@ -451,9 +467,7 @@ jobs:
           cat >"$RUNNER_TEMP/notes.md" <<'NOTES'
           WordCraft __VERSION__ של המאגר המקורי storytold/wordcraft, עם ממשק בעברית — ל-Windows.
 
-          - **להתקנה:** `wordcraft-__VERSION__-windows-x64-Setup.exe` — לחיצה כפולה, התקנה למשתמש
-            הנוכחי (בלי הרשאות מנהל). לצדו יורד גם ה-MSI שאותו ה-Setup.exe מריץ, למי שמעדיף
-            `msiexec` או התקנה לכל המשתמשים (`ALLUSERS=1`).
+          __INSTALL_HE__
           - **בלי התקנה:** `wordcraft-__VERSION__-windows-x64-portable.zip` — חילוץ והרצת
             `wordcraft.exe`. הגירסה הניידת שומרת הכל בתיקייה שלידה (`WordCraft-data`): הגדרות,
             מילון משתמש, גופנים ועותקי שחזור — לא נכתב דבר ב-`%APPDATA%`, ומחיקת התיקייה מוחקת הכל.
@@ -473,9 +487,7 @@ jobs:
           WordCraft __VERSION__ from storytold/wordcraft, built with the Hebrew interface in
           `i18n-he/`, for Windows x64:
 
-          - **Install:** `wordcraft-__VERSION__-windows-x64-Setup.exe` (per user, no admin needed).
-            The MSI it wraps ships beside it for `msiexec` and for installing for every user
-            (`ALLUSERS=1`).
+          __INSTALL_EN__
           - **Or run it portable:** `wordcraft-__VERSION__-windows-x64-portable.zip` — unpack and
             run; everything it saves (settings, user dictionary, fonts, recovery copies) stays in
             `WordCraft-data` beside the exe, nothing is written to `%APPDATA%`, and deleting the
@@ -493,6 +505,34 @@ jobs:
           newest `main` every day.
           NOTES
           sed -i -e "s/__VERSION__/${VERSION}/g" -e "s/COMMIT/${current}/g" "$RUNNER_TEMP/notes.md"
+          # Name the download that actually exists. `package.ps1` goes on without a Setup.exe when WiX
+          # cannot build the bundle (`build.outputs.setup`), and a note that promises the .exe while
+          # the assets hold only the MSI and the zip is worse than one that explains how to install.
+          if [ "${SETUP:-true}" = "true" ]; then
+            install_he='- **להתקנה:** `wordcraft-'"${VERSION}"'-windows-x64-Setup.exe` — לחיצה כפולה, התקנה למשתמש
+            הנוכחי (בלי הרשאות מנהל). לצדו יורד גם ה-MSI שאותו ה-Setup.exe מריץ, למי שמעדיף
+            `msiexec` או התקנה לכל המשתמשים (`ALLUSERS=1`).'
+            install_en='- **Install:** `wordcraft-'"${VERSION}"'-windows-x64-Setup.exe` (per user, no admin needed).
+            The MSI it wraps ships beside it for `msiexec` and for installing for every user
+            (`ALLUSERS=1`).'
+          else
+            install_he='- **להתקנה:** `wordcraft-'"${VERSION}"'-windows-x64.msi` — לחיצה כפולה, התקנה למשתמש
+            הנוכחי (בלי הרשאות מנהל), או `msiexec /i` והתקנה לכל המשתמשים (`ALLUSERS=1`). ה-Setup.exe
+            אינו בגירסה הזאת: בנייתו נכשלה, ולכן ה-MSI וה-zip הנייד הם הקבצים להורדה.'
+            install_en='- **Install:** `wordcraft-'"${VERSION}"'-windows-x64.msi` — double-click to install for
+            the current user (no admin needed), or `msiexec /i` for every user (`ALLUSERS=1`). There
+            is no Setup.exe in this release: the bundle failed to build, so the MSI and the portable
+            zip are the downloads.'
+          fi
+          python3 - "$RUNNER_TEMP/notes.md" "$install_he" "$install_en" <<'FILL'
+          import sys
+          path, he, en = sys.argv[1:4]
+          text = open(path, encoding="utf-8").read()
+          for token, block in (("__INSTALL_HE__", he), ("__INSTALL_EN__", en)):
+              assert token in text, token
+              text = text.replace(token, block)
+          open(path, "w", encoding="utf-8").write(text)
+          FILL
           gh release create "$tag" ./dist/* \
             --target main \
             --title "WordCraft ${VERSION} בעברית (Windows)" \

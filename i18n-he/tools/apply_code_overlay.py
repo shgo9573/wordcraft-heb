@@ -457,8 +457,18 @@ def apply_hunks(source: str, hunks: list[dict], name: str) -> tuple[str, list[st
 
 
 def _keep_break(source: str, end: int, new: str) -> str:
-    """`new`, without adding a line break the source already has where the old text ended."""
-    if new.endswith("\n") and source[end : end + 1] == "\n":
+    """`new`, without adding a line break the source already has where the old text ended.
+
+    Only when the match stopped *before* the line's own break: a code match may end at the last
+    character, leaving `source[end]` to supply it. Once the match includes the break, a newline at
+    `source[end]` is the next line's — often the blank line after the one replaced — and dropping
+    `new`'s break for it silently swallowed that blank line (a recorded replacement of the
+    `portable.zip` line in `packaging/windows/package.ps1` did, and the doc paragraph below it ran
+    into the table).
+    """
+    if not new.endswith("\n"):
+        return new
+    if source[end - 1 : end] != "\n" and source[end : end + 1] == "\n":
         return new[:-1]
     return new
 
@@ -494,9 +504,15 @@ def voice_patch_file(relative: Path) -> bool:
 
 
 def copy_new_files(root: Path, code: Path, check: bool, missing: list[str]) -> list[str]:
-    """The files this fork adds whole: `code/crates/...` mirrors the tree's `crates/...`."""
+    """The files this fork adds whole: `code/crates/...` mirrors the tree's `crates/...`.
+
+    Every file, whatever its suffix: a list of the ones that count would leave the next unlisted
+    file out silently — which is how `packaging/windows/wordcraft-bundle.wxs` went missing from a
+    sync and took the Setup.exe with it. `code/` is this fork's own directory; what it holds is what
+    to copy.
+    """
     notes: list[str] = []
-    added = sorted(p for p in code.rglob("*") if p.suffix == ".rs" or p.name == "Cargo.toml")
+    added = sorted(p for p in code.rglob("*") if p.is_file())
     for source in added:
         relative = source.relative_to(code)
         if voice_patch_file(relative):

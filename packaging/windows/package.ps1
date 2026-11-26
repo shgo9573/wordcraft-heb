@@ -191,15 +191,31 @@ Remove-Item -Force -ErrorAction SilentlyContinue ([IO.Path]::ChangeExtension($Ms
 # signed above, carrying it inside so it installs with no download and no second file. It is the
 # installer this fork ships; the MSI stays beside it for deployments that run msiexec themselves.
 $Setup = Join-Path $Dist "wordcraft-$Version-windows-$Arch-Setup.exe"
-Invoke-Native 'wix build (the Setup.exe bundle)' {
-  wix build (Join-Path $PSScriptRoot 'wordcraft-bundle.wxs') -arch $Arch `
-    -ext WixToolset.BootstrapperApplications.wixext `
-    -d "Version=$MsiVersion" -d "MsiPath=$Msi" `
-    -d "LicenseRtf=$LicenseRtf" -d "IconPath=$(Join-Path $Root 'assets\app-icon\wordcraft.ico')" `
-    -o $Setup
+# Not fatal, deliberately: the MSI above and the portable zip below are each a complete way to install
+# WordCraft, and a bundle that fails to build must not take them with it. A real run did exactly that
+# (`wix build` for the bundle exited 1 on the push after PR #31, and the job died before the zip was
+# made, so nothing was published at all). `-v` keeps WiX's own diagnosis in the log for next time.
+$BundleError = $null
+try {
+  Invoke-Native 'wix build (the Setup.exe bundle)' {
+    wix build (Join-Path $PSScriptRoot 'wordcraft-bundle.wxs') -arch $Arch `
+      -ext WixToolset.BootstrapperApplications.wixext `
+      -d "Version=$MsiVersion" -d "MsiPath=$Msi" `
+      -d "LicenseRtf=$LicenseRtf" -d "IconPath=$(Join-Path $Root 'assets\app-icon\wordcraft.ico')" `
+      -o $Setup -v
+  }
+} catch {
+  $BundleError = $_.Exception.Message
 }
-Remove-Item -Force -ErrorAction SilentlyContinue ([IO.Path]::ChangeExtension($Setup, '.wixpdb'))
-& (Join-Path $PSScriptRoot 'sign.ps1') $Setup
+if ($BundleError) {
+  # A half-written .exe must not ship: leave only whole artifacts to be found and signed.
+  Remove-Item -Force -ErrorAction SilentlyContinue $Setup
+  Remove-Item -Force -ErrorAction SilentlyContinue ([IO.Path]::ChangeExtension($Setup, '.wixpdb'))
+  Write-Output "::warning title=Setup.exe was not built::$BundleError — shipping the MSI (msiexec /i, or double-click after the .msi association) and the portable zip instead."
+} else {
+  Remove-Item -Force -ErrorAction SilentlyContinue ([IO.Path]::ChangeExtension($Setup, '.wixpdb'))
+  & (Join-Path $PSScriptRoot 'sign.ps1') $Setup
+}
 
 # ---- portable zip ------------------------------------------------------------------------------
 $Portable = Join-Path $TargetDir "windows-package\wordcraft-$Version-windows-$Arch-portable"
@@ -256,4 +272,4 @@ if ($Arch -ne 'arm64' -or $HostArch -eq 'arm64') {
 } else {
   Write-Output "skipping wordcraft-cli --version: an $Arch build doesn't run on this $HostArch machine"
 }
-Get-Item $Setup, $Msi, $Zip | Format-Table Name, Length
+Get-Item ($Setup, $Msi, $Zip | Where-Object { Test-Path $_ }) | Format-Table Name, Length

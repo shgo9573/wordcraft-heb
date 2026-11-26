@@ -1,74 +1,24 @@
 {
  "crates/control-key/src/lib.rs": [
   {
-   "after": "use std::path::{Path, PathBuf};\n\n",
-   "insert": "/// A file next to the executable that makes its folder the profile folder: the portable build\n/// ships one (`packaging/windows/package.ps1`), so a copy of the app carries its settings, user\n/// dictionary, fonts and recovery copies on a stick or in a synced folder.\npub const PORTABLE_MARKER: &str = \"portable.txt\";\n\n/// Where a portable copy keeps its profile: `<exe folder>/WordCraft-data`, beside the app rather\n/// than in `%APPDATA%`. Deleting this folder resets the app without touching the executable.\npub const PORTABLE_DATA: &str = \"WordCraft-data\";\n\n",
-   "layouts": [
-    "ui_state"
-   ]
-  },
-  {
-   "layouts": [
-    "ui_state"
-   ],
-   "new": "/// `WORDCRAFT_PROFILE_DIR` overrides the entire folder for isolated runs, and a portable copy\n/// keeps its own beside the executable ([`portable_dir`]).\n",
-   "old": "/// `WORDCRAFT_PROFILE_DIR` overrides the entire folder for isolated runs.\n"
-  },
-  {
-   "after": "        return Some(PathBuf::from(path));\n",
-   "insert": "    }\n    if let Some(dir) = std::env::current_exe().ok().as_deref().and_then(portable_dir) {\n        return Some(dir);\n",
-   "layouts": [
-    "ui_state"
-   ]
-  },
-  {
-   "after": "            .map(|c| c.join(\"wordcraft\"))\n    }\n",
-   "insert": "}\n\n/// The profile folder of a portable copy: `<exe folder>/WordCraft-data` when `<exe folder>` holds\n/// [`PORTABLE_MARKER`], `None` otherwise. `exe` is the path of the running executable (a parameter\n/// so the rule is testable).\n///\n/// A folder that cannot be written to — the zip unpacked into `Program Files`, a read-only share,\n/// a CD — gives `None` too: settings that cannot be saved are worse than settings saved in the\n/// usual place.\npub fn portable_dir(exe: &Path) -> Option<PathBuf> {\n    let dir = exe.parent()?;\n    if !dir.join(PORTABLE_MARKER).is_file() {\n        return None;\n    }\n    let data = dir.join(PORTABLE_DATA);\n    std::fs::create_dir_all(&data).ok()?;\n    let probe = data.join(\".write-test\");\n    std::fs::write(&probe, b\"ok\").ok()?;\n    let _ = std::fs::remove_file(&probe);\n    Some(data)\n",
-   "layouts": [
-    "ui_state"
-   ]
-  },
-  {
-   "after": "            assert!(name == \"wordcraft\" || name == \"WordCraft\", \"{}\", d.display());\n        }\n    }\n",
-   "insert": "\n    /// A temp folder standing in for the folder a portable copy sits in.\n    fn temp_app_folder(tag: &str) -> PathBuf {\n        let dir = std::env::temp_dir().join(format!(\"wordcraft-portable-{tag}-{}\", std::process::id()));\n        let _ = std::fs::remove_dir_all(&dir);\n        std::fs::create_dir_all(&dir).unwrap();\n        dir\n    }\n\n    #[test]\n    fn a_portable_copy_keeps_its_profile_beside_the_exe() {\n        let dir = temp_app_folder(\"marked\");\n        let exe = dir.join(\"wordcraft.exe\");\n        std::fs::write(&exe, b\"\").unwrap();\n        // No marker: the usual profile folder, wherever the app happens to be.\n        assert_eq!(portable_dir(&exe), None);\n        assert!(!dir.join(PORTABLE_DATA).exists(), \"and nothing is created beside it\");\n        std::fs::write(dir.join(PORTABLE_MARKER), b\"portable\").unwrap();\n        let data = portable_dir(&exe).expect(\"the marker makes the folder portable\");\n        assert_eq!(data, dir.join(PORTABLE_DATA));\n        assert!(data.is_dir(), \"and the profile folder exists\");\n        assert!(!data.join(\".write-test\").exists(), \"the write test leaves nothing behind\");\n        let _ = std::fs::remove_dir_all(&dir);\n    }\n",
-   "layouts": [
-    "ui_state"
-   ]
-  },
-  {
-   "after": "use std::path::{Path, PathBuf};\n\n",
-   "insert": "/// A file next to the executable that makes its folder the profile folder: the portable build\n/// ships one (`packaging/windows/package.ps1`), so a copy of the app carries its settings, user\n/// dictionary, fonts and recovery copies on a stick or in a synced folder.\npub const PORTABLE_MARKER: &str = \"portable.txt\";\n\n/// Where a portable copy keeps its profile: `<exe folder>/WordCraft-data`, beside the app rather\n/// than in `%APPDATA%`. Deleting this folder resets the app without touching the executable.\npub const PORTABLE_DATA: &str = \"WordCraft-data\";\n\n",
-   "layouts": [
-    "prefs"
-   ]
+   "after": "use std::path::{Path, PathBuf};\n",
+   "insert": "\n/// A file next to the executable that makes its folder the profile folder: the portable build\n/// ships one (`packaging/windows/package.ps1`), so a copy of the app carries its settings, user\n/// dictionary, fonts and recovery copies on a stick or in a synced folder.\npub const PORTABLE_MARKER: &str = \"portable.txt\";\n\n/// Where a portable copy keeps its profile: `<exe folder>/WordCraft-data`, beside the app rather\n/// than in `%APPDATA%`. Deleting this folder resets the app without touching the executable.\npub const PORTABLE_DATA: &str = \"WordCraft-data\";\n"
   },
   {
    "after": "/// overrides the entire folder for isolated runs otherwise.\n",
-   "insert": "/// `WORDCRAFT_PROFILE_DIR` overrides the entire folder for isolated runs, and a portable copy\n/// keeps its own beside the executable ([`portable_dir`]).\n",
-   "layouts": [
-    "prefs"
-   ]
+   "insert": "/// `WORDCRAFT_PROFILE_DIR` overrides the entire folder for isolated runs, and a portable copy\n/// keeps its own beside the executable ([`portable_dir`]).\n"
   },
   {
    "after": "        return Some(PathBuf::from(path));\n",
-   "insert": "    }\n    if let Some(dir) = std::env::current_exe().ok().as_deref().and_then(portable_dir) {\n        return Some(dir);\n",
-   "layouts": [
-    "prefs"
-   ]
+   "insert": "    }\n    if let Some(dir) = std::env::current_exe().ok().as_deref().and_then(portable_dir) {\n        return Some(dir);\n"
   },
   {
    "after": "            .map(|c| c.join(\"wordcraft\"))\n    }\n",
-   "insert": "}\n\n/// The profile folder of a portable copy: `<exe folder>/WordCraft-data` when `<exe folder>` holds\n/// [`PORTABLE_MARKER`], `None` otherwise. `exe` is the path of the running executable (a parameter\n/// so the rule is testable).\n///\n/// A folder that cannot be written to — the zip unpacked into `Program Files`, a read-only share,\n/// a CD — gives `None` too: settings that cannot be saved are worse than settings saved in the\n/// usual place.\npub fn portable_dir(exe: &Path) -> Option<PathBuf> {\n    let dir = exe.parent()?;\n    if !dir.join(PORTABLE_MARKER).is_file() {\n        return None;\n    }\n    let data = dir.join(PORTABLE_DATA);\n    std::fs::create_dir_all(&data).ok()?;\n    let probe = data.join(\".write-test\");\n    std::fs::write(&probe, b\"ok\").ok()?;\n    let _ = std::fs::remove_file(&probe);\n    Some(data)\n",
-   "layouts": [
-    "prefs"
-   ]
+   "insert": "}\n\n/// The profile folder of a portable copy: `<exe folder>/WordCraft-data` when `<exe folder>` holds\n/// [`PORTABLE_MARKER`], `None` otherwise. `exe` is the path of the running executable (a parameter\n/// so the rule is testable).\n///\n/// A folder that cannot be written to — the zip unpacked into `Program Files`, a read-only share,\n/// a CD — gives `None` too: settings that cannot be saved are worse than settings saved in the\n/// usual place.\npub fn portable_dir(exe: &Path) -> Option<PathBuf> {\n    let dir = exe.parent()?;\n    if !dir.join(PORTABLE_MARKER).is_file() {\n        return None;\n    }\n    let data = dir.join(PORTABLE_DATA);\n    std::fs::create_dir_all(&data).ok()?;\n    let probe = data.join(\".write-test\");\n    std::fs::write(&probe, b\"ok\").ok()?;\n    let _ = std::fs::remove_file(&probe);\n    Some(data)\n"
   },
   {
-   "after": "    #[test]\n    fn key_file_per_instance() {\n",
-   "insert": "\n    /// A temp folder standing in for the folder a portable copy sits in.\n    fn temp_app_folder(tag: &str) -> PathBuf {\n        let dir = std::env::temp_dir().join(format!(\"wordcraft-portable-{tag}-{}\", std::process::id()));\n        let _ = std::fs::remove_dir_all(&dir);\n        std::fs::create_dir_all(&dir).unwrap();\n        dir\n    }\n\n    #[test]\n    fn a_portable_copy_keeps_its_profile_beside_the_exe() {\n        let dir = temp_app_folder(\"marked\");\n        let exe = dir.join(\"wordcraft.exe\");\n        std::fs::write(&exe, b\"\").unwrap();\n        // No marker: the usual profile folder, wherever the app happens to be.\n        assert_eq!(portable_dir(&exe), None);\n        assert!(!dir.join(PORTABLE_DATA).exists(), \"and nothing is created beside it\");\n        std::fs::write(dir.join(PORTABLE_MARKER), b\"portable\").unwrap();\n        let data = portable_dir(&exe).expect(\"the marker makes the folder portable\");\n        assert_eq!(data, dir.join(PORTABLE_DATA));\n        assert!(data.is_dir(), \"and the profile folder exists\");\n        assert!(!data.join(\".write-test\").exists(), \"the write test leaves nothing behind\");\n        let _ = std::fs::remove_dir_all(&dir);\n    }\n",
-   "layouts": [
-    "prefs"
-   ]
+   "after": "    fn key_file_per_instance() {\n",
+   "insert": "\n    /// A temp folder standing in for the folder a portable copy sits in.\n    fn temp_app_folder(tag: &str) -> PathBuf {\n        let dir = std::env::temp_dir().join(format!(\"wordcraft-portable-{tag}-{}\", std::process::id()));\n        let _ = std::fs::remove_dir_all(&dir);\n        std::fs::create_dir_all(&dir).unwrap();\n        dir\n    }\n\n    #[test]\n    fn a_portable_copy_keeps_its_profile_beside_the_exe() {\n        let dir = temp_app_folder(\"marked\");\n        let exe = dir.join(\"wordcraft.exe\");\n        std::fs::write(&exe, b\"\").unwrap();\n        // No marker: the usual profile folder, wherever the app happens to be.\n        assert_eq!(portable_dir(&exe), None);\n        assert!(!dir.join(PORTABLE_DATA).exists(), \"and nothing is created beside it\");\n        std::fs::write(dir.join(PORTABLE_MARKER), b\"portable\").unwrap();\n        let data = portable_dir(&exe).expect(\"the marker makes the folder portable\");\n        assert_eq!(data, dir.join(PORTABLE_DATA));\n        assert!(data.is_dir(), \"and the profile folder exists\");\n        assert!(!data.join(\".write-test\").exists(), \"the write test leaves nothing behind\");\n        let _ = std::fs::remove_dir_all(&dir);\n    }\n"
   }
  ],
  "crates/engine/Cargo.toml": [
@@ -122,28 +72,31 @@
  "crates/ui-egui/src/app/commands.rs": [
   {
    "new": "                        Some(code) => {\n                            self.ui.language = code.to_string();\n                            // A choice, `auto` included: kept across launches, where a profile that\n                            // never chose opens in Hebrew (`WordApp::apply_prefs`, `i18n::DEFAULT_LANGUAGE`).\n                            self.ui.language_chosen = true;\n                        }\n",
-   "new_legacy": "                        Some(code) => {\n                            self.ui.language = code.to_string();\n                            // A choice, `auto` included: kept across launches, where a profile that\n                            // never chose opens in Hebrew ([`UiState::adopt_default_language`]).\n                            self.ui.language_chosen = true;\n                        }\n",
    "old": "                        Some(code) => self.ui.language = code.to_string(),\n"
+  }
+ ],
+ "crates/ui-egui/src/app/prefs.rs": [
+  {
+   "after": "        self.ui = ui;\n",
+   "insert": "        // This fork opens in Hebrew: a settings file that never chose an interface language\n        // moves to it here, when the app loads its preferences (`i18n::DEFAULT_LANGUAGE`).\n        if !self.ui.language_chosen && self.ui.language.eq_ignore_ascii_case(crate::i18n::AUTO) {\n            self.ui.language = crate::i18n::DEFAULT_LANGUAGE.to_string();\n        }\n"
   }
  ],
  "crates/ui-egui/src/i18n.rs": [
   {
    "after": "//! catalog for it, and English otherwise. File ▸ Options ▸ Interface language picks one by hand.\n//!\n",
-   "insert": "//! This fork opens in Hebrew instead ([`DEFAULT_LANGUAGE`]): a profile that never chose an\n//! interface language — every profile saved by a version before this one, which wrote `auto` and\n//! nothing else — shows Hebrew, and Hebrew is one row of the Options language list like any other.\n//! Choosing a language there, `Automatic` included, is kept. The app applies it to a settings\n//! file that never chose one as it loads it (`WordApp::apply_prefs`), so the shared state keeps\n//! the English labels the tests read.\n//!\n",
-   "insert_legacy": "//! This fork opens in Hebrew instead ([`DEFAULT_LANGUAGE`]): a profile that never chose an\n//! interface language — every profile saved by a version before this one, which wrote `auto` and\n//! nothing else — shows Hebrew, and Hebrew is one row of the Options language list like any other.\n//! Choosing a language there, `Automatic` included, is kept. The app asks for it at startup\n//! (`UiState::adopt_default_language`), so tests and the shared state keep their English labels.\n//!\n"
+   "insert": "//! This fork opens in Hebrew instead ([`DEFAULT_LANGUAGE`]): a profile that never chose an\n//! interface language — every profile saved by a version before this one, which wrote `auto` and\n//! nothing else — shows Hebrew, and Hebrew is one row of the Options language list like any other.\n//! Choosing a language there, `Automatic` included, is kept. The app applies it to a settings\n//! file that never chose one as it loads it (`WordApp::apply_prefs`), so the shared state keeps\n//! the English labels the tests read.\n//!\n"
   },
   {
    "after": "//! English only.\n",
    "insert": "//!\n//! # Hebrew (this fork)\n//! Hebrew is not in storytold/craft-i18n yet, so its catalogs live in this fork, in\n//! `i18n-he/locales/he/` (`README.md` there): `i18n-he/tools/assemble.py` lays them over a\n//! craft-i18n checkout to make the `CRAFT_I18N_DIR` a build embeds, and the daily\n//! `sync-upstream` workflow does that against upstream's newest `main`. Strings with no Hebrew\n//! row show in English, so the catalog can grow without breaking anything.\n"
   },
   {
-   "after": "pub const AUTO: &str = \"auto\";\n\n",
-   "insert": "//! This fork opens in Hebrew instead ([`DEFAULT_LANGUAGE`]): a profile that never chose an\n//! interface language — every profile saved by a version before this one, which wrote `auto` and\n//! nothing else — shows Hebrew, and Hebrew is one row of the Options language list like any other.\n//! Choosing a language there, `Automatic` included, is kept. The app applies it to a settings\n//! file that never chose one as it loads it (`WordApp::apply_prefs`), so the shared state keeps\n//! the English labels the tests read.\n//!\n",
-   "insert_legacy": "/// The interface language this fork opens in: Hebrew. A new profile, and every profile that never\n/// chose a language, shows Hebrew — which is what this fork exists for. File ▸ Options ▸ Interface\n/// language lists every other language beside it, `Automatic` (the system's language) among them,\n/// and a choice there is what the app keeps from then on\n/// ([`UiState::adopt_default_language`](crate::UiState)).\npub const DEFAULT_LANGUAGE: &str = \"he\";\n\n"
+   "after": "pub const AUTO: &str = \"auto\";\n",
+   "insert": "//! This fork opens in Hebrew instead ([`DEFAULT_LANGUAGE`]): a profile that never chose an\n//! interface language — every profile saved by a version before this one, which wrote `auto` and\n//! nothing else — shows Hebrew, and Hebrew is one row of the Options language list like any other.\n//! Choosing a language there, `Automatic` included, is kept. The app applies it to a settings\n//! file that never chose one as it loads it (`WordApp::apply_prefs`), so the shared state keeps\n//! the English labels the tests read.\n//!\n/// The interface language this fork opens in: Hebrew. A new profile, and every settings file that\n/// never chose a language, shows Hebrew — which is what this fork exists for. File ▸ Options ▸\n/// Interface language lists every other language beside it, `Automatic` (the system's language)\n/// among them, and a choice there is what the app keeps from then on.\npub const DEFAULT_LANGUAGE: &str = \"he\";\n\n"
   },
   {
    "new": "const RTL_LANGUAGES: [&str; 2] = [\"ar\", \"he\"];\n",
-   "old": "const RTL_LANGUAGES: [&str; 1] = [\"ar\"];\n\n"
+   "old": "const RTL_LANGUAGES: [&str; 1] = [\"ar\"];\n"
   }
  ],
  "crates/ui-egui/src/i18n/tests.rs": [
@@ -157,59 +110,49 @@
   },
   {
    "after": "    assert_eq!(app.run(\"ui.language\", serde_json::json!({})).unwrap()[\"language\"], AUTO);\n",
-   "insert": "/// This fork opens in Hebrew, and Hebrew is one row of File ▸ Options ▸ Interface language like\n/// every other language. A settings file that never chose a language moves to it; a choice\n/// (`Automatic` included) is kept.\n#[test]\nfn this_fork_opens_in_hebrew_and_offers_hebrew_in_the_language_list() {\n    needs_catalogs!();\n    if !offers_hebrew() {\n        return;\n    }\n    assert_eq!(DEFAULT_LANGUAGE, \"he\");\n    let he = lang(DEFAULT_LANGUAGE);\n    assert!(he.rtl(), \"Hebrew mirrors the interface\");\n    assert_eq!(he.name(), \"עברית\", \"the picker shows it under its own name\");\n    assert!(Lang::for_picker().iter().any(|l| l.code() == DEFAULT_LANGUAGE), \"Hebrew is in the picker\");\n\n    // A settings file from a version before `languageChosen`: `auto` was written on the first run\n    // whether or not anyone had chosen, so such a profile opens in Hebrew.\n    let old = \"{\\\"tab\\\":\\\"Home\\\",\\\"language\\\":\\\"auto\\\"}\";\n    let mut app = crate::WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::new()), Default::default());\n    app.apply_prefs(serde_json::from_str(old).unwrap());\n    assert_eq!(app.ui.language, DEFAULT_LANGUAGE);\n    assert_eq!(Lang::from_pref(&app.ui.language), he);\n\n    // A choice is kept, and choosing `Automatic` records one, so `auto` survives a restart.\n    let chosen = \"{\\\"language\\\":\\\"auto\\\",\\\"languageChosen\\\":true}\";\n    let mut fresh = crate::WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::new()), Default::default());\n    fresh.apply_prefs(serde_json::from_str(chosen).unwrap());\n    assert_eq!(fresh.ui.language, AUTO, \"the user's Automatic stays automatic\");\n    assert!(!app.ui.language_chosen, \"a new window has not chosen a language\");\n    app.run(\"ui.language\", serde_json::json!({\"value\": \"auto\"})).unwrap();\n    assert!(app.ui.language_chosen, \"picking Automatic is a choice\");\n    let restored: crate::prefs::Prefs = serde_json::from_str(&serde_json::to_string(&app.ui).unwrap()).unwrap();\n    assert_eq!(restored.language, AUTO);\n    apply_language(Lang::EN);\n}\n",
-   "insert_legacy": "}\n\n/// This fork opens in Hebrew, and Hebrew is one row of File ▸ Options ▸ Interface language like\n/// every other language. A profile that never chose a language moves to it; a choice (`Automatic`\n/// included) is kept.\n#[test]\nfn this_fork_opens_in_hebrew_and_offers_hebrew_in_the_language_list() {\n    needs_catalogs!();\n    if !offers_hebrew() {\n        return;\n    }\n    assert_eq!(DEFAULT_LANGUAGE, \"he\");\n    let he = lang(DEFAULT_LANGUAGE);\n    assert!(he.rtl(), \"Hebrew mirrors the interface\");\n    assert_eq!(he.name(), \"עברית\", \"the picker shows it under its own name\");\n    assert!(Lang::for_picker().iter().any(|l| l.code() == DEFAULT_LANGUAGE), \"Hebrew is in the picker\");\n\n    // `ui.json` from a version before `languageChosen`: `auto` was written on the first run\n    // whether or not anyone had chosen, so such a profile opens in Hebrew.\n    let mut old: crate::UiState = crate::UiState::from_json(br#\"{\"tab\":\"Home\",\"language\":\"auto\"}\"#).unwrap();\n    assert!(!old.language_chosen);\n    old.adopt_default_language();\n    assert_eq!(old.language, DEFAULT_LANGUAGE);\n    assert_eq!(Lang::from_pref(&old.language), he);\n\n    // A choice is kept, and choosing `Automatic` records one, so `auto` survives a restart.\n    let mut chosen: crate::UiState = crate::UiState::from_json(br#\"{\"language\":\"auto\",\"languageChosen\":true}\"#).unwrap();\n    chosen.adopt_default_language();\n    assert_eq!(chosen.language, AUTO, \"the user's Automatic stays automatic\");\n    let mut app = crate::WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::new()), Default::default());\n    assert!(!app.ui.language_chosen, \"a new window has not chosen a language\");\n    app.run(\"ui.language\", serde_json::json!({\"value\": \"auto\"})).unwrap();\n    assert!(app.ui.language_chosen, \"picking Automatic is a choice\");\n    let restored: crate::UiState = serde_json::from_str(&serde_json::to_string(&app.ui).unwrap()).unwrap();\n    assert_eq!(restored.language, AUTO);\n"
+   "insert": "/// This fork opens in Hebrew, and Hebrew is one row of File ▸ Options ▸ Interface language like\n/// every other language. A settings file that never chose a language moves to it; a choice\n/// (`Automatic` included) is kept.\n#[test]\nfn this_fork_opens_in_hebrew_and_offers_hebrew_in_the_language_list() {\n    needs_catalogs!();\n    if !offers_hebrew() {\n        return;\n    }\n    assert_eq!(DEFAULT_LANGUAGE, \"he\");\n    let he = lang(DEFAULT_LANGUAGE);\n    assert!(he.rtl(), \"Hebrew mirrors the interface\");\n    assert_eq!(he.name(), \"עברית\", \"the picker shows it under its own name\");\n    assert!(Lang::for_picker().iter().any(|l| l.code() == DEFAULT_LANGUAGE), \"Hebrew is in the picker\");\n\n    // A settings file from a version before `languageChosen`: `auto` was written on the first run\n    // whether or not anyone had chosen, so such a profile opens in Hebrew.\n    let old = \"{\\\"tab\\\":\\\"Home\\\",\\\"language\\\":\\\"auto\\\"}\";\n    let mut app = crate::WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::new()), Default::default());\n    app.apply_prefs(serde_json::from_str(old).unwrap());\n    assert_eq!(app.ui.language, DEFAULT_LANGUAGE);\n    assert_eq!(Lang::from_pref(&app.ui.language), he);\n\n    // A choice is kept, and choosing `Automatic` records one, so `auto` survives a restart.\n    let chosen = \"{\\\"language\\\":\\\"auto\\\",\\\"languageChosen\\\":true}\";\n    let mut fresh = crate::WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::new()), Default::default());\n    fresh.apply_prefs(serde_json::from_str(chosen).unwrap());\n    assert_eq!(fresh.ui.language, AUTO, \"the user's Automatic stays automatic\");\n    assert!(!app.ui.language_chosen, \"a new window has not chosen a language\");\n    app.run(\"ui.language\", serde_json::json!({\"value\": \"auto\"})).unwrap();\n    assert!(app.ui.language_chosen, \"picking Automatic is a choice\");\n    let restored: crate::prefs::Prefs = serde_json::from_str(&serde_json::to_string(&app.ui).unwrap()).unwrap();\n    assert_eq!(restored.language, AUTO);\n    apply_language(Lang::EN);\n}\n"
+  },
+  {
+   "new": "        // Arabic and — when this fork's overlay is embedded — Hebrew are the right-to-left ones.\n    let rtl: Vec<&str> = Lang::all().filter(|l| l.rtl()).map(|l| l.code()).collect();\n    assert!(rtl.contains(&\"ar\"), \"Arabic mirrors the interface: {rtl:?}\");\n    assert!(rtl.iter().all(|c| [\"ar\", \"he\"].contains(c)), \"only Arabic and Hebrew are right to left: {rtl:?}\");\n",
+   "old": "        assert!(Lang::all().filter(|l| l.rtl()).eq([ar]), \"Arabic is the only right-to-left language\");\n"
   },
   {
    "new": "    assert_eq!(with, [(\"pt-br\", \"pt-BR\"), (\"pl\", \"pl-PL\"), (\"cs\", \"cs-CZ\"), (\"tr\", \"tr-TR\"), (\"it\", \"it-IT\"), (\"he\", \"he-IL\")]);\n",
    "old": "    assert_eq!(with, [(\"pt-br\", \"pt-BR\"), (\"pl\", \"pl-PL\"), (\"cs\", \"cs-CZ\"), (\"tr\", \"tr-TR\"), (\"it\", \"it-IT\")]);\n"
   },
   {
-   "new": "    // This fork's Hebrew is offered only when its overlay is embedded (see `offers_hebrew`).\n    let listed: Vec<&str> = LANGUAGES.iter().map(|l| l.code).filter(|c| *c != \"he\" || offers_hebrew()).collect();\n",
-   "old": "    let listed: Vec<&str> = LANGUAGES.iter().map(|l| l.code).collect();\n"
+   "after": "    assert_eq!(feedback(&receipt(), str::to_owned), \"Print job submitted: spooled 2 sheet(s)\");\n}\n\n",
+   "insert": "/// Does this build embed this fork's Hebrew catalog? A catalog directory laid out from\n/// storytold/craft-i18n alone (`craft-i18n.rev`) has no `he` yet, so Hebrew is listed but not\n/// offered there; the daily build lays `i18n-he/` over it (`i18n-he/tools/assemble.py`).\nfn offers_hebrew() -> bool {\n    CRAFT_I18N.iter().any(|(code, ..)| *code == \"he\")\n}\n\n"
   },
   {
-   "new": "    // Arabic and — when this fork's overlay is embedded — Hebrew are the right-to-left ones.\n    let rtl: Vec<&str> = Lang::all().filter(|l| l.rtl()).map(|l| l.code()).collect();\n    assert!(rtl.contains(&\"ar\"), \"Arabic mirrors the interface: {rtl:?}\");\n    assert!(rtl.iter().all(|c| [\"ar\", \"he\"].contains(c)), \"only Arabic and Hebrew are right to left: {rtl:?}\");\n",
-   "old": "    assert!(Lang::all().filter(|l| l.rtl()).eq([ar]), \"Arabic is the only right-to-left language\");\n"
+   "new": "    // This fork's Hebrew is offered only when its overlay is embedded (see `offers_hebrew`).\n    let listed: Vec<&str> = LANGUAGES.iter().map(|l| l.code).filter(|c| *c != \"he\" || offers_hebrew()).collect();\n",
+   "old": "    let listed: Vec<&str> = LANGUAGES.iter().map(|l| l.code).collect();\n"
+  }
+ ],
+ "crates/ui-egui/src/prefs.rs": [
+  {
+   "after": "    pub language: String,\n",
+   "insert": "    /// Has an interface language been chosen (File ▸ Options ▸ Interface language, or the\n    /// `ui.language` command)? `false` for a settings file written before this field, whose\n    /// `language` is `auto` whether or not anyone wanted the system's language — so it opens in\n    /// Hebrew (see [`WordApp::apply_prefs`]).\n    pub language_chosen: bool,\n"
+  },
+  {
+   "after": "            language: i18n::AUTO.into(),\n",
+   "insert": "            language_chosen: false,\n"
   }
  ],
  "crates/ui-egui/src/previews.rs": [
   {
-   "layouts": [
-    "ui_state"
-   ],
-   "new": "        let mut f: Vec<String> = self.families.as_ref().map(|(_, f)| f.clone()).unwrap_or_default();\n        // A Hebrew interface puts the fonts that draw Hebrew first, so the list opens on fonts that\n        // can show the document. Only Hebrew: the interface mirrors for Arabic too, but that is a\n        // different script, and reordering a list the reader did not ask for in an Arabic interface\n        // would put Arabic-capable fonts last. Which families draw Hebrew is a scan of every\n        // installed font's character map: it runs once, in the background, and this asks for its\n        // answer every frame until the answer is there — the list is alphabetical until then, and\n        // reorders itself after.\n        if crate::i18n::current().code() == \"he\"\n            && let Some(hebrew) = hebrew_families()\n        {\n            hebrew_first(&mut f, &hebrew);\n        }\n        f\n",
-   "old": "        self.families.as_ref().map(|(_, f)| f.clone()).unwrap_or_default()\n"
-  },
-  {
    "after": "        *p = Color32::from_white_alpha(u8::try_from(ink).unwrap_or(u8::MAX));\n    }\n}\n\n",
-   "insert": "/// The word that says whether a family draws Hebrew (`שלום`): read from every installed family's\n/// character map, once, to put the fonts that can show it first in a Hebrew interface's list.\nconst HEBREW_SAMPLE: &str = \"שלום\";\n\n/// [`Previews::families`]' order in a Hebrew interface: the families that draw [`HEBREW_SAMPLE`]\n/// first, then the others, each group in the alphabetical order the list already has.\nfn hebrew_first(families: &mut [String], hebrew: &std::collections::HashSet<String>) {\n    families.sort_by_key(|name| !hebrew.contains(&name.to_lowercase()));\n}\n\n/// The families whose faces draw Hebrew — the first ones in a Hebrew interface's font list.\n///\n/// The answer is a scan over every installed family (each one's character map, read from its file),\n/// so it is made once, on a background thread the first call starts: `None` while the scan runs,\n/// and `None` for good on wasm, which has neither the thread nor an installed list. Nothing waits\n/// for it; the list keeps its alphabetical order until the scan is done.\nfn hebrew_families() -> Option<std::sync::Arc<std::collections::HashSet<String>>> {\n    #[cfg(target_arch = \"wasm32\")]\n    {\n        None\n    }\n    #[cfg(not(target_arch = \"wasm32\"))]\n    {\n        use std::collections::HashSet;\n        use std::sync::{Arc, Mutex, Once, OnceLock};\n\n        static SCAN: OnceLock<Mutex<Option<Arc<HashSet<String>>>>> = OnceLock::new();\n        static START: Once = Once::new();\n        let answer = SCAN.get_or_init(|| Mutex::new(None));\n        START.call_once(|| {\n            // A failed spawn leaves the list alphabetical.\n            let _ = std::thread::Builder::new().name(\"hebrew-fonts\".into()).spawn(move || {\n                let db = wordcraft_fonts::FontDb::global();\n                let draws_hebrew = |family: &str| db.preview_face(family).is_some_and(|face| HEBREW_SAMPLE.chars().all(|c| face.covers(c)));\n                let hebrew: HashSet<String> = db.families().into_iter().filter(|f| draws_hebrew(f)).map(|f| f.to_lowercase()).collect();\n                *answer.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Arc::new(hebrew));\n            });\n        });\n        answer.lock().unwrap_or_else(std::sync::PoisonError::into_inner).clone()\n    }\n}\n\n",
-   "layouts": [
-    "prefs"
-   ]
+   "insert": "/// The word that says whether a family draws Hebrew (`שלום`): read from every installed family's\n/// character map, once, to put the fonts that can show it first in a Hebrew interface's list.\nconst HEBREW_SAMPLE: &str = \"שלום\";\n\n/// [`Previews::families`]' order in a Hebrew interface: the families that draw [`HEBREW_SAMPLE`]\n/// first, then the others, each group in the alphabetical order the list already has.\nfn hebrew_first(families: &mut [String], hebrew: &std::collections::HashSet<String>) {\n    families.sort_by_key(|name| !hebrew.contains(&name.to_lowercase()));\n}\n\n/// The families whose faces draw Hebrew — the first ones in a Hebrew interface's font list.\n///\n/// The answer is a scan over every installed family (each one's character map, read from its file),\n/// so it is made once, on a background thread the first call starts: `None` while the scan runs,\n/// and `None` for good on wasm, which has neither the thread nor an installed list. Nothing waits\n/// for it; the list keeps its alphabetical order until the scan is done.\nfn hebrew_families() -> Option<std::sync::Arc<std::collections::HashSet<String>>> {\n    #[cfg(target_arch = \"wasm32\")]\n    {\n        None\n    }\n    #[cfg(not(target_arch = \"wasm32\"))]\n    {\n        use std::collections::HashSet;\n        use std::sync::{Arc, Mutex, Once, OnceLock};\n\n        static SCAN: OnceLock<Mutex<Option<Arc<HashSet<String>>>>> = OnceLock::new();\n        static START: Once = Once::new();\n        let answer = SCAN.get_or_init(|| Mutex::new(None));\n        START.call_once(|| {\n            // A failed spawn leaves the list alphabetical.\n            let _ = std::thread::Builder::new().name(\"hebrew-fonts\".into()).spawn(move || {\n                let db = wordcraft_fonts::FontDb::global();\n                let draws_hebrew = |family: &str| db.preview_face(family).is_some_and(|face| HEBREW_SAMPLE.chars().all(|c| face.covers(c)));\n                let hebrew: HashSet<String> = db.families().into_iter().filter(|f| draws_hebrew(f)).map(|f| f.to_lowercase()).collect();\n                *answer.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Arc::new(hebrew));\n            });\n        });\n        answer.lock().unwrap_or_else(std::sync::PoisonError::into_inner).clone()\n    }\n}\n\n"
   }
  ],
  "crates/ui-egui/src/ribbon/home.rs": [
   {
-   "layouts": [
-    "ui_state"
-   ],
-   "new": "                // These buttons, and the pair of text directions after them, are where mirrored\n                // order alone reads wrong: a Hebrew row would start (at the right) with the\n                // flush-left icon and end with the flush-right one. The icons face the way the text\n                // does, so the row keeps the paragraph's reading order — in a Hebrew one it starts\n                // with Align Right, and the directions start with right-to-left.\n                let mut aligns = [\n                    (\"alignLeft\", \"Align Left\", \"para.alignLeft\", align == A::Left),\n                    (\"alignCenter\", \"Center\", \"para.alignCenter\", align == A::Center),\n                    (\"alignRight\", \"Align Right\", \"para.alignRight\", align == A::Right),\n                    (\"justify\", \"Justify\", \"para.justify\", align == A::Justify),\n                ];\n                let mut directions =\n                    [(\"textLtr\", \"Left-to-Right Text Direction\", \"para.ltr\", !rtl), (\"textRtl\", \"Right-to-Left Text Direction\", \"para.rtl\", rtl)];\n                if crate::rtl::on() {\n                    // The row is drawn from its right edge in a Hebrew interface, so the first\n                    // button here is the rightmost one: the flush-right icon must come first and the\n                    // flush-left one after Center, and Justify — which faces nowhere — stays last.\n                    aligns.swap(0, 2);\n                    directions.reverse();\n                }\n                for (icon, tip, cmd, on) in aligns {\n                    small(ui, app, icon, None, tip, crate::widgets::ButtonAction::new(cmd, json!({}), on));\n                }\n",
-   "old": "                small(ui, app, \"alignLeft\", None, \"Align Left\", crate::widgets::ButtonAction::new(\"para.alignLeft\", json!({}), align == A::Left));\n                small(ui, app, \"alignCenter\", None, \"Center\", crate::widgets::ButtonAction::new(\"para.alignCenter\", json!({}), align == A::Center));\n                small(ui, app, \"alignRight\", None, \"Align Right\", crate::widgets::ButtonAction::new(\"para.alignRight\", json!({}), align == A::Right));\n                small(ui, app, \"justify\", None, \"Justify\", crate::widgets::ButtonAction::new(\"para.justify\", json!({}), align == A::Justify));\n"
+   "new": "                    // The interface's direction mirrors every row (`RootEnv::direction`), so this one is\n                    // drawn from its right edge in Hebrew: the first button here is the rightmost,\n                    // and the icons must face the way the text does. Align Right comes first (Align\n                    // Left third, after Center), Justify — which faces nowhere — stays last, and the\n                    // pair of directions follows the same rule.\n                    let mut aligns = [\n                        (\"alignLeft\", \"Align Left\", \"para.alignLeft\", align == Align::Left),\n",
+   "old": "                    for (icon, tip, id, on) in [\n                        (\"alignLeft\", \"Align Left\", \"para.alignLeft\", align == Align::Left),\n"
   },
   {
-   "layouts": [
-    "ui_state"
-   ],
-   "new": "                for (icon, tip, cmd, on) in directions {\n                    small(ui, app, icon, None, tip, crate::widgets::ButtonAction::new(cmd, json!({}), on));\n                }\n",
-   "old": "                small(ui, app, \"textLtr\", None, \"Left-to-Right Text Direction\", crate::widgets::ButtonAction::new(\"para.ltr\", json!({}), !rtl));\n                small(ui, app, \"textRtl\", None, \"Right-to-Left Text Direction\", crate::widgets::ButtonAction::new(\"para.rtl\", json!({}), rtl));\n"
-  },
-  {
-   "layouts": [
-    "prefs"
-   ],
-   "new": "                    // The interface's direction mirrors every row (`RootEnv::direction`), so this one is\n                    // drawn from its right edge in Hebrew: the first button here is the rightmost,\n                    // and the icons must face the way the text does. Align Right comes first (Align\n                    // Left third, after Center), Justify — which faces nowhere — stays last, and the\n                    // pair of directions follows the same rule.\n                    let mut aligns = [\n                        (\"alignLeft\", \"Align Left\", \"para.alignLeft\", align == Align::Left),\n                        (\"alignCenter\", \"Center\", \"para.alignCenter\", align == Align::Center),\n                        (\"alignRight\", \"Align Right\", \"para.alignRight\", align == Align::Right),\n                        (\"justify\", \"Justify\", \"para.justify\", align == Align::Justify),\n                    ];\n                    let mut directions =\n                        [(\"textLtr\", \"Left-to-Right Text Direction\", \"para.ltr\", !rtl), (\"textRtl\", \"Right-to-Left Text Direction\", \"para.rtl\", rtl)];\n                    if crate::i18n::current().rtl() {\n                        aligns.swap(0, 2);\n                        directions.reverse();\n                    }\n                    for (icon, tip, id, on) in aligns.into_iter().chain(directions) {\n                        ToggleButton::command(CommandRef::new(id))\n                            .icon(crate::icons::id(icon))\n                            .icon_only()\n                            .selected(on)\n                            .tooltip(tl!(tip).to_string())\n                            .show(ui);\n                    }\n",
-   "old": "                    for (icon, tip, id, on) in [\n                        (\"alignLeft\", \"Align Left\", \"para.alignLeft\", align == Align::Left),\n                        (\"alignCenter\", \"Center\", \"para.alignCenter\", align == Align::Center),\n                        (\"alignRight\", \"Align Right\", \"para.alignRight\", align == Align::Right),\n                        (\"justify\", \"Justify\", \"para.justify\", align == Align::Justify),\n                        (\"textLtr\", \"Left-to-Right Text Direction\", \"para.ltr\", !rtl),\n                        (\"textRtl\", \"Right-to-Left Text Direction\", \"para.rtl\", rtl),\n                    ] {\n                        ToggleButton::command(CommandRef::new(id))\n                            .icon(crate::icons::id(icon))\n                            .icon_only()\n                            .selected(on)\n                            .tooltip(tl!(tip).to_string())\n                            .show(ui);\n                    }\n"
+   "new": "                    ];\n                    let mut directions =\n                        [(\"textLtr\", \"Left-to-Right Text Direction\", \"para.ltr\", !rtl), (\"textRtl\", \"Right-to-Left Text Direction\", \"para.rtl\", rtl)];\n                    if crate::i18n::current().rtl() {\n                        aligns.swap(0, 2);\n                        directions.reverse();\n                    }\n                    for (icon, tip, id, on) in aligns.into_iter().chain(directions) {\n",
+   "old": "                        (\"textLtr\", \"Left-to-Right Text Direction\", \"para.ltr\", !rtl),\n                        (\"textRtl\", \"Right-to-Left Text Direction\", \"para.rtl\", rtl),\n                    ] {\n"
   }
  ],
  "crates/ui-egui/src/ribbon/language.rs": [
@@ -232,55 +175,38 @@
  ],
  "crates/ui-egui/src/window_ui.rs": [
   {
-   "after": "            fonts_system_arabic: _,\n",
-   "insert": "            fonts_lang: _,\n",
-   "layouts": [
-    "ui_state"
-   ]
-  },
-  {
    "after": "            language: _,\n",
-   "insert": "            language_chosen: _,\n",
-   "layouts": [
-    "ui_state"
-   ]
-  },
-  {
-   "after": "            language: _,\n",
-   "insert": "            language_chosen: _,\n",
-   "layouts": [
-    "prefs"
-   ]
+   "insert": "            language_chosen: _,\n"
   }
  ],
  "packaging/windows/package.ps1": [
   {
-   "new": "  Produces, in $env:DIST (default: dist/release):\n    wordcraft-<version>-windows-<arch>-Setup.exe      the installer people download: one .exe, no\n                                                      admin rights (it wraps the MSI below, built\n                                                      from `wordcraft-bundle.wxs`)\n",
-   "old": "  Produces, in $env:DIST (default: dist/release):\n"
+   "after": "  Produces, in $env:DIST (default: dist/release):\n",
+   "insert": "    wordcraft-<version>-windows-<arch>-Setup.exe      the installer people download: one .exe, no\n                                                      admin rights (it wraps the MSI below, built\n                                                      from `wordcraft-bundle.wxs`)\n"
   },
   {
-   "new": "                                                      \"Everyone on this computer\" installs per machine\n    wordcraft-<version>-windows-<arch>-portable.zip   wordcraft.exe + wordcraft-cli.exe, with a\n                                                      `portable.txt` that keeps the profile inside\n",
-   "old": "                                                      \"Everyone on this computer\" installs per machine\n    wordcraft-<version>-windows-<arch>-portable.zip   wordcraft.exe + wordcraft-cli.exe\n"
+   "new": "    wordcraft-<version>-windows-<arch>-portable.zip   wordcraft.exe + wordcraft-cli.exe, with a\n                                                      `portable.txt` that keeps the profile inside\n",
+   "old": "    wordcraft-<version>-windows-<arch>-portable.zip   wordcraft.exe + wordcraft-cli.exe\n"
   },
   {
-   "new": "  Needs: Rust (MSVC toolchain + the target), the Windows SDK (rc.exe, signtool.exe),\n  and WiX v5 with its UI, Util and BootstrapperApplications extensions (installer dialogs, the\n  bundle around the MSI, \"Launch WordCraft\" on finish):\n",
-   "old": "  Needs: Rust (MSVC toolchain + the target), the Windows SDK (rc.exe, signtool.exe),\n  and WiX v5 with its UI and Util extensions (installer dialogs, \"Launch WordCraft\" on finish):\n"
+   "new": "  and WiX v5 with its UI, Util and BootstrapperApplications extensions (installer dialogs, the\n  bundle around the MSI, \"Launch WordCraft\" on finish):\n",
+   "old": "  and WiX v5 with its UI and Util extensions (installer dialogs, \"Launch WordCraft\" on finish):\n"
   },
   {
-   "new": "    wix extension add -g WixToolset.Util.wixext/5.0.2\n    wix extension add -g WixToolset.BootstrapperApplications.wixext/5.0.2\n",
-   "old": "    wix extension add -g WixToolset.Util.wixext/5.0.2\n"
+   "after": "    wix extension add -g WixToolset.Util.wixext/5.0.2\n",
+   "insert": "    wix extension add -g WixToolset.BootstrapperApplications.wixext/5.0.2\n"
   },
   {
-   "new": "\n# ---- Setup.exe -----------------------------------------------------------------------------------\n# The one file people double-click (wordcraft-bundle.wxs): a WiX bundle around the MSI built and\n# signed above, carrying it inside so it installs with no download and no second file. It is the\n# installer this fork ships; the MSI stays beside it for deployments that run msiexec themselves.\n$Setup = Join-Path $Dist \"wordcraft-$Version-windows-$Arch-Setup.exe\"\nInvoke-Native 'wix build (the Setup.exe bundle)' {\n  wix build (Join-Path $PSScriptRoot 'wordcraft-bundle.wxs') -arch $Arch `\n    -ext WixToolset.BootstrapperApplications.wixext `\n    -d \"Version=$MsiVersion\" -d \"MsiPath=$Msi\" `\n    -d \"LicenseRtf=$LicenseRtf\" -d \"IconPath=$(Join-Path $Root 'assets\\app-icon\\wordcraft.ico')\" `\n    -o $Setup\n}\nRemove-Item -Force -ErrorAction SilentlyContinue ([IO.Path]::ChangeExtension($Setup, '.wixpdb'))\n& (Join-Path $PSScriptRoot 'sign.ps1') $Setup\n\n",
-   "old": "\n"
+   "after": "& (Join-Path $PSScriptRoot 'sign.ps1') $Msi\n\n",
+   "insert": "# ---- Setup.exe -----------------------------------------------------------------------------------\n# The one file people double-click (wordcraft-bundle.wxs): a WiX bundle around the MSI built and\n# signed above, carrying it inside so it installs with no download and no second file. It is the\n# installer this fork ships; the MSI stays beside it for deployments that run msiexec themselves.\n$Setup = Join-Path $Dist \"wordcraft-$Version-windows-$Arch-Setup.exe\"\n# Not fatal, deliberately: the MSI above and the portable zip below are each a complete way to install\n# WordCraft, and a bundle that fails to build must not take them with it. A real run did exactly that\n# (`wix build` for the bundle exited 1 on the push after PR #31, and the job died before the zip was\n# made, so nothing was published at all). `-v` keeps WiX's own diagnosis in the log for next time.\n$BundleError = $null\ntry {\n  Invoke-Native 'wix build (the Setup.exe bundle)' {\n    wix build (Join-Path $PSScriptRoot 'wordcraft-bundle.wxs') -arch $Arch `\n      -ext WixToolset.BootstrapperApplications.wixext `\n      -d \"Version=$MsiVersion\" -d \"MsiPath=$Msi\" `\n      -d \"LicenseRtf=$LicenseRtf\" -d \"IconPath=$(Join-Path $Root 'assets\\app-icon\\wordcraft.ico')\" `\n      -o $Setup -v\n  }\n} catch {\n  $BundleError = $_.Exception.Message\n}\nif ($BundleError) {\n  # A half-written .exe must not ship: leave only whole artifacts to be found and signed.\n  Remove-Item -Force -ErrorAction SilentlyContinue $Setup\n  Remove-Item -Force -ErrorAction SilentlyContinue ([IO.Path]::ChangeExtension($Setup, '.wixpdb'))\n  Write-Output \"::warning title=Setup.exe was not built::$BundleError — shipping the MSI (msiexec /i, or double-click after the .msi association) and the portable zip instead.\"\n} else {\n  Remove-Item -Force -ErrorAction SilentlyContinue ([IO.Path]::ChangeExtension($Setup, '.wixpdb'))\n  & (Join-Path $PSScriptRoot 'sign.ps1') $Setup\n}\n\n"
   },
   {
-   "new": "}\n# The marker that makes the copy portable: with `portable.txt` beside wordcraft.exe the app keeps\n# its profile (settings, user dictionary, fonts, recovery copies) in WordCraft-data in this folder\n# instead of %APPDATA%\\WordCraft — so the folder can live on a stick or in a synced drive and be\n# deleted whole. `crates/control-key/src/lib.rs`, `portable_dir`.\n$Marker = Join-Path $Portable 'portable.txt'\n$MarkerLines = @(\n  'WordCraft portable.'\n  ''\n  'This file makes the app store its settings, user dictionary, fonts and recovery copies in the'\n  'WordCraft-data folder next to wordcraft.exe instead of in %APPDATA%\\WordCraft, so this folder'\n  'can be carried on a USB stick or in a synced folder. Delete WordCraft-data to start fresh;'\n  'delete this file to go back to the usual profile folder.'\n  ''\n  'Nothing is installed, and nothing outside this folder is written.'\n  ''\n  '---'\n  ''\n  'WordCraft נייד.'\n  ''\n  'הקובץ הזה גורם לתוכנה לשמור את ההגדרות, מילון המשתמש, הגופנים ועותקי השחזור בתיקיית'\n  'WordCraft-data שליד wordcraft.exe, ולא ב-%APPDATA%\\WordCraft — כך אפשר לקחת את התיקייה על'\n  'דיסק-און-קי או בתיקייה מסונכרנת. מחיקת WordCraft-data מאפסת את התוכנה; מחיקת הקובץ הזה'\n  'מחזירה את השמירה למקום הרגיל.'\n  ''\n  'אין התקנה, ולא נכתב דבר מחוץ לתיקייה הזאת.'\n)\n[System.IO.File]::WriteAllLines($Marker, $MarkerLines, [System.Text.UTF8Encoding]::new($false))\n\n",
-   "old": "}\n"
+   "after": "    Copy-Item $ofl.FullName (Join-Path $Portable \"OFL-$($ofl.Directory.Name).txt\")\n  }\n}\n",
+   "insert": "# The marker that makes the copy portable: with `portable.txt` beside wordcraft.exe the app keeps\n# its profile (settings, user dictionary, fonts, recovery copies) in WordCraft-data in this folder\n# instead of %APPDATA%\\WordCraft — so the folder can live on a stick or in a synced drive and be\n# deleted whole. `crates/control-key/src/lib.rs`, `portable_dir`.\n$Marker = Join-Path $Portable 'portable.txt'\n$MarkerLines = @(\n  'WordCraft portable.'\n  ''\n  'This file makes the app store its settings, user dictionary, fonts and recovery copies in the'\n  'WordCraft-data folder next to wordcraft.exe instead of in %APPDATA%\\WordCraft, so this folder'\n  'can be carried on a USB stick or in a synced folder. Delete WordCraft-data to start fresh;'\n  'delete this file to go back to the usual profile folder.'\n  ''\n  'Nothing is installed, and nothing outside this folder is written.'\n  ''\n  '---'\n  ''\n  'WordCraft נייד.'\n  ''\n  'הקובץ הזה גורם לתוכנה לשמור את ההגדרות, מילון המשתמש, הגופנים ועותקי השחזור בתיקיית'\n  'WordCraft-data שליד wordcraft.exe, ולא ב-%APPDATA%\\WordCraft — כך אפשר לקחת את התיקייה על'\n  'דיסק-און-קי או בתיקייה מסונכרנת. מחיקת WordCraft-data מאפסת את התוכנה; מחיקת הקובץ הזה'\n  'מחזירה את השמירה למקום הרגיל.'\n  ''\n  'אין התקנה, ולא נכתב דבר מחוץ לתיקייה הזאת.'\n)\n[System.IO.File]::WriteAllLines($Marker, $MarkerLines, [System.Text.UTF8Encoding]::new($false))\n\n"
   },
   {
-   "new": "}\nGet-Item $Setup, $Msi, $Zip | Format-Table Name, Length\n",
-   "old": "}\nGet-Item $Msi, $Zip | Format-Table Name, Length\n"
+   "new": "Get-Item ($Setup, $Msi, $Zip | Where-Object { Test-Path $_ }) | Format-Table Name, Length\n",
+   "old": "Get-Item $Msi, $Zip | Format-Table Name, Length\n"
   }
  ]
 }

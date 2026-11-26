@@ -12,6 +12,11 @@ The `.exe` carries its MSI compressed, so installing needs no network and no sec
 built from the MSI *after* that MSI passed the policy check and was signed, and is itself signed by
 the same `sign.ps1` path; `test-packaging-script.ps1` holds both properties.
 
+The `.exe` is the only one of the three that can be missing: `package.ps1` builds it inside a `try`,
+so a WiX bundle failure leaves the MSI and the portable zip to be published and prints a warning
+instead of ending the run. A release without it installs with the MSI (double-click for the current
+account, `msiexec /i … ALLUSERS=1` for everyone); the release notes name the download that exists.
+
 New installations default to the current account under `Programs\ArtCraft\<App>`.
 The first setup page offers installation for everyone. Scope is selected before duplicate
 checks and directory costing. An update uses the existing context's remembered exact folder;
