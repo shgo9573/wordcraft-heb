@@ -155,7 +155,7 @@ pub static LANGUAGES: [LangInfo; 30] = [
     // Hebrew, right to left; `he`, `he-IL` and `he_IL.UTF-8` resolve here. Its catalog is this
     // fork's (`i18n-he/`, laid over craft-i18n by `i18n-he/tools/assemble.py`), not
     // storytold/craft-i18n's: it is embedded whenever that overlay is in `CRAFT_I18N_DIR`. The
-    // interface mirrors right to left ([`RTL_LANGUAGES`], `crate::rtl`), and WordCraft proofs
+    // interface mirrors right to left ([`RTL_LANGUAGES`]), and WordCraft proofs
     // Hebrew (`wordcraft_proof_he`), so new documents are written in Hebrew.
     LangInfo { code: "he", prefer_hans: false, editing_lang: Some("he-IL") },
 ];

@@ -4,16 +4,18 @@
 
 .DESCRIPTION
   Produces, in $env:DIST (default: dist/release):
-    wordcraft-<version>-windows-<arch>-Setup.exe    the installer people download: one .exe, no
-                                                   admin rights (it wraps the MSI below)
-    wordcraft-<version>-windows-<arch>.msi          the MSI inside it, also shipped on its own for
-                                                   deployments (per user by default, #39; ALLUSERS=1
-                                                   installs per machine)
-    wordcraft-<version>-windows-<arch>-portable.zip wordcraft.exe + wordcraft-cli.exe
+    wordcraft-<version>-windows-<arch>-Setup.exe      the installer people download: one .exe, no
+                                                      admin rights (it wraps the MSI below, built
+                                                      from `wordcraft-bundle.wxs`)
+    wordcraft-<version>-windows-<arch>.msi            installer (WiX v5), one dual-scope package: for the
+                                                      current user by default, no admin rights (#39);
+                                                      "Everyone on this computer" installs per machine
+    wordcraft-<version>-windows-<arch>-portable.zip   wordcraft.exe + wordcraft-cli.exe, with a
+                                                      `portable.txt` that keeps the profile inside
 
-  The binaries link the C runtime statically (+crt-static), so neither the installer nor the
-  portable zip needs the Visual C++ redistributable. Signing is delegated to sign.ps1 (skipped with
-  a warning when no signing secrets are set).
+  The binaries link the C runtime statically (+crt-static), so neither the MSI nor the portable
+  zip needs the Visual C++ redistributable. Signing is delegated to sign.ps1 (skipped with a
+  warning when no signing secrets are set).
 
   Needs: Rust (MSVC toolchain + the target), the Windows SDK (rc.exe, signtool.exe),
   and WiX v5 with its UI, Util and BootstrapperApplications extensions (installer dialogs, the
@@ -30,9 +32,12 @@
 #>
 param(
   [ValidateSet('x64', 'x86', 'arm64')] [string] $Arch = 'x64',
-  [switch] $SkipBuild
+  [switch] $SkipBuild,
+  [switch] $Nightly,
+  [switch] $BuildOnly
 )
 $ErrorActionPreference = 'Stop'
+if ($BuildOnly -and -not $Nightly) { throw '-BuildOnly is only for secret-free nightly compilation' }
 $Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 
 function Invoke-Native([string] $What, [scriptblock] $Block) {
@@ -59,12 +64,22 @@ $Dist = if ($env:DIST) { $env:DIST } else { Join-Path $Root 'dist\release' }
 $TargetDir = if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { Join-Path $Root 'target' }
 New-Item -ItemType Directory -Force -Path $Dist | Out-Null
 
-if (-not $env:WORDCRAFT_BUILD_SHA) { $env:WORDCRAFT_BUILD_SHA = (git -C $Root rev-parse HEAD 2>$null) }
-if (-not $env:WORDCRAFT_BUILD_DATE) { $env:WORDCRAFT_BUILD_DATE = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd') }
+# Nightly requires the prepared commit and original run date explicitly; nightly.ps1 checks both.
+if (-not $Nightly) {
+  if (-not $env:WORDCRAFT_BUILD_SHA) { $env:WORDCRAFT_BUILD_SHA = (git -C $Root rev-parse HEAD 2>$null) }
+  if (-not $env:WORDCRAFT_BUILD_DATE) { $env:WORDCRAFT_BUILD_DATE = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd') }
+}
 
 Write-Output "WordCraft $Version for Windows $Arch ($Target)"
 
+if ($Nightly) {
+  & (Join-Path $PSScriptRoot 'nightly.ps1') -Arch $Arch -Version $Version -Target $Target -TargetDir $TargetDir -Dist $Dist -SkipBuild:$SkipBuild -BuildOnly:$BuildOnly
+  return
+}
+
 if (-not $SkipBuild) {
+  $env:WORDCRAFT_BUILD_CHANNEL = 'stable'
+
   # Static CRT: no VC++ redistributable needed. Scoped to the target so host build scripts and
   # proc-macros are unaffected.
   $flagVar = 'CARGO_TARGET_' + ($Target.ToUpper() -replace '-', '_') + '_RUSTFLAGS'
@@ -91,6 +106,9 @@ foreach ($check in @(@('wordcraft.exe', 2), @('wordcraft-cli.exe', 3))) {
   if ($h.Machine -ne $Machine) { throw "$($check[0]) is for machine 0x$('{0:X}' -f $h.Machine), expected 0x$('{0:X}' -f $Machine) ($Arch)" }
   if ($h.Subsystem -ne $check[1]) { throw "$($check[0]) has PE subsystem $($h.Subsystem), expected $($check[1])" }
   Write-Output "ok $($check[0]): $Arch, PE subsystem $($h.Subsystem)"
+}
+if ((Get-Item -LiteralPath (Join-Path $Bin 'wordcraft.exe')).VersionInfo.ProductName -eq 'WordCraft Nightly') {
+  throw 'a nightly executable cannot be packaged as stable'
 }
 $Stage = Join-Path $TargetDir "windows-package\$Arch"
 Remove-Item -Recurse -Force $Stage -ErrorAction SilentlyContinue

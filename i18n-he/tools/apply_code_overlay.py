@@ -152,13 +152,14 @@ def missing_he_row(source: str) -> bool:
 HE_ROW_ANY = re.compile(r'    // Hebrew, right to left;.*?\n(?:    //.*?\n)*    LangInfo \{ code: "he", prefer_hans: false, editing_lang: [^}]*\},\n', re.S)
 
 
-def apply_i18n(source: str) -> tuple[str, list[str]]:
+def apply_i18n(source: str, root: Path) -> tuple[str, list[str]]:
     """The `he` row in `LANGUAGES` and the public `catalog_texts`."""
     notes: list[str] = []
-    if not missing_he_row(source) and HE_ROW not in source:
+    row = HE_ROW
+    if not missing_he_row(source) and row not in source:
         # A row the earlier overlay wrote (it said the interface stays left to right): bring it up
         # to date, since the row now carries the Hebrew editing language.
-        source, count = HE_ROW_ANY.subn(HE_ROW, source, count=1)
+        source, count = HE_ROW_ANY.subn(row, source, count=1)
         if count:
             notes.append("i18n.rs: the `he` row (Hebrew editing language)")
     if missing_he_row(source):
@@ -169,7 +170,7 @@ def apply_i18n(source: str) -> tuple[str, list[str]]:
         if end < 0:
             raise SystemExit("error: i18n.rs's LANGUAGES array has no closing `];`")
         count = int(declaration.group(1))
-        source = source[: end + 1] + HE_ROW + source[end + 1 :]
+        source = source[: end + 1] + row + source[end + 1 :]
         source = source[: declaration.start()] + f"pub static LANGUAGES: [LangInfo; {count + 1}] = [" + source[declaration.end() :]
         notes.append(f"LANGUAGES: added `he` ({count} → {count + 1})")
     if "//! # Hebrew (this fork)" not in source:
@@ -407,6 +408,11 @@ def has_legacy_layout(root: Path) -> bool:
     return lib.exists() and "pub struct UiState" in lib.read_text(encoding="utf-8")
 
 
+def apply_i18n_here(source: str) -> tuple[str, list[str]]:
+    """`apply_i18n` for the tree this script is in (its `root` is a few lines down in `main`)."""
+    return apply_i18n(source, Path(__file__).resolve().parents[2])
+
+
 def apply_hunks(source: str, hunks: list[dict], name: str) -> tuple[str, list[str]]:
     """The edits `code-overlay.json` lists for a file, idempotently.
 
@@ -520,7 +526,7 @@ def main() -> int:
     # The changes the Hebrew catalog alone needs, spelled out above.
     targets = {
         root / "Cargo.toml": (apply_cargo, ['wordcraft-proof-he = { path = "crates/proof-he" }']),
-        root / "crates/ui-egui/src/i18n.rs": (apply_i18n, []),
+        root / "crates/ui-egui/src/i18n.rs": (apply_i18n_here, []),
         theme_file(root): (apply_theme, ["fn faces_for_interface_text", "fn interface_char_covered"]),
         # The `Prefs` layout upstream took in #7101: the same two changes, in the files that layout
         # declares and loads the state in. On the older layout `code-overlay.json` has them (the
