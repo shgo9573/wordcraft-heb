@@ -54,6 +54,14 @@ EDITS: list[dict] = [
         ],
     },
     {
+        # `swap_window` destructures `WordApp` exhaustively, so a new app-wide field must be named
+        # there too (app-wide state stays with the app, not with a window).
+        "file": "crates/ui-egui/src/window_ui.rs",
+        "optional": True,
+        "after": "            updates_rt: _,\n",
+        "lines": [f"            dictation: _, // {MARKER}: app-wide, like `updates_rt`\n"],
+    },
+    {
         "file": "crates/ui-egui/src/app.rs",
         "after": "            updates_rt: updates_ui::Runtime::default(),\n",
         "lines": [f"            dictation: Default::default(), // {MARKER}\n"],
