@@ -85,6 +85,11 @@ FILES = [
     # The `Prefs` layout: the settings struct and the function that loads one (`apply_prefs`).
     "crates/ui-egui/src/prefs.rs",
     "crates/ui-egui/src/app/prefs.rs",
+    # Packaging: the fork's Setup.exe stage and `portable.txt` live in upstream's `package.ps1`.
+    # This line is not optional — a file it leaves out is not recorded, and the next `--base`
+    # re-record drops what was there for it (which happened: the Setup.exe stage vanished from the
+    # table, and the file came back from a sync with upstream's copy and no bundle).
+    "packaging/windows/package.ps1",
 ]
 
 # Written by `apply_code_overlay.py` itself (`apply_i18n`: the Hebrew row and its comment, the
@@ -168,11 +173,11 @@ def unfaithful(root: Path, base: str, table: dict[str, list[dict]]) -> list[str]
     already wrote, one that no longer matches) would be found by the daily sync, after a push.
     """
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from apply_code_overlay import apply_cargo, apply_fonts, apply_hunks, apply_i18n, apply_tests, apply_theme  # noqa: E402
+    from apply_code_overlay import apply_cargo, apply_fonts, apply_hunks, apply_i18n_here, apply_tests, apply_theme  # noqa: E402
 
     spelled_out = {
         "Cargo.toml": apply_cargo,
-        "crates/ui-egui/src/i18n.rs": apply_i18n,
+        "crates/ui-egui/src/i18n.rs": apply_i18n_here,
         "crates/ui-egui/src/i18n/tests.rs": apply_tests,
         "crates/ui-egui/src/theme.rs": apply_theme,
         "crates/ui-egui/src/app/fonts.rs": apply_fonts,

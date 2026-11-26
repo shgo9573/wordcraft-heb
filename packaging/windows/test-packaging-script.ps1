@@ -48,6 +48,17 @@ $bundle = @($commands | Where-Object {
 if ($bundle.Count -ne 1) { throw 'Expected the Setup.exe bundle to be built exactly once.' }
 if ($bundle[0].Extent.StartOffset -lt $checks[0].Extent.StartOffset) { throw 'The Setup.exe must be built from the MSI after it passed the policy check.' }
 if ($bundle[0].Extent.StartOffset -lt $signs[0].Extent.StartOffset) { throw 'The Setup.exe must wrap the MSI after that MSI is signed.' }
+# A Setup.exe that will not build must not take the MSI and the portable zip with it: a real run lost
+# the whole release that way (the job died at the bundle step, before the zip existed, and `release`
+# was skipped for want of an artifact). So the bundle has to sit inside a `try`, and its `catch` must
+# not rethrow.
+$tries = @($ast.FindAll({ param($node) $node -is [Management.Automation.Language.TryStatementAst] }, $true))
+$bundleTry = @($tries | Where-Object { $_.Extent.StartOffset -le $bundle[0].Extent.StartOffset -and $_.Extent.EndOffset -ge $bundle[0].Extent.EndOffset })
+if ($bundleTry.Count -lt 1) { throw 'The Setup.exe bundle must be built inside a try: a bundle that fails must not stop the MSI and the portable zip from being published.' }
+if ($bundleTry[0].CatchClauses.Count -lt 1) { throw 'The Setup.exe bundle needs a catch: without it a WiX failure still ends the script.' }
+if (@($bundleTry[0].CatchClauses | Where-Object { $_.Extent.Text -match '\bthrow\b' }).Count -gt 0) {
+  throw 'The Setup.exe catch must not rethrow: the MSI and the portable zip are complete ways to install, and the release carries whichever of the three exist.'
+}
 $setupSigns = @($commands | Where-Object {
   $_.InvocationOperator.ToString() -eq 'Ampersand' -and
     @($_.CommandElements | Where-Object { $_.Extent.Text -match 'sign.ps1' }).Count -gt 0 -and
@@ -55,5 +66,5 @@ $setupSigns = @($commands | Where-Object {
 })
 if ($setupSigns.Count -ne 1) { throw 'Expected the Setup.exe to be signed exactly once.' }
 if ($text.IndexOf('Compress-Archive') -lt $bundle[0].Extent.StartOffset) { throw 'The portable zip is built before the installer; the Setup.exe comes first in the release.' }
-Write-Output 'PASS the WordCraft MSI is policy-checked before it is signed, the Setup.exe is built from it, and the portable zip is portable.'
+Write-Output 'PASS the WordCraft MSI is policy-checked before it is signed, the Setup.exe is built from it without being able to sink the release, and the portable zip is portable.'
 
