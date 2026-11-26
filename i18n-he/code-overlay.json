@@ -252,5 +252,35 @@
     "prefs"
    ]
   }
+ ],
+ "packaging/windows/package.ps1": [
+  {
+   "new": "  Produces, in $env:DIST (default: dist/release):\n    wordcraft-<version>-windows-<arch>-Setup.exe      the installer people download: one .exe, no\n                                                      admin rights (it wraps the MSI below, built\n                                                      from `wordcraft-bundle.wxs`)\n",
+   "old": "  Produces, in $env:DIST (default: dist/release):\n"
+  },
+  {
+   "new": "                                                      \"Everyone on this computer\" installs per machine\n    wordcraft-<version>-windows-<arch>-portable.zip   wordcraft.exe + wordcraft-cli.exe, with a\n                                                      `portable.txt` that keeps the profile inside\n",
+   "old": "                                                      \"Everyone on this computer\" installs per machine\n    wordcraft-<version>-windows-<arch>-portable.zip   wordcraft.exe + wordcraft-cli.exe\n"
+  },
+  {
+   "new": "  Needs: Rust (MSVC toolchain + the target), the Windows SDK (rc.exe, signtool.exe),\n  and WiX v5 with its UI, Util and BootstrapperApplications extensions (installer dialogs, the\n  bundle around the MSI, \"Launch WordCraft\" on finish):\n",
+   "old": "  Needs: Rust (MSVC toolchain + the target), the Windows SDK (rc.exe, signtool.exe),\n  and WiX v5 with its UI and Util extensions (installer dialogs, \"Launch WordCraft\" on finish):\n"
+  },
+  {
+   "new": "    wix extension add -g WixToolset.Util.wixext/5.0.2\n    wix extension add -g WixToolset.BootstrapperApplications.wixext/5.0.2\n",
+   "old": "    wix extension add -g WixToolset.Util.wixext/5.0.2\n"
+  },
+  {
+   "new": "\n# ---- Setup.exe -----------------------------------------------------------------------------------\n# The one file people double-click (wordcraft-bundle.wxs): a WiX bundle around the MSI built and\n# signed above, carrying it inside so it installs with no download and no second file. It is the\n# installer this fork ships; the MSI stays beside it for deployments that run msiexec themselves.\n$Setup = Join-Path $Dist \"wordcraft-$Version-windows-$Arch-Setup.exe\"\nInvoke-Native 'wix build (the Setup.exe bundle)' {\n  wix build (Join-Path $PSScriptRoot 'wordcraft-bundle.wxs') -arch $Arch `\n    -ext WixToolset.BootstrapperApplications.wixext `\n    -d \"Version=$MsiVersion\" -d \"MsiPath=$Msi\" `\n    -d \"LicenseRtf=$LicenseRtf\" -d \"IconPath=$(Join-Path $Root 'assets\\app-icon\\wordcraft.ico')\" `\n    -o $Setup\n}\nRemove-Item -Force -ErrorAction SilentlyContinue ([IO.Path]::ChangeExtension($Setup, '.wixpdb'))\n& (Join-Path $PSScriptRoot 'sign.ps1') $Setup\n\n",
+   "old": "\n"
+  },
+  {
+   "new": "}\n# The marker that makes the copy portable: with `portable.txt` beside wordcraft.exe the app keeps\n# its profile (settings, user dictionary, fonts, recovery copies) in WordCraft-data in this folder\n# instead of %APPDATA%\\WordCraft — so the folder can live on a stick or in a synced drive and be\n# deleted whole. `crates/control-key/src/lib.rs`, `portable_dir`.\n$Marker = Join-Path $Portable 'portable.txt'\n$MarkerLines = @(\n  'WordCraft portable.'\n  ''\n  'This file makes the app store its settings, user dictionary, fonts and recovery copies in the'\n  'WordCraft-data folder next to wordcraft.exe instead of in %APPDATA%\\WordCraft, so this folder'\n  'can be carried on a USB stick or in a synced folder. Delete WordCraft-data to start fresh;'\n  'delete this file to go back to the usual profile folder.'\n  ''\n  'Nothing is installed, and nothing outside this folder is written.'\n  ''\n  '---'\n  ''\n  'WordCraft נייד.'\n  ''\n  'הקובץ הזה גורם לתוכנה לשמור את ההגדרות, מילון המשתמש, הגופנים ועותקי השחזור בתיקיית'\n  'WordCraft-data שליד wordcraft.exe, ולא ב-%APPDATA%\\WordCraft — כך אפשר לקחת את התיקייה על'\n  'דיסק-און-קי או בתיקייה מסונכרנת. מחיקת WordCraft-data מאפסת את התוכנה; מחיקת הקובץ הזה'\n  'מחזירה את השמירה למקום הרגיל.'\n  ''\n  'אין התקנה, ולא נכתב דבר מחוץ לתיקייה הזאת.'\n)\n[System.IO.File]::WriteAllLines($Marker, $MarkerLines, [System.Text.UTF8Encoding]::new($false))\n\n",
+   "old": "}\n"
+  },
+  {
+   "new": "}\nGet-Item $Setup, $Msi, $Zip | Format-Table Name, Length\n",
+   "old": "}\nGet-Item $Msi, $Zip | Format-Table Name, Length\n"
+  }
  ]
 }
