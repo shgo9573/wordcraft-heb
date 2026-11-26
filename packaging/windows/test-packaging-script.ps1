@@ -26,6 +26,11 @@ $signs = @($commands | Where-Object {
 })
 if ($signs.Count -ne 1) { throw 'Expected the MSI to be signed exactly once.' }
 if ($checks[0].Extent.StartOffset -ge $signs[0].Extent.StartOffset) { throw 'The MSI must pass the policy check before it is signed.' }
+$msiBuilds = @($commands | Where-Object {
+  $_.CommandElements.Count -gt 0 -and $_.CommandElements[0].Extent.Text -eq 'wix' -and
+    @($_.CommandElements | Where-Object { $_.Extent.Text -match 'wordcraft\.wxs' }).Count -gt 0
+})
+if ($msiBuilds.Count -ne 1) { throw 'Expected the MSI to be built exactly once.' }
 # The portable zip is the no-install build: without `portable.txt` beside the exe the app writes its
 # profile to %APPDATA%\WordCraft, which is a copy that leaves traces (crates/control-key).
 $text = $ast.Extent.Text
@@ -34,13 +39,15 @@ if ($marker -lt 0) { throw 'The portable zip must carry portable.txt: the marker
 if ($marker -gt $text.IndexOf('Compress-Archive')) { throw 'portable.txt must be written before the portable zip is compressed.' }
 # The .exe is the installer people download: it must be built from the MSI that passed the policy
 # check (not from a stale one), and signed by the same path as the MSI.
+# `wix build` runs inside Invoke-Native's scriptblock, so it is not an `&` call: a `wix build (…)`
+# line is found by its program element and its source file instead.
 $bundle = @($commands | Where-Object {
-  $_.InvocationOperator.ToString() -eq 'Ampersand' -and
-    @($_.CommandElements | Where-Object { $_.Extent.Text -match 'wix build' }).Count -gt 0 -and
-    @($_.CommandElements | Where-Object { $_.Extent.Text -match 'wordcraft-bundle.wxs' }).Count -gt 0
+  $_.CommandElements.Count -gt 0 -and $_.CommandElements[0].Extent.Text -eq 'wix' -and
+    @($_.CommandElements | Where-Object { $_.Extent.Text -match 'wordcraft-bundle\.wxs' }).Count -gt 0
 })
 if ($bundle.Count -ne 1) { throw 'Expected the Setup.exe bundle to be built exactly once.' }
 if ($bundle[0].Extent.StartOffset -lt $checks[0].Extent.StartOffset) { throw 'The Setup.exe must be built from the MSI after it passed the policy check.' }
+if ($bundle[0].Extent.StartOffset -lt $signs[0].Extent.StartOffset) { throw 'The Setup.exe must wrap the MSI after that MSI is signed.' }
 $setupSigns = @($commands | Where-Object {
   $_.InvocationOperator.ToString() -eq 'Ampersand' -and
     @($_.CommandElements | Where-Object { $_.Extent.Text -match 'sign.ps1' }).Count -gt 0 -and
