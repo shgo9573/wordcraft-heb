@@ -30,6 +30,8 @@ pub fn enabled(app: &WordApp, id: &str) -> bool {
         None if id.starts_with("ui.zotero.") => app.zotero.busy.is_none() && !cfg!(target_arch = "wasm32"),
         None if id == "ui.linkTextBox" => enabled(app, "shape.link"),
         None if id == "ui.crop" => crate::crop::can_toggle(app),
+        // i18n-he: dictation — a local speech service does the recording, in the desktop app.
+        None if id == "tools.dictate" => !cfg!(target_arch = "wasm32"),
         None => id.starts_with("ui."),
     }
 }

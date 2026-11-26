@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The installer Windows users download: `wordcraft-<version>-windows-<arch>-Setup.exe`.
+
+  A single .exe, the shape the Otzaria-adjacent apps ship (KolScribe's `-Setup.exe` is the pattern
+  this follows): double-click, no administrator rights, a wizard with the licence, progress, and a
+  "Launch WordCraft" box at the end. It is a WiX bundle around the MSI beside it (`wordcraft.wxs`),
+  which stays the record of what gets installed — files, shortcuts, file associations, and the per
+  user / per machine contract checked by `check-install-policy.ps1`. The bundle adds the one file
+  people expect to double-click, and keeps its contents inside the .exe (`Compressed="yes"`): no
+  download while installing, no second file beside it to lose.
+
+  No scope question is asked here: the MSI installs for the current user by default, into
+  %LOCALAPPDATA%\Programs\ArtCraft\WordCraft, which is what needs no administrator. A deployment
+  that wants every user installs the MSI directly with `ALLUSERS=1` (documented in INSTALLATION.md).
+
+  Unsigned like the MSI unless signing secrets are configured (`sign.ps1`, `AZURE_*`).
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+
+  <Bundle Name="WordCraft"
+          Version="$(var.Version)"
+          Manufacturer="Learning Machines LLC"
+          UpgradeCode="7B1E4C1D-2E52-4F6A-9C3B-1F0D5A8E4C77"
+          IconSourceFile="$(var.IconPath)"
+          Copyright="WordCraft is free software, under the MIT or the Apache 2.0 licence."
+          AboutUrl="https://github.com/storytold/wordcraft"
+          DisableModify="button"
+          DisableRemove="no">
+
+    <BootstrapperApplication>
+      <!-- The standard wizard: the licence (the same RTF the MSI shows, built from LICENSE-MIT and
+           LICENSE-APACHE), progress, then the finish page with "Launch WordCraft". -->
+      <bal:WixStandardBootstrapperApplication Theme="rtfLicense" LicenseFile="$(var.LicenseRtf)" SuppressOptionsUI="yes" ShowVersion="yes" />
+    </BootstrapperApplication>
+
+    <!-- 64-bit Windows 10 and later, which is what the binaries and the MSI need. -->
+    <bal:Condition Message="WordCraft needs 64-bit Windows 10 or later." Condition="VersionNT64 AND VersionNT &gt;= v10.0" />
+
+    <Chain>
+      <MsiPackage Id="WordCraftMsi"
+                  SourceFile="$(var.MsiPath)"
+                  Compressed="yes"
+                  Vital="yes"
+                  DisplayInternalUI="no"
+                  Visible="no" />
+    </Chain>
+  </Bundle>
+</Wix>

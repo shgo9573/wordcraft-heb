@@ -50,6 +50,12 @@ jobs:
         run: |
           python3 i18n-he/tools/apply_code_overlay.py --check
           python3 i18n-he/tools/record_code_overlay.py --check
+      # Voice › Dictate is a patch of its own, not part of the Hebrew overlay (`i18n-he/README.md`):
+      # it is applied here the way the daily sync applies it, so the Rust that gets compiled is the
+      # Rust that ships — and a patch that stopped applying fails here, on the pull request, before
+      # a build goes without it.
+      - name: Put the dictation patch in place
+        run: python3 i18n-he/tools/dictate_patch.py --apply
       - name: Install the Linux build dependencies
         run: |
           sudo apt-get update

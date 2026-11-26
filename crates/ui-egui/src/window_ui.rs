@@ -175,6 +175,7 @@ impl WordApp {
             mac_titlebar: _,
             control_rx: _,
             updates_rt: _,
+            dictation: _, // i18n-he: dictation: app-wide, like `updates_rt`
             font_notice_seen: _,
             font_notices: _,
             packs_rt: _,

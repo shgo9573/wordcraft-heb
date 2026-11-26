@@ -110,6 +110,7 @@ impl WordApp {
             integrated_titlebar: false,
             mac_titlebar: chrome::MacTitleBar::default(),
             updates_rt: updates_ui::Runtime::default(),
+            dictation: Default::default(), // i18n-he: dictation
             font_notice_seen: Vec::new(),
             font_notices: false,
             packs_rt: Default::default(),

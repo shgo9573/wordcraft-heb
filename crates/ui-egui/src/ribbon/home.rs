@@ -1,6 +1,7 @@
 use super::common::{mi, mi_text, stack};
 use super::underline::underline_menu;
-use super::{Remember, Stroke, Target, Tokens, Ui, Value, WordApp, big, group, json, menu_button, small, split, vec2};
+// i18n-he: dictation
+use super::{Remember, Stroke, Target, Tokens, Ui, Value, WordApp, big, big_toggle, group, json, menu_button, small, split, vec2};
 
 /// The Format Painter button. A click arms it for one use (blue border only); a double-click keeps
 /// it on across several uses (full checked look), like Word. Esc or another click turns it off.
@@ -415,7 +416,8 @@ pub(super) fn home(app: &mut WordApp, ui: &mut Ui) {
         });
     });
     group(ui, "Voice", None, app, |ui, app| {
-        big(ui, app, "dictate", "Dictate", "tools.dictate", json!({}), false);
+        // i18n-he: dictation — it stays pressed while it records.
+        big_toggle(ui, app, "dictate", "Dictate", "tools.dictate", app.dictation.listening);
     });
     group(ui, "Editor", None, app, |ui, app| {
         big(ui, app, "editor", "Editor", "review.spelling", json!({}), false);

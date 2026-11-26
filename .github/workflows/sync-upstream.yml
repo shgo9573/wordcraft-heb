@@ -6,7 +6,7 @@ name: Hebrew build (daily upstream sync)
 # the Hebrew interface language, its faces, its font list, Hebrew proofing in `crates/proof-he/`,
 # and a few ribbon rows a mirror does not fix — the right-to-left interface itself is upstream's
 # own now, with Hebrew in its `RTL_LANGUAGES`), pushes the result to `main`, and builds a
-# **Windows x64** installer (`.msi`) and portable `.zip` with Hebrew embedded. A version upstream
+# **Windows x64** installer (`.exe`, the MSI it wraps) and portable `.zip` with Hebrew embedded. A version upstream
 # has not shipped before gets published as a GitHub release of this fork (`v<version>-he.win.1`); a day
 # without a new version leaves the build on the run's artifacts.
 #
@@ -185,6 +185,15 @@ jobs:
             # has no `crates/proof-he`, so its `Cargo.lock` cannot name the member, and the Windows
             # package builds with `--locked`).
             python3 i18n-he/tools/lock_he.py
+            # Voice › Dictate on a local speech service (Hebrew dictation: Otzaria Voice or
+            # KolScribe). It is a feature of its own, not part of the Hebrew overlay, and it is
+            # allowed to fail: when its anchors no longer match upstream, or the module no longer
+            # compiles, the run takes the patch back out and builds the plain Hebrew app. A day
+            # upstream moved a line must never cost a release.
+            if ! python3 i18n-he/tools/dictate_patch.py --apply; then
+              echo "::warning::the dictation patch no longer applies; building without it"
+              python3 i18n-he/tools/dictate_patch.py --remove || true
+            fi
             # This fork keeps its own `.github/workflows/`, whole: upstream's version of the folder
             # goes back to the one this merge started from. A workflow file may only be created or
             # updated by a token with the `workflows` permission, which `GITHUB_TOKEN` never has — no
@@ -276,8 +285,9 @@ jobs:
             echo "commit=$commit"
           } >> "$GITHUB_OUTPUT"
 
-  # The installer Windows can run: an MSI (per user by default, no admin) and a portable zip, both
-  # built by `packaging/windows/package.ps1`. Unsigned unless signing secrets are configured.
+  # The installer Windows can run: a Setup.exe (per user by default, no admin) with the MSI it
+  # wraps beside it, and a portable zip — all built by `packaging/windows/package.ps1`. Unsigned
+  # unless signing secrets are configured.
   build:
     name: Build (Windows x64)
     needs: [catalogs, sync, update]
@@ -304,11 +314,12 @@ jobs:
         run: |
           dotnet tool install --global wix --version 5.0.2
           "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
-      - name: WiX's UI and Util extensions (installer dialogs)
+      - name: WiX's UI, Util and BootstrapperApplications extensions (dialogs, the Setup.exe)
         shell: pwsh
         run: |
           wix extension add -g WixToolset.UI.wixext/5.0.2
           wix extension add -g WixToolset.Util.wixext/5.0.2
+          wix extension add -g WixToolset.BootstrapperApplications.wixext/5.0.2
       - name: Interface catalogs, with Hebrew laid over craft-i18n
         shell: pwsh
         run: |
@@ -363,7 +374,7 @@ jobs:
           if (-not $version) { throw 'could not read [workspace.package] version from Cargo.toml' }
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "WordCraft $version, Hebrew build (Windows x64)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-      - name: Build and package (MSI and portable zip)
+      - name: Build and package (Setup.exe, MSI and portable zip)
         shell: pwsh
         run: packaging/windows/package.ps1 -Arch x64
       - name: What was built
@@ -373,6 +384,7 @@ jobs:
         with:
           name: wordcraft-${{ steps.version.outputs.version }}-hebrew-windows-x64
           path: |
+            dist/release/*-Setup.exe
             dist/release/*.msi
             dist/release/*.zip
           if-no-files-found: error
@@ -428,8 +440,9 @@ jobs:
           cat >"$RUNNER_TEMP/notes.md" <<'NOTES'
           WordCraft __VERSION__ של המאגר המקורי storytold/wordcraft, עם ממשק בעברית — ל-Windows.
 
-          - **להתקנה:** `wordcraft-__VERSION__-windows-x64.msi` — לחיצה כפולה, התקנה למשתמש הנוכחי
-            (בלי הרשאות מנהל). אפשר גם "Everyone on this computer" להתקנה לכל המשתמשים.
+          - **להתקנה:** `wordcraft-__VERSION__-windows-x64-Setup.exe` — לחיצה כפולה, התקנה למשתמש
+            הנוכחי (בלי הרשאות מנהל). לצדו יורד גם ה-MSI שאותו ה-Setup.exe מריץ, למי שמעדיף
+            `msiexec` או התקנה לכל המשתמשים (`ALLUSERS=1`).
           - **בלי התקנה:** `wordcraft-__VERSION__-windows-x64-portable.zip` — חילוץ והרצת
             `wordcraft.exe`. הגירסה הניידת שומרת הכל בתיקייה שלידה (`WordCraft-data`): הגדרות,
             מילון משתמש, גופנים ועותקי שחזור — לא נכתב דבר ב-`%APPDATA%`, ומחיקת התיקייה מוחקת הכל.
@@ -439,6 +452,9 @@ jobs:
           - כששפת הממשק עברית (File › Options › Interface): כל הממשק מתהפך לימין-שמאל — התפריטים,
             תיבות הדו-שיח, פס הגלילה ופס הסטטוס, וגם סרגל הכלים: הקבוצות מתחילות בקצה הימני
             ונמשכות שמאלה (כמו ב-Word בעברית), ופס הלשוניות מציג את File מימין.
+          - **הכתבה** (Home › Voice › Dictate): הלחצן כבר לא אפור. ההכתבה עצמה נעשית במנוע מקומי
+            שמותקן במחשב בנפרד — Otzaria Voice או KolScribe — ואליו WordCraft שולח את הקול; אין
+            שליחת אודיו לשום שירות בענן. בלי אחד מהם ההכתבה מציגה קישור להורדה.
           - הבסיס מתעדכן כל יום מהמאגר המקורי ונבנה מחדש.
 
           Built from storytold/wordcraft with the Hebrew interface in `i18n-he/`, commit: COMMIT.
@@ -446,8 +462,9 @@ jobs:
           WordCraft __VERSION__ from storytold/wordcraft, built with the Hebrew interface in
           `i18n-he/`, for Windows x64:
 
-          - **Install:** `wordcraft-__VERSION__-windows-x64.msi` (per user, no admin needed; the
-            installer also offers "Everyone on this computer").
+          - **Install:** `wordcraft-__VERSION__-windows-x64-Setup.exe` (per user, no admin needed).
+            The MSI it wraps ships beside it for `msiexec` and for installing for every user
+            (`ALLUSERS=1`).
           - **Or run it portable:** `wordcraft-__VERSION__-windows-x64-portable.zip` — unpack and
             run; everything it saves (settings, user dictionary, fonts, recovery copies) stays in
             `WordCraft-data` beside the exe, nothing is written to `%APPDATA%`, and deleting the
