@@ -5,12 +5,22 @@
     python3 i18n-he/tools/record_code_overlay.py --base HEAD^2   # after a sync merge
     python3 i18n-he/tools/record_code_overlay.py --base <upstream commit>
     python3 i18n-he/tools/record_code_overlay.py --check         # is the tree still what the table says?
+    python3 i18n-he/tools/record_code_overlay.py --prune         # drop the changes a merge made stale
 
 The base is upstream's tree *without* this fork's overlay: after a daily sync merge (whose message
 names `storytold/wordcraft`) that is the merge's second parent, `HEAD^2`. Every file that differs
 from it is recorded as the exact base text a change replaces — or the unique base line it goes
 after — and the text it becomes. `crates/ui-egui/src/i18n.rs`'s `he` row is left out:
 `apply_code_overlay.py` writes that one, so it exists on a tree that never had it.
+
+`--prune` is for a sync merge, before the overlay runs: a change whose base text the merge took
+away (upstream moved the code, or does the thing itself now) can never land again, so it is dropped
+from the table and said in the log — the pruning commit is the merge's own, and the catalogs job's
+`--check` then passes. What still applies stays exactly as it was.
+
+A table entry may say which layout of the UI it is written for (`"layouts": ["prefs"]` after
+upstream #7101, `["ui_state"]` before, nothing for both): the tools pick the hunks that fit the tree
+in front of them, so one table serves a sync across the change.
 
 `--check` needs no base: it verifies that every recorded change is in the tree (an inserted or
 replacement block present, a replaced base text gone) and that `i18n-he/code/` still matches the
@@ -30,6 +40,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from code_match import applied, has_code, same_code  # noqa: E402  (the sibling tool's matcher)
+from apply_code_overlay import apply_hunks, for_layout, has_legacy_layout  # noqa: E402
 
 # The files the Hebrew overlay edits, by their place in the tree. A file that upstream does not
 # have (it was renamed or removed) is reported, so the table stops quietly rotting.
@@ -70,9 +81,10 @@ FILES = [
     "crates/ui-egui/src/ribbon/language.rs",
     "crates/ui-egui/src/ribbon/tests.rs",
     "crates/ui-egui/src/widgets.rs",
-    "crates/ui-egui/src/widgets/buttons.rs",
-    "crates/ui-egui/src/widgets/groups.rs",
     "crates/ui-egui/src/window_ui.rs",
+    # The `Prefs` layout: the settings struct and the function that loads one (`apply_prefs`).
+    "crates/ui-egui/src/prefs.rs",
+    "crates/ui-egui/src/app/prefs.rs",
 ]
 
 # Written by `apply_code_overlay.py` itself (`apply_i18n`: the Hebrew row and its comment, the
@@ -85,6 +97,11 @@ SKIP_IN = {
     "Cargo.toml": ["wordcraft-proof-he = { path"],
     "crates/ui-egui/src/i18n.rs": ['code: "he"', "pub static LANGUAGES: [LangInfo;", "fn catalog_texts(self)"],
 }
+
+
+def _same(written: dict, chosen: dict) -> bool:
+    """Is `written` (from the table) the change `chosen` (for this layout) applies?"""
+    return all(written.get(k, chosen.get(k)) == chosen.get(k) for k in set(written) | set(chosen))
 
 
 def base_text(root: Path, base: str, path: str) -> str:
@@ -164,7 +181,7 @@ def unfaithful(root: Path, base: str, table: dict[str, list[dict]]) -> list[str]
     for path, hunks in table.items():
         made, _ = spelled_out.get(path, lambda text: (text, []))(base_text(root, base, path))
         try:
-            made, _ = apply_hunks(made, hunks, path)
+            made, _ = apply_hunks(made, for_layout(hunks, has_legacy_layout(root)), path)
         except SystemExit as gone:
             problems.append(f"{path}: the table does not apply to {base[:12]}: {gone}")
             continue
@@ -176,9 +193,10 @@ def unfaithful(root: Path, base: str, table: dict[str, list[dict]]) -> list[str]
 def missing_from_tree(root: Path, table: dict[str, list[dict]]) -> list[str]:
     """The recorded changes that the tree does not (or does still) show, and stale copies."""
     problems: list[str] = []
+    legacy = has_legacy_layout(root)
     for path, hunks in table.items():
         source = (root / path).read_text(encoding="utf-8")
-        for hunk in hunks:
+        for hunk in for_layout(hunks, legacy):
             if applied(source, hunk):
                 continue
             if "insert" in hunk:
@@ -209,13 +227,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--base", help="upstream's tree without the overlay (after a sync merge: HEAD^2)")
     parser.add_argument("--check", action="store_true", help="verify the tree still carries every recorded change")
+    parser.add_argument("--prune", action="store_true", help="drop the changes the merge made stale, keeping the ones it kept")
     args = parser.parse_args()
 
     target = root / "i18n-he/code-overlay.json"
     # Voice › Dictate is a patch of its own (`i18n-he/tools/dictate_patch.py`), applied after this
     # table: recording it here would make the overlay add it a second time, and make the daily
     # sync's removal of it leave half of it behind.
-    marked = [path for path in FILES if "i18n-he: dictation" in (root / path).read_text(encoding="utf-8")]
+    # A file of the other layout (`prefs.rs` before #7101, `lib.rs`'s `UiState` after it) is not in
+    # this tree: it has nothing to say about the dictation patch.
+    marked = [path for path in FILES if (root / path).exists() and "i18n-he: dictation" in (root / path).read_text(encoding="utf-8")]
     if marked and not args.check:
         raise SystemExit(
             "error: the dictation patch is in the tree ("
@@ -230,6 +251,53 @@ def main() -> int:
         if problems:
             return 1
         print("ok: the tree carries every change i18n-he/code-overlay.json records")
+        return 0
+
+    if args.prune:
+        # After a sync merge, upstream's restructuring leaves recorded changes whose base text is
+        # gone: the code they edited moved, or upstream does the thing itself now (#7101 ported the
+        # UI onto craft, and `UiState`'s `fonts_lang` went with it). Such a change can never land
+        # again, so keeping it would only stop every later run — the sync prunes the table first
+        # and commits the merge that carries the prune.
+        #
+        # The tree here is upstream's *without* the overlay, so "is it applied?" is the wrong
+        # question: it is not, for every change. The question is whether it still *applies* — and a
+        # change is applied in turn as the table is walked, so a change that follows another in the
+        # same file (a deleted line behind an inserted one) is judged on the text the one before it
+        # leaves. What no longer applies is what upstream restructured away.
+        table = json.loads(target.read_text(encoding="utf-8"))
+        legacy = has_legacy_layout(root)
+        kept: dict[str, list[dict]] = {}
+        dropped = 0
+        for path, hunks in table.items():
+            file = root / path
+            if not file.exists():
+                print(f"pruned {path}: upstream removed the file ({len(hunks)} change(s))")
+                dropped += len(hunks)
+                continue
+            source = file.read_text(encoding="utf-8")
+            live: list[dict] = []
+            for hunk in for_layout(hunks, legacy):
+                try:
+                    made, _ = apply_hunks(source, [hunk], path)
+                except SystemExit:
+                    said = (hunk.get("insert") or hunk.get("new") or hunk.get("old") or "").strip().splitlines()
+                    print(f"pruned {path}: {said[0][:70] if said else '?'}")
+                    dropped += 1
+                    continue
+                if made == source:
+                    # Already there: the tree has this change (a sync run before the overlay).
+                    live.append(hunk)
+                    continue
+                source = made
+                live.append(hunk)
+            # Keep the entry as it was written (its layout key included), without what went stale.
+            if live:
+                kept[path] = [h for h in hunks if any(_same(h, k) for k in live)] or live
+        kept = {path: hunks for path, hunks in kept.items() if hunks}
+        if dropped:
+            target.write_text(json.dumps(kept, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
+        print(f"ok: {dropped} stale change(s) pruned, {sum(len(h) for h in kept.values())} kept")
         return 0
 
     if not args.base:

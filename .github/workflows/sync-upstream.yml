@@ -178,8 +178,19 @@ jobs:
                   *" $file "*) git checkout --theirs -- "$file" && git add -- "$file" ;;
                   *) echo "::warning file=$file::not in the Hebrew overlay: upstream's version is taken"; git checkout --theirs -- "$file" && git add -- "$file" ;;
                 esac
-              done < <(git diff --name-only --diff-filter=U)
+              # The conflicted paths are read once, before the loop: a process substitution keeps
+              # `git diff` running while the loop takes the index, and the two race for
+              # `index.lock` (the run then fails on "Unable to create … index.lock" rather than on
+              # the conflict it was resolving).
+              done <<< "$(git diff --name-only --diff-filter=U)"
             fi
+            # A change whose code upstream moved or replaced (the UI ported onto craft, #7101: the
+            # `UiState` field that became a `Prefs` one, the widget files the ribbon no longer owns)
+            # cannot land on this tree, and keeping it in the table would stop every later run at
+            # the same line. It is dropped from `i18n-he/code-overlay.json` here, and the merge
+            # commit carries the drop: a person reads it in the diff and can write the change again
+            # for the new layout. What still applies is kept and applied below.
+            python3 i18n-he/tools/record_code_overlay.py --prune
             python3 i18n-he/tools/apply_code_overlay.py
             # The lockfile knows this fork's Hebrew proofer, whatever the merge left of it (upstream
             # has no `crates/proof-he`, so its `Cargo.lock` cannot name the member, and the Windows
