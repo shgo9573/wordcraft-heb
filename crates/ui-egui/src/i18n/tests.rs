@@ -18,13 +18,6 @@ macro_rules! needs_catalogs {
     };
 }
 
-/// Does this build embed this fork's Hebrew catalog? A catalog directory laid out from
-/// storytold/craft-i18n alone (`craft-i18n.rev`) has no `he` yet, so Hebrew is listed but not
-/// offered there; the daily build lays `i18n-he/` over it (`i18n-he/tools/assemble.py`).
-fn offers_hebrew() -> bool {
-    CRAFT_I18N.iter().any(|(code, ..)| *code == "he")
-}
-
 /// A language tag no catalog will ever have: `qaa`–`qtz` are reserved for local use (ISO 639-2),
 /// so these tests keep working as real languages land.
 const UNSUPPORTED: &str = "qaa-QM";
