@@ -135,30 +135,29 @@ mod tests {
 
     #[test]
     fn key_file_per_instance() {
+        /// A temp folder standing in for the folder a portable copy sits in.
+        fn temp_app_folder(tag: &str) -> PathBuf {
+            let dir = std::env::temp_dir().join(format!("wordcraft-portable-{tag}-{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&dir);
+            std::fs::create_dir_all(&dir).unwrap();
+            dir
+        }
 
-    /// A temp folder standing in for the folder a portable copy sits in.
-    fn temp_app_folder(tag: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("wordcraft-portable-{tag}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        dir
-    }
-
-    #[test]
-    fn a_portable_copy_keeps_its_profile_beside_the_exe() {
-        let dir = temp_app_folder("marked");
-        let exe = dir.join("wordcraft.exe");
-        std::fs::write(&exe, b"").unwrap();
-        // No marker: the usual profile folder, wherever the app happens to be.
-        assert_eq!(portable_dir(&exe), None);
-        assert!(!dir.join(PORTABLE_DATA).exists(), "and nothing is created beside it");
-        std::fs::write(dir.join(PORTABLE_MARKER), b"portable").unwrap();
-        let data = portable_dir(&exe).expect("the marker makes the folder portable");
-        assert_eq!(data, dir.join(PORTABLE_DATA));
-        assert!(data.is_dir(), "and the profile folder exists");
-        assert!(!data.join(".write-test").exists(), "the write test leaves nothing behind");
-        let _ = std::fs::remove_dir_all(&dir);
-    }
+        #[test]
+        fn a_portable_copy_keeps_its_profile_beside_the_exe() {
+            let dir = temp_app_folder("marked");
+            let exe = dir.join("wordcraft.exe");
+            std::fs::write(&exe, b"").unwrap();
+            // No marker: the usual profile folder, wherever the app happens to be.
+            assert_eq!(portable_dir(&exe), None);
+            assert!(!dir.join(PORTABLE_DATA).exists(), "and nothing is created beside it");
+            std::fs::write(dir.join(PORTABLE_MARKER), b"portable").unwrap();
+            let data = portable_dir(&exe).expect("the marker makes the folder portable");
+            assert_eq!(data, dir.join(PORTABLE_DATA));
+            assert!(data.is_dir(), "and the profile folder exists");
+            assert!(!data.join(".write-test").exists(), "the write test leaves nothing behind");
+            let _ = std::fs::remove_dir_all(&dir);
+        }
         let dir = Path::new("/settings/wordcraft");
         assert_eq!(key_path_for(dir, Some("1234"), 7981), dir.join("control-key.1234"));
         assert_eq!(key_path_for(dir, None, 7981), dir.join("control-key.local-7981"));

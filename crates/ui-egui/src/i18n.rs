@@ -81,7 +81,6 @@ pub const AUTO: &str = "auto";
 /// among them, and a choice there is what the app keeps from then on.
 pub const DEFAULT_LANGUAGE: &str = "he";
 
-
 /// One interface language WordCraft offers: what the app needs beyond the catalogs. Its name and
 /// translations come from craft-i18n.
 pub struct LangInfo {
