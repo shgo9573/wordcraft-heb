@@ -75,13 +75,6 @@ pub fn catalogs() -> std::sync::Arc<I18n> {
 
 /// The `language` setting that follows the system.
 pub const AUTO: &str = "auto";
-//! This fork opens in Hebrew instead ([`DEFAULT_LANGUAGE`]): a profile that never chose an
-//! interface language — every profile saved by a version before this one, which wrote `auto` and
-//! nothing else — shows Hebrew, and Hebrew is one row of the Options language list like any other.
-//! Choosing a language there, `Automatic` included, is kept. The app applies it to a settings
-//! file that never chose one as it loads it (`WordApp::apply_prefs`), so the shared state keeps
-//! the English labels the tests read.
-//!
 /// The interface language this fork opens in: Hebrew. A new profile, and every settings file that
 /// never chose a language, shows Hebrew — which is what this fork exists for. File ▸ Options ▸
 /// Interface language lists every other language beside it, `Automatic` (the system's language)

@@ -92,7 +92,7 @@
   },
   {
    "after": "pub const AUTO: &str = \"auto\";\n",
-   "insert": "//! This fork opens in Hebrew instead ([`DEFAULT_LANGUAGE`]): a profile that never chose an\n//! interface language — every profile saved by a version before this one, which wrote `auto` and\n//! nothing else — shows Hebrew, and Hebrew is one row of the Options language list like any other.\n//! Choosing a language there, `Automatic` included, is kept. The app applies it to a settings\n//! file that never chose one as it loads it (`WordApp::apply_prefs`), so the shared state keeps\n//! the English labels the tests read.\n//!\n/// The interface language this fork opens in: Hebrew. A new profile, and every settings file that\n/// never chose a language, shows Hebrew — which is what this fork exists for. File ▸ Options ▸\n/// Interface language lists every other language beside it, `Automatic` (the system's language)\n/// among them, and a choice there is what the app keeps from then on.\npub const DEFAULT_LANGUAGE: &str = \"he\";\n\n"
+   "insert": "/// The interface language this fork opens in: Hebrew. A new profile, and every settings file that\n/// never chose a language, shows Hebrew — which is what this fork exists for. File ▸ Options ▸\n/// Interface language lists every other language beside it, `Automatic` (the system's language)\n/// among them, and a choice there is what the app keeps from then on.\npub const DEFAULT_LANGUAGE: &str = \"he\";\n\n"
   },
   {
    "new": "const RTL_LANGUAGES: [&str; 2] = [\"ar\", \"he\"];\n",
