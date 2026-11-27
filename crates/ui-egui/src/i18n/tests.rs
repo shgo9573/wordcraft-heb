@@ -123,6 +123,9 @@ fn the_language_setting_is_a_ui_command_and_persists() {
     assert_eq!(app.ui.language, AUTO);
     // Reading without a value reports the current setting.
     assert_eq!(app.run("ui.language", serde_json::json!({})).unwrap()["language"], AUTO);
+    apply_language(Lang::EN);
+}
+
 /// This fork opens in Hebrew, and Hebrew is one row of File ▸ Options ▸ Interface language like
 /// every other language. A settings file that never chose a language moves to it; a choice
 /// (`Automatic` included) is kept.
@@ -156,8 +159,6 @@ fn this_fork_opens_in_hebrew_and_offers_hebrew_in_the_language_list() {
     assert!(app.ui.language_chosen, "picking Automatic is a choice");
     let restored: crate::prefs::Prefs = serde_json::from_str(&serde_json::to_string(&app.ui).unwrap()).unwrap();
     assert_eq!(restored.language, AUTO);
-    apply_language(Lang::EN);
-}
     apply_language(Lang::EN);
 }
 
