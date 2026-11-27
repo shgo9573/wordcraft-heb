@@ -211,21 +211,33 @@ def apply_theme(source: str) -> tuple[str, list[str]]:
 
 
 def apply_tests(source: str) -> tuple[str, list[str]]:
-    """The two i18n tests that count the offered languages: Hebrew exists only with the overlay."""
-    if "fn offers_hebrew()" in source:
-        return source, []
+    """The two i18n tests that count the offered languages: Hebrew exists only with the overlay.
+
+    Three changes, each applied on its own. They used to be all-or-nothing behind one early return
+    for the helper, and that was wrong: `code-overlay.json` also carried the two assertions as
+    hunks of its own, so a tree where the helper had landed but the assertions had not looked
+    "already done" — this function returned, the hunks were counted as applied, and the table and
+    this function drifted apart. Distinct steps also survive the helper landing at a different
+    anchor than the one this build knows.
+    """
     notes: list[str] = []
-    helper = next((a for a in (TESTS_HELPER_ANCHOR, TESTS_HELPER_ANCHOR_2) if a in source), None)
-    if helper is None:
-        raise SystemExit("error: i18n/tests.rs has no anchor for `offers_hebrew`")
-    source = source.replace(helper, TESTS_HELPER + helper, 1)
-    if TESTS_AVAILABLE not in source:
-        raise SystemExit("error: i18n/tests.rs has no `available` length assertion")
-    source = source.replace(TESTS_AVAILABLE, TESTS_AVAILABLE_PATCHED, 1)
-    if TESTS_LISTED not in source:
-        raise SystemExit("error: i18n/tests.rs has no `the_languages_offered_are_the_embedded_ones_of_the_list` body")
-    source = source.replace(TESTS_LISTED, TESTS_LISTED_PATCHED, 1)
-    notes.append("i18n/tests.rs: the offered languages count with the overlay")
+    if "fn offers_hebrew()" not in source:
+        helper = next((a for a in (TESTS_HELPER_ANCHOR, TESTS_HELPER_ANCHOR_2) if a in source), None)
+        if helper is None:
+            raise SystemExit("error: i18n/tests.rs has no anchor for `offers_hebrew`")
+        source = source.replace(helper, TESTS_HELPER + helper, 1)
+        notes.append("i18n/tests.rs: `offers_hebrew`")
+    # Already patched is not an error: this runs on every sync, and only the first one changes these.
+    if TESTS_AVAILABLE_PATCHED not in source:
+        if TESTS_AVAILABLE not in source:
+            raise SystemExit("error: i18n/tests.rs has no `available` length assertion")
+        source = source.replace(TESTS_AVAILABLE, TESTS_AVAILABLE_PATCHED, 1)
+        notes.append("i18n/tests.rs: the offered-languages count")
+    if TESTS_LISTED_PATCHED not in source:
+        if TESTS_LISTED not in source:
+            raise SystemExit("error: i18n/tests.rs has no `the_languages_offered_are_the_embedded_ones_of_the_list` body")
+        source = source.replace(TESTS_LISTED, TESTS_LISTED_PATCHED, 1)
+        notes.append("i18n/tests.rs: the listed-languages filter")
     return source, notes
 
 
