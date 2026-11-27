@@ -232,9 +232,9 @@ fn a_system_locale_and_a_saved_preference_pick_the_language_and_leave_the_docume
     if let Some(ar) = Lang::from_code("ar") {
         assert!(ar.rtl());
         // Arabic and — when this fork's overlay is embedded — Hebrew are the right-to-left ones.
-    let rtl: Vec<&str> = Lang::all().filter(|l| l.rtl()).map(|l| l.code()).collect();
-    assert!(rtl.contains(&"ar"), "Arabic mirrors the interface: {rtl:?}");
-    assert!(rtl.iter().all(|c| ["ar", "he"].contains(c)), "only Arabic and Hebrew are right to left: {rtl:?}");
+        let rtl: Vec<&str> = Lang::all().filter(|l| l.rtl()).map(|l| l.code()).collect();
+        assert!(rtl.contains(&"ar"), "Arabic mirrors the interface: {rtl:?}");
+        assert!(rtl.iter().all(|c| ["ar", "he"].contains(c)), "only Arabic and Hebrew are right to left: {rtl:?}");
     }
 }
 

@@ -133,9 +133,6 @@ mod tests {
         }
     }
 
-    #[test]
-    fn key_file_per_instance() {
-
     /// A temp folder standing in for the folder a portable copy sits in.
     fn temp_app_folder(tag: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("wordcraft-portable-{tag}-{}", std::process::id()));
@@ -159,6 +156,9 @@ mod tests {
         assert!(!data.join(".write-test").exists(), "the write test leaves nothing behind");
         let _ = std::fs::remove_dir_all(&dir);
     }
+
+    #[test]
+    fn key_file_per_instance() {
         let dir = Path::new("/settings/wordcraft");
         assert_eq!(key_path_for(dir, Some("1234"), 7981), dir.join("control-key.1234"));
         assert_eq!(key_path_for(dir, None, 7981), dir.join("control-key.local-7981"));

@@ -388,7 +388,22 @@ jobs:
           "WordCraft $version, Hebrew build (Windows x64)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
       - name: Build and package (Setup.exe, MSI and portable zip)
         shell: pwsh
-        run: packaging/windows/package.ps1 -Arch x64
+        # Annotate the log on failure, so the run page names the file and line that broke without
+        # downloading the log. package.ps1 throws (`$ErrorActionPreference = 'Stop'`), hence try/catch.
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'package-windows.log'
+          $failed = $null
+          try {
+            & packaging/windows/package.ps1 -Arch x64 *>&1 | Tee-Object -FilePath $log
+            if ($LASTEXITCODE -ne 0) { $failed = "package.ps1 exited $LASTEXITCODE" }
+          } catch {
+            $failed = $_.Exception.Message
+          }
+          if ($failed) {
+            python i18n-he/tools/rust_failures.py --annotate --title "The Windows build failed" $log
+            "::error::The Windows build failed: $failed"
+            exit 1
+          }
       - name: What was built
         id: built
         shell: pwsh
@@ -509,20 +524,20 @@ jobs:
           # cannot build the bundle (`build.outputs.setup`), and a note that promises the .exe while
           # the assets hold only the MSI and the zip is worse than one that explains how to install.
           if [ "${SETUP:-true}" = "true" ]; then
-            install_he='- **להתקנה:** `wordcraft-'"${VERSION}"'-windows-x64-Setup.exe` — לחיצה כפולה, התקנה למשתמש
+            install_he="- **להתקנה:** \`wordcraft-${VERSION}-windows-x64-Setup.exe\` — לחיצה כפולה, התקנה למשתמש
             הנוכחי (בלי הרשאות מנהל). לצדו יורד גם ה-MSI שאותו ה-Setup.exe מריץ, למי שמעדיף
-            `msiexec` או התקנה לכל המשתמשים (`ALLUSERS=1`).'
-            install_en='- **Install:** `wordcraft-'"${VERSION}"'-windows-x64-Setup.exe` (per user, no admin needed).
-            The MSI it wraps ships beside it for `msiexec` and for installing for every user
-            (`ALLUSERS=1`).'
+            \`msiexec\` או התקנה לכל המשתמשים (\`ALLUSERS=1\`)."
+            install_en="- **Install:** \`wordcraft-${VERSION}-windows-x64-Setup.exe\` (per user, no admin needed).
+            The MSI it wraps ships beside it for \`msiexec\` and for installing for every user
+            (\`ALLUSERS=1\`)."
           else
-            install_he='- **להתקנה:** `wordcraft-'"${VERSION}"'-windows-x64.msi` — לחיצה כפולה, התקנה למשתמש
-            הנוכחי (בלי הרשאות מנהל), או `msiexec /i` והתקנה לכל המשתמשים (`ALLUSERS=1`). ה-Setup.exe
-            אינו בגירסה הזאת: בנייתו נכשלה, ולכן ה-MSI וה-zip הנייד הם הקבצים להורדה.'
-            install_en='- **Install:** `wordcraft-'"${VERSION}"'-windows-x64.msi` — double-click to install for
-            the current user (no admin needed), or `msiexec /i` for every user (`ALLUSERS=1`). There
+            install_he="- **להתקנה:** \`wordcraft-${VERSION}-windows-x64.msi\` — לחיצה כפולה, התקנה למשתמש
+            הנוכחי (בלי הרשאות מנהל), או \`msiexec /i\` והתקנה לכל המשתמשים (\`ALLUSERS=1\`). ה-Setup.exe
+            אינו בגירסה הזאת: בנייתו נכשלה, ולכן ה-MSI וה-zip הנייד הם הקבצים להורדה."
+            install_en="- **Install:** \`wordcraft-${VERSION}-windows-x64.msi\` — double-click to install for
+            the current user (no admin needed), or \`msiexec /i\` for every user (\`ALLUSERS=1\`). There
             is no Setup.exe in this release: the bundle failed to build, so the MSI and the portable
-            zip are the downloads.'
+            zip are the downloads."
           fi
           python3 - "$RUNNER_TEMP/notes.md" "$install_he" "$install_en" <<'FILL'
           import sys
