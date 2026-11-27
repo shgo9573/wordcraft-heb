@@ -215,8 +215,17 @@ jobs:
           "$(go env GOPATH)/bin/nfpm" --version
       - name: Build and package (the AppImage and the .deb)
         # `--formats "appimage deb"`: the AppImage (and, with `zsyncmake` installed, its `.zsync`)
-        # and the Debian package nfpm makes from `packaging/linux/nfpm.yaml`.
-        run: packaging/linux/package.sh --formats "appimage deb"
+        # and the Debian package nfpm makes from `packaging/linux/nfpm.yaml`. Annotate the log on
+        # failure, so the run page names the file and line that broke without downloading the log.
+        run: |
+          set +e
+          packaging/linux/package.sh --formats "appimage deb" 2>&1 | tee "$RUNNER_TEMP/package-linux.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            python3 i18n-he/tools/rust_failures.py --annotate --title "The Linux build failed" "$RUNNER_TEMP/package-linux.log"
+            exit "$status"
+          fi
       - name: What was built
         run: ls -lh dist/release
       - uses: actions/upload-artifact@v4

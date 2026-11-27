@@ -22,6 +22,9 @@ from pathlib import Path
 DIAGNOSTIC = re.compile(r"^(?P<file>[^\s:][^:]*):(?P<line>\d+):(?P<col>\d+): (?P<level>error|warning)(\[(?P<code>[A-Z]\d+)\])?: (?P<message>.*)$")
 # A rustc error that has no location (`error: could not compile …`).
 BARE = re.compile(r"^(?P<level>error|warning)(\[(?P<code>[A-Z]\d+)\])?: (?P<message>.*)$")
+# The location line of a full-format diagnostic (`  --> crates/x/src/lib.rs:12:5`): a plain
+# `cargo test`/`cargo fmt` log carries the error's place on the line after the error, not in it.
+LOCATION = re.compile(r"^\s*--> (?P<file>[^\s:][^:]*):(?P<line>\d+):(?P<col>\d+)\s*$")
 # The dependency build noise of a first check; never worth a report.
 NOISE = re.compile(r"^\s*(Compiling|Checking|Finished|Downloaded|Downloading|Blocking|Updating|Adding|Locking|Unpacking)\b")
 # A test failure (`---- name stdout ----`, `thread 'x' panicked at …`) or a doctest.
@@ -46,7 +49,16 @@ def parse(lines: list[str]) -> tuple[list[dict], list[str]]:
             continue
         match = BARE.match(line)
         if match and match.group("level") == "error":
-            errors.append({**match.groupdict(), "file": None, "line": None, "col": None, "index": number, "text": line})
+            error = {**match.groupdict(), "file": None, "line": None, "col": None, "index": number, "text": line}
+            # A full-format error's place sits on its `-->` line, before the next error begins.
+            for follow in lines[number + 1:number + 5]:
+                if BARE.match(follow) or DIAGNOSTIC.match(follow):
+                    break
+                where = LOCATION.match(follow)
+                if where:
+                    error.update(where.groupdict())
+                    break
+            errors.append(error)
     return errors, lines
 
 

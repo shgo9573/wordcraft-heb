@@ -388,7 +388,22 @@ jobs:
           "WordCraft $version, Hebrew build (Windows x64)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
       - name: Build and package (Setup.exe, MSI and portable zip)
         shell: pwsh
-        run: packaging/windows/package.ps1 -Arch x64
+        # Annotate the log on failure, so the run page names the file and line that broke without
+        # downloading the log. package.ps1 throws (`$ErrorActionPreference = 'Stop'`), hence try/catch.
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'package-windows.log'
+          $failed = $null
+          try {
+            & packaging/windows/package.ps1 -Arch x64 *>&1 | Tee-Object -FilePath $log
+            if ($LASTEXITCODE -ne 0) { $failed = "package.ps1 exited $LASTEXITCODE" }
+          } catch {
+            $failed = $_.Exception.Message
+          }
+          if ($failed) {
+            python i18n-he/tools/rust_failures.py --annotate --title "The Windows build failed" $log
+            "::error::The Windows build failed: $failed"
+            exit 1
+          }
       - name: What was built
         id: built
         shell: pwsh

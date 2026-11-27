@@ -75,7 +75,15 @@ jobs:
           BRANCH: ${{ github.head_ref }}
         run: |
           set -euo pipefail
-          cargo fmt --all
+          set +e
+          cargo fmt --all 2>&1 | tee "$RUNNER_TEMP/fmt.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            # A file rustfmt cannot parse fails here, before the compile steps ever see it: say which.
+            python3 i18n-he/tools/rust_failures.py --annotate --title "rustfmt could not parse the tree" "$RUNNER_TEMP/fmt.log"
+            exit "$status"
+          fi
           if git diff --quiet; then
             echo "already formatted"
             exit 0
@@ -136,7 +144,9 @@ jobs:
           set +e
           cargo check --workspace --all-targets --message-format=short --keep-going 2>&1 | tee "$RUNNER_TEMP/rust.log"
           status=${PIPESTATUS[0]}
-          python3 i18n-he/tools/rust_failures.py --annotate "$RUNNER_TEMP/rust.log"
+          if [ "$status" -ne 0 ]; then
+            python3 i18n-he/tools/rust_failures.py --annotate "$RUNNER_TEMP/rust.log"
+          fi
           exit "$status"
       - name: The Hebrew proofer's tests (spelling, suggestions and grammar)
         if: ${{ !cancelled() }}
@@ -144,7 +154,9 @@ jobs:
           set +e
           cargo test -p wordcraft-proof-he --lib 2>&1 | tee "$RUNNER_TEMP/proof-tests.log"
           status=${PIPESTATUS[0]}
-          python3 i18n-he/tools/rust_failures.py --annotate --title "The proofing tests failed" "$RUNNER_TEMP/proof-tests.log"
+          if [ "$status" -ne 0 ]; then
+            python3 i18n-he/tools/rust_failures.py --annotate --title "The proofing tests failed" "$RUNNER_TEMP/proof-tests.log"
+          fi
           exit "$status"
       # One gap, unrelated to Hebrew and documented rather than hidden: the Zotero tests open a
       # socket to a fake server of their own and time out on a shared runner.
@@ -161,7 +173,9 @@ jobs:
           set +e
           cargo test -p wordcraft-ui-egui --lib -- --skip zotero:: 2>&1 | tee "$RUNNER_TEMP/ui-tests.log"
           status=${PIPESTATUS[0]}
-          python3 i18n-he/tools/rust_failures.py --annotate --title "The interface tests failed" "$RUNNER_TEMP/ui-tests.log"
+          if [ "$status" -ne 0 ]; then
+            python3 i18n-he/tools/rust_failures.py --annotate --title "The interface tests failed" "$RUNNER_TEMP/ui-tests.log"
+          fi
           exit "$status"
       - name: Quote the failure on the pull request
         if: failure()
